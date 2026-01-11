@@ -1,0 +1,147 @@
+﻿<Window x:Class="UIMarkerEditor.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:UIMarkerEditor"
+        mc:Ignorable="d"
+        Title="FF14 标点预设编辑工具" Height="450" Width="800"
+        Loaded="Window_Loaded" WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Padding" Value="5"/>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="5"/>
+        </Style>
+    </Window.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" MinWidth="150"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="标点预设列表：" HorizontalAlignment="Left" Margin="5,5,0,0"/>
+            <ListBox x:Name="WayMark_ListBox" DisplayMemberPath="DisplayRegionID" Margin="5" Grid.Row="1">
+            </ListBox>
+        </Grid>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="当前区域：" Grid.Column="0"/>
+                <TextBox Text="{Binding SelectedItem.DisplayRegionID, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1"/>
+            </Grid>
+
+            <Grid Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="标点" Grid.Column="0"/>
+                <TextBlock Text="X坐标" Grid.Column="1"/>
+                <TextBlock Text="Y坐标" Grid.Column="2"/>
+                <TextBlock Text="Z坐标" Grid.Column="3"/>
+
+                <CheckBox x:Name="A_CheckBox" Content="A点" IsChecked="{Binding SelectedItem.AEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="1"/>
+                <TextBox x:Name="A_X_TextBox" Text="{Binding SelectedItem.A.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="1"/>
+                <TextBox x:Name="A_Y_TextBox" Text="{Binding SelectedItem.A.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="1"/>
+                <TextBox x:Name="A_Z_TextBox" Text="{Binding SelectedItem.A.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="1"/>
+
+                <CheckBox x:Name="B_CheckBox" Content="B点" IsChecked="{Binding SelectedItem.BEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="2"/>
+                <TextBox x:Name="B_X_TextBox" Text="{Binding SelectedItem.B.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="2"/>
+                <TextBox x:Name="B_Y_TextBox" Text="{Binding SelectedItem.B.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="2"/>
+                <TextBox x:Name="B_Z_TextBox" Text="{Binding SelectedItem.B.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="2"/>
+
+                <CheckBox x:Name="C_CheckBox" Content="C点" IsChecked="{Binding SelectedItem.CEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="3"/>
+                <TextBox x:Name="C_X_TextBox" Text="{Binding SelectedItem.C.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="3"/>
+                <TextBox x:Name="C_Y_TextBox" Text="{Binding SelectedItem.C.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="3"/>
+                <TextBox x:Name="C_Z_TextBox" Text="{Binding SelectedItem.C.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="3"/>
+
+                <CheckBox x:Name="D_CheckBox" Content="D点" IsChecked="{Binding SelectedItem.DEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="4"/>
+                <TextBox x:Name="D_X_TextBox" Text="{Binding SelectedItem.D.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="4"/>
+                <TextBox x:Name="D_Y_TextBox" Text="{Binding SelectedItem.D.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="4"/>
+                <TextBox x:Name="D_Z_TextBox" Text="{Binding SelectedItem.D.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="4"/>
+
+                <CheckBox x:Name="One_CheckBox" Content="1点" IsChecked="{Binding SelectedItem.OneEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="5"/>
+                <TextBox x:Name="One_X_TextBox" Text="{Binding SelectedItem.One.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="5"/>
+                <TextBox x:Name="One_Y_TextBox" Text="{Binding SelectedItem.One.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="5"/>
+                <TextBox x:Name="One_Z_TextBox" Text="{Binding SelectedItem.One.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="5"/>
+
+                <CheckBox x:Name="Two_CheckBox" Content="2点" IsChecked="{Binding SelectedItem.TwoEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="6"/>
+                <TextBox x:Name="Two_X_TextBox" Text="{Binding SelectedItem.Two.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="6"/>
+                <TextBox x:Name="Two_Y_TextBox" Text="{Binding SelectedItem.Two.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="6"/>
+                <TextBox x:Name="Two_Z_TextBox" Text="{Binding SelectedItem.Two.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="6"/>
+
+                <CheckBox x:Name="Three_CheckBox" Content="3点" IsChecked="{Binding SelectedItem.ThreeEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="7"/>
+                <TextBox x:Name="Three_X_TextBox" Text="{Binding SelectedItem.Three.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="7"/>
+                <TextBox x:Name="Three_Y_TextBox" Text="{Binding SelectedItem.Three.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="7"/>
+                <TextBox x:Name="Three_Z_TextBox" Text="{Binding SelectedItem.Three.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="7"/>
+
+                <CheckBox x:Name="Four_CheckBox" Content="4点" IsChecked="{Binding SelectedItem.FourEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="8"/>
+                <TextBox x:Name="Four_X_TextBox" Text="{Binding SelectedItem.Four.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="8"/>
+                <TextBox x:Name="Four_Y_TextBox" Text="{Binding SelectedItem.Four.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="8"/>
+                <TextBox x:Name="Four_Z_TextBox" Text="{Binding SelectedItem.Four.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="8"/>
+            </Grid>
+
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button x:Name="Load_Button" Content="读取标点文件" Click="Load_Button_Click"/>
+                <Button x:Name="Reload_Button" Content="重新加载标点列表" Grid.Column="1" Click="Reload_Button_Click"/>
+                <Button x:Name="Save_Button" Content="保存标点文件" Grid.Column="2" Click="Save_Button_Click"/>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
