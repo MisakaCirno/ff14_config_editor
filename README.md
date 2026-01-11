@@ -19,7 +19,6 @@ C# + WPF + .NET 8
     - ConfigBase.cs：对`.DAT`文件进行操作的基类。
     - ConfigUISave.cs：继承自`ConfigBase.cs`，针对于`UISAVE.DATA`文件的派生类。
     - DebugHelper.cs：用于调整控制台的输出信息。
-
 - UIMarkerEditor：用于编辑`UISAVE.DAT`中标点部分的图形化编辑器。
     - MainWindow.xaml
     - MainWindow.xaml.cs
