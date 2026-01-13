@@ -31,3 +31,4 @@ C# + WPF + .NET 8
     - https://github.com/Haselnussbomber/HaselDebug/blob/main/HaselDebug/Tabs/Disabled/UIModuleTab.cs
 - 关于标点部分的Region ID，可以参考这里找到映射关系：
     - https://raw.githubusercontent.com/thewakingsands/ffxiv-datamining-cn/master/ContentFinderCondition.csv
+    - https://github.com/thewakingsands/ffxiv-datamining-cn/blob/master/ContentFinderCondition.csv

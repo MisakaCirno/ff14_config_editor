@@ -9,7 +9,29 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Assets\Image\s_1.png" />
+    <None Remove="Assets\Image\s_2.png" />
+    <None Remove="Assets\Image\s_3.png" />
+    <None Remove="Assets\Image\s_4.png" />
+    <None Remove="Assets\Image\s_a.png" />
+    <None Remove="Assets\Image\s_b.png" />
+    <None Remove="Assets\Image\s_c.png" />
+    <None Remove="Assets\Image\s_d.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FF14ConfigEditor\FF14ConfigEditor.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\Image\s_1.png" />
+    <Resource Include="Assets\Image\s_2.png" />
+    <Resource Include="Assets\Image\s_3.png" />
+    <Resource Include="Assets\Image\s_4.png" />
+    <Resource Include="Assets\Image\s_a.png" />
+    <Resource Include="Assets\Image\s_b.png" />
+    <Resource Include="Assets\Image\s_c.png" />
+    <Resource Include="Assets\Image\s_d.png" />
   </ItemGroup>
 
 </Project>

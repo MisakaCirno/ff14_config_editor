@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -110,7 +111,7 @@ namespace FF14ConfigEditor.UISave
 
             writer.Write(wayMark.enableFlag);
             writer.Write(wayMark.unknown);
-            writer.Write(wayMark.regionID);
+            writer.Write(wayMark.RegionID);
             writer.Write(wayMark.timestamp);
         }
 
@@ -139,7 +140,7 @@ namespace FF14ConfigEditor.UISave
                 // 解析标志位和其他信息 (Offset 96)
                 enableFlag = reader.ReadByte(),     // Offset 96
                 unknown = reader.ReadByte(),        // Offset 97
-                regionID = reader.ReadUInt16(),     // Offset 98
+                RegionID = reader.ReadUInt16(),     // Offset 98
                 timestamp = reader.ReadInt32()     // Offset 100
             };
 
@@ -160,8 +161,11 @@ namespace FF14ConfigEditor.UISave
     /// <summary>
     /// 每一个标点预设的数据结构
     /// </summary>
-    public class WayMark
+    public class WayMark : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
         public WayMarkPoint A { get; set; } = new();
         public WayMarkPoint B { get; set; } = new();
         public WayMarkPoint C { get; set; } = new();
@@ -179,10 +183,12 @@ namespace FF14ConfigEditor.UISave
             get { return (enableFlag & 0x01) != 0; }
             set
             {
-                if (value)
-                    enableFlag |= 0x01;
-                else
-                    enableFlag &= 0xFE;
+                bool current = (enableFlag & 0x01) != 0;
+                if (current != value)
+                {
+                    if (value) enableFlag |= 0x01; else enableFlag &= 0xFE;
+                    OnPropertyChanged(nameof(AEnabled));
+                }
             }
         }
         public bool BEnabled
@@ -190,10 +196,12 @@ namespace FF14ConfigEditor.UISave
             get { return (enableFlag & 0x02) != 0; }
             set
             {
-                if (value)
-                    enableFlag |= 0x02;
-                else
-                    enableFlag &= 0xFD;
+                bool current = (enableFlag & 0x02) != 0;
+                if (current != value)
+                {
+                    if (value) enableFlag |= 0x02; else enableFlag &= 0xFD;
+                    OnPropertyChanged(nameof(BEnabled));
+                }
             }
         }
         public bool CEnabled
@@ -201,10 +209,12 @@ namespace FF14ConfigEditor.UISave
             get { return (enableFlag & 0x04) != 0; }
             set
             {
-                if (value)
-                    enableFlag |= 0x04;
-                else
-                    enableFlag &= 0xFB;
+                bool current = (enableFlag & 0x04) != 0;
+                if (current != value)
+                {
+                    if (value) enableFlag |= 0x04; else enableFlag &= 0xFB;
+                    OnPropertyChanged(nameof(CEnabled));
+                }
             }
         }
         public bool DEnabled
@@ -212,10 +222,12 @@ namespace FF14ConfigEditor.UISave
             get { return (enableFlag & 0x08) != 0; }
             set
             {
-                if (value)
-                    enableFlag |= 0x08;
-                else
-                    enableFlag &= 0xF7;
+                bool current = (enableFlag & 0x08) != 0;
+                if (current != value)
+                {
+                    if (value) enableFlag |= 0x08; else enableFlag &= 0xF7;
+                    OnPropertyChanged(nameof(DEnabled));
+                }
             }
         }
         public bool OneEnabled
@@ -223,10 +235,12 @@ namespace FF14ConfigEditor.UISave
             get { return (enableFlag & 0x10) != 0; }
             set
             {
-                if (value)
-                    enableFlag |= 0x10;
-                else
-                    enableFlag &= 0xEF;
+                bool current = (enableFlag & 0x10) != 0;
+                if (current != value)
+                {
+                    if (value) enableFlag |= 0x10; else enableFlag &= 0xEF;
+                    OnPropertyChanged(nameof(OneEnabled));
+                }
             }
         }
         public bool TwoEnabled
@@ -234,10 +248,12 @@ namespace FF14ConfigEditor.UISave
             get { return (enableFlag & 0x20) != 0; }
             set
             {
-                if (value)
-                    enableFlag |= 0x20;
-                else
-                    enableFlag &= 0xDF;
+                bool current = (enableFlag & 0x20) != 0;
+                if (current != value)
+                {
+                    if (value) enableFlag |= 0x20; else enableFlag &= 0xDF;
+                    OnPropertyChanged(nameof(TwoEnabled));
+                }
             }
         }
         public bool ThreeEnabled
@@ -245,10 +261,12 @@ namespace FF14ConfigEditor.UISave
             get { return (enableFlag & 0x40) != 0; }
             set
             {
-                if (value)
-                    enableFlag |= 0x40;
-                else
-                    enableFlag &= 0xBF;
+                bool current = (enableFlag & 0x40) != 0;
+                if (current != value)
+                {
+                    if (value) enableFlag |= 0x40; else enableFlag &= 0xBF;
+                    OnPropertyChanged(nameof(ThreeEnabled));
+                }
             }
         }
         public bool FourEnabled
@@ -256,28 +274,44 @@ namespace FF14ConfigEditor.UISave
             get { return (enableFlag & 0x80) != 0; }
             set
             {
-                if (value)
-                    enableFlag |= 0x80;
-                else
-                    enableFlag &= 0x7F;
+                bool current = (enableFlag & 0x80) != 0;
+                if (current != value)
+                {
+                    if (value) enableFlag |= 0x80; else enableFlag &= 0x7F;
+                    OnPropertyChanged(nameof(FourEnabled));
+                }
             }
         }
 
 
         public byte unknown;
 
-        public ushort regionID;
+        private ushort _regionID;
+        public ushort RegionID
+        {
+            get { return _regionID; }
+            set
+            {
+                if (_regionID != value)
+                {
+                    _regionID = value;
+                    OnPropertyChanged(nameof(RegionID));
+                    OnPropertyChanged(nameof(DisplayRegionID));
+                }
+            }
+        }
+
         public string DisplayRegionID
         {
             get
             {
-                return regionID.ToString();
+                return _regionID.ToString();
             }
             set
             {
                 if (ushort.TryParse(value, out ushort parsedID))
                 {
-                    regionID = parsedID;
+                    RegionID = parsedID;
                 }
             }
         }
@@ -297,7 +331,7 @@ namespace FF14ConfigEditor.UISave
 
             DebugHelper.Log($"Enable Flag: {enableFlag:X2}");
             DebugHelper.Log($"Unknown: {unknown:X2}");
-            DebugHelper.Log($"Region ID: {regionID}");
+            DebugHelper.Log($"Region ID: {RegionID}");
             DebugHelper.Log($"Timestamp: {timestamp}");
         }
     }
@@ -305,8 +339,11 @@ namespace FF14ConfigEditor.UISave
     /// <summary>
     /// 每一个标点的坐标数据结构
     /// </summary>
-    public class WayMarkPoint
+    public class WayMarkPoint : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
         // 使用时坐标会转换为浮点数，但存储时是整数形式
         // 转换比例为 1000
         private int rawX = 0;
@@ -316,33 +353,84 @@ namespace FF14ConfigEditor.UISave
         public int X
         {
             get { return rawX; }
-            set { rawX = value; }
+            set 
+            {
+                if (rawX != value)
+                {
+                    rawX = value;
+                    OnPropertyChanged(nameof(X));
+                    OnPropertyChanged(nameof(FloatX));
+                }
+            }
         }
         public int Y
         {
             get { return rawY; }
-            set { rawY = value; }
+            set 
+            {
+                if (rawY != value)
+                {
+                    rawY = value;
+                    OnPropertyChanged(nameof(Y));
+                    OnPropertyChanged(nameof(FloatY));
+                }
+            }
         }
         public int Z
         {
             get { return rawZ; }
-            set { rawZ = value; }
+            set 
+            {
+                if (rawZ != value)
+                {
+                    rawZ = value;
+                    OnPropertyChanged(nameof(Z));
+                    OnPropertyChanged(nameof(FloatZ));
+                }
+            }
         }
 
         public float FloatX
         {
             get { return rawX / 1000f; }
-            set { rawX = (int)(value * 1000); }
+            set 
+            {
+                int newVal = (int)(value * 1000);
+                if (rawX != newVal)
+                {
+                    rawX = newVal;
+                    OnPropertyChanged(nameof(X));
+                    OnPropertyChanged(nameof(FloatX));
+                }
+            }
         }
         public float FloatY
         {
             get { return rawY / 1000f; }
-            set { rawY = (int)(value * 1000); }
+            set 
+            {
+                int newVal = (int)(value * 1000);
+                if (rawY != newVal)
+                {
+                    rawY = newVal;
+                    OnPropertyChanged(nameof(Y));
+                    OnPropertyChanged(nameof(FloatY));
+                }
+            }
         }
         public float FloatZ
         {
             get { return rawZ / 1000f; }
-            set { rawZ = (int)(value * 1000); }
+            set 
+            {
+                int newVal = (int)(value * 1000);
+                if (rawZ != newVal)
+                {
+                    rawZ = newVal;
+                    OnPropertyChanged(nameof(Z));
+                    OnPropertyChanged(nameof(FloatZ));
+                }
+            }
         }
     }
 }

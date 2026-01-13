@@ -5,9 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:UIMarkerEditor"
         mc:Ignorable="d"
-        Title="FF14 标点预设编辑工具" Height="450" Width="800"
+        Title="FF14 标点预设编辑工具"
+        Height="500" Width="1000"
+        MinHeight="480" MinWidth="850"
         Loaded="Window_Loaded" WindowStartupLocation="CenterScreen">
     <Window.Resources>
+        <local:RegionIdToNameConverter x:Key="RegionIdToNameConverter"/>
+        
         <Style TargetType="Button">
             <Setter Property="Margin" Value="5"/>
             <Setter Property="Padding" Value="5"/>
@@ -35,7 +39,10 @@
     </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" MinWidth="150"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
@@ -45,27 +52,63 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <TextBlock Text="标点预设列表：" HorizontalAlignment="Left" Margin="5,5,0,0"/>
-            <ListBox x:Name="WayMark_ListBox" DisplayMemberPath="DisplayRegionID" Margin="5" Grid.Row="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="标点预设列表：" HorizontalAlignment="Left" Margin="5,5,0,0"/>
+
+                <Button x:Name="ShareWebsite_Button" Content="标点分享网站" Click="ShareWebsite_Button_Click" Grid.Column="1"/>
+            </Grid>
+            
+            <ListBox x:Name="WayMark_ListBox" Margin="5" Grid.Row="1" SelectionChanged="WayMark_ListBox_SelectionChanged">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding RegionID, Converter={StaticResource RegionIdToNameConverter}}"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
             </ListBox>
         </Grid>
 
-        <Grid Grid.Column="1">
+        <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="LightGray"/>
+
+        <Grid Grid.Column="2">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <Grid>
+            <Grid x:Name="Edit1_Grid">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="当前区域：" Grid.Column="0"/>
-                <TextBox Text="{Binding SelectedItem.DisplayRegionID, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1"/>
+
+                <ComboBox Grid.Column="1" 
+                          VerticalContentAlignment="Center"
+                          ItemsSource="{x:Static local:MapData.CachedDisplayDictValues}"
+                          Margin="5"
+                          DisplayMemberPath="DisplayName"
+                          SelectedValuePath="Index"
+                          SelectedValue="{Binding SelectedItem.RegionID, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                    <ComboBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                             <VirtualizingStackPanel />
+                        </ItemsPanelTemplate>
+                    </ComboBox.ItemsPanel>
+                </ComboBox>
+
+                <Button x:Name="Import_Button" Content="导入" Grid.Column="2" Click="Import_Button_Click"/>
+
+                <Button x:Name="Export_Button" Content="导出" Grid.Column="3" Click="Export_Button_Click"/>
             </Grid>
 
-            <Grid Grid.Row="1">
+            <Grid x:Name="Edit2_Grid" Grid.Row="1">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -131,7 +174,13 @@
                 <TextBox x:Name="Four_Z_TextBox" Text="{Binding SelectedItem.Four.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="8"/>
             </Grid>
 
-            <Grid Grid.Row="2">
+            <StackPanel Grid.Row="2">
+                <TextBlock Foreground="Red" FontWeight="Bold" Text="请【不要】在角色在线时编辑标点文件！"/>
+                <TextBlock Foreground="DarkGreen" FontWeight="Bold" Text="只能在【选角界面】或【关闭游戏时】编辑标点文件！"/>
+            </StackPanel>
+
+
+            <Grid Grid.Row="3">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="*"/>
@@ -139,8 +188,41 @@
                 </Grid.ColumnDefinitions>
 
                 <Button x:Name="Load_Button" Content="读取标点文件" Click="Load_Button_Click"/>
-                <Button x:Name="Reload_Button" Content="重新加载标点列表" Grid.Column="1" Click="Reload_Button_Click"/>
+                <Button x:Name="Reload_Button" Content="重新加载文件" Grid.Column="1" Click="Reload_Button_Click"/>
                 <Button x:Name="Save_Button" Content="保存标点文件" Grid.Column="2" Click="Save_Button_Click"/>
+            </Grid>
+        </Grid>
+
+        <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="LightGray"/>
+
+        <Grid Grid.Column="4">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="标点相对位置预览：" HorizontalAlignment="Left" Margin="5,5,0,0"/>
+            
+            <Grid Grid.Row="1" x:Name="Preview_Container" Background="#FFD5C896" 
+                  Margin="5" ClipToBounds="True"
+                  SizeChanged="Preview_Container_SizeChanged">
+                <Canvas x:Name="Preview_Canvas" HorizontalAlignment="Center" VerticalAlignment="Center" Width="0" Height="0">
+                </Canvas>
+            </Grid>
+
+            <Grid Grid.Row="2" Margin="5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="点缩放："/>
+                <Slider x:Name="Scale_Slider" Grid.Column="1" 
+                        VerticalAlignment="Center"
+                        Minimum="0.05" Maximum="0.5" Value="0.1"
+                        ValueChanged="Scale_Slider_ValueChanged"/>
+                <TextBlock Text="{Binding Value, ElementName=Scale_Slider, StringFormat={}{0:P0}}" Grid.Column="2" Width="30" TextAlignment="Right"/>
             </Grid>
         </Grid>
     </Grid>
