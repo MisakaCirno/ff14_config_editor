@@ -6,8 +6,8 @@
         xmlns:local="clr-namespace:UIMarkerEditor"
         mc:Ignorable="d"
         Title="FF14 标点预设编辑工具"
-        Height="500" Width="1000"
-        MinHeight="480" MinWidth="850"
+        Height="600" Width="1000"
+        MinHeight="600" MinWidth="850"
         Loaded="Window_Loaded" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <local:RegionIdToNameConverter x:Key="RegionIdToNameConverter"/>
@@ -36,194 +36,287 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Padding" Value="5"/>
         </Style>
+
+        <Style TargetType="TabItem">
+            <Setter Property="Padding" Value="10,5"/>
+        </Style>
     </Window.Resources>
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-
+    <TabControl>
+        <TabItem Header="标点编辑">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="标点预设列表：" HorizontalAlignment="Left" Margin="5,5,0,0"/>
-
-                <Button x:Name="ShareWebsite_Button" Content="标点分享网站" Click="ShareWebsite_Button_Click" Grid.Column="1"/>
-            </Grid>
-            
-            <ListBox x:Name="WayMark_ListBox" Margin="5" Grid.Row="1" SelectionChanged="WayMark_ListBox_SelectionChanged">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding RegionID, Converter={StaticResource RegionIdToNameConverter}}"/>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-        </Grid>
-
-        <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="LightGray"/>
-
-        <Grid Grid.Column="2">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <Grid x:Name="Edit1_Grid">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="当前区域：" Grid.Column="0"/>
 
-                <ComboBox Grid.Column="1" 
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="标点预设列表：" HorizontalAlignment="Left" Margin="5,5,0,0"/>
+
+                    <ListBox x:Name="WayMark_ListBox" Margin="5" Grid.Row="1" SelectionChanged="WayMark_ListBox_SelectionChanged">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding RegionID, Converter={StaticResource RegionIdToNameConverter}}"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button x:Name="ShareWebsite_Button" Content="标点分享网站" Click="ShareWebsite_Button_Click" Grid.Column="0"/>
+                        <Button x:Name="MoveUp_Button" Content="上移选中项" Grid.Column="2"/>
+                        <Button x:Name="MoveDown_Button" Content="下移选中项" Grid.Column="3"/>
+                    </Grid>
+                </Grid>
+
+                <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="LightGray"/>
+
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid x:Name="Edit1_Grid" Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Text="当前区域：" Grid.Column="0" />
+
+                        <ComboBox Grid.Column="1" 
                           VerticalContentAlignment="Center"
                           ItemsSource="{x:Static local:MapData.CachedDisplayDictValues}"
-                          Margin="5"
+                          Margin="5" Padding="5"
                           DisplayMemberPath="DisplayName"
                           SelectedValuePath="Index"
                           SelectedValue="{Binding SelectedItem.RegionID, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
-                    <ComboBox.ItemsPanel>
-                        <ItemsPanelTemplate>
-                             <VirtualizingStackPanel />
-                        </ItemsPanelTemplate>
-                    </ComboBox.ItemsPanel>
-                </ComboBox>
+                            <ComboBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel />
+                                </ItemsPanelTemplate>
+                            </ComboBox.ItemsPanel>
+                        </ComboBox>
+                    </Grid>
 
-                <Button x:Name="Import_Button" Content="导入" Grid.Column="2" Click="Import_Button_Click"/>
+                    <TabControl Grid.Row="1">
+                        <TabItem Header="标点位置">
+                            <Grid x:Name="Edit2_Grid" >
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
 
-                <Button x:Name="Export_Button" Content="导出" Grid.Column="3" Click="Export_Button_Click"/>
-            </Grid>
+                                <TextBlock Text="标点" Grid.Column="0"/>
+                                <TextBlock Text="X坐标" Grid.Column="1"/>
+                                <TextBlock Text="Y坐标" Grid.Column="2"/>
+                                <TextBlock Text="Z坐标" Grid.Column="3"/>
 
-            <Grid x:Name="Edit2_Grid" Grid.Row="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+                                <CheckBox x:Name="A_CheckBox" Content="A点" IsChecked="{Binding SelectedItem.AEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="1"/>
+                                <TextBox x:Name="A_X_TextBox" Text="{Binding SelectedItem.A.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="1"/>
+                                <TextBox x:Name="A_Y_TextBox" Text="{Binding SelectedItem.A.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="1"/>
+                                <TextBox x:Name="A_Z_TextBox" Text="{Binding SelectedItem.A.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="1"/>
 
-                <TextBlock Text="标点" Grid.Column="0"/>
-                <TextBlock Text="X坐标" Grid.Column="1"/>
-                <TextBlock Text="Y坐标" Grid.Column="2"/>
-                <TextBlock Text="Z坐标" Grid.Column="3"/>
+                                <CheckBox x:Name="B_CheckBox" Content="B点" IsChecked="{Binding SelectedItem.BEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="2"/>
+                                <TextBox x:Name="B_X_TextBox" Text="{Binding SelectedItem.B.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="2"/>
+                                <TextBox x:Name="B_Y_TextBox" Text="{Binding SelectedItem.B.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="2"/>
+                                <TextBox x:Name="B_Z_TextBox" Text="{Binding SelectedItem.B.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="2"/>
 
-                <CheckBox x:Name="A_CheckBox" Content="A点" IsChecked="{Binding SelectedItem.AEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="1"/>
-                <TextBox x:Name="A_X_TextBox" Text="{Binding SelectedItem.A.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="1"/>
-                <TextBox x:Name="A_Y_TextBox" Text="{Binding SelectedItem.A.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="1"/>
-                <TextBox x:Name="A_Z_TextBox" Text="{Binding SelectedItem.A.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="1"/>
+                                <CheckBox x:Name="C_CheckBox" Content="C点" IsChecked="{Binding SelectedItem.CEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="3"/>
+                                <TextBox x:Name="C_X_TextBox" Text="{Binding SelectedItem.C.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="3"/>
+                                <TextBox x:Name="C_Y_TextBox" Text="{Binding SelectedItem.C.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="3"/>
+                                <TextBox x:Name="C_Z_TextBox" Text="{Binding SelectedItem.C.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="3"/>
 
-                <CheckBox x:Name="B_CheckBox" Content="B点" IsChecked="{Binding SelectedItem.BEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="2"/>
-                <TextBox x:Name="B_X_TextBox" Text="{Binding SelectedItem.B.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="2"/>
-                <TextBox x:Name="B_Y_TextBox" Text="{Binding SelectedItem.B.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="2"/>
-                <TextBox x:Name="B_Z_TextBox" Text="{Binding SelectedItem.B.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="2"/>
+                                <CheckBox x:Name="D_CheckBox" Content="D点" IsChecked="{Binding SelectedItem.DEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="4"/>
+                                <TextBox x:Name="D_X_TextBox" Text="{Binding SelectedItem.D.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="4"/>
+                                <TextBox x:Name="D_Y_TextBox" Text="{Binding SelectedItem.D.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="4"/>
+                                <TextBox x:Name="D_Z_TextBox" Text="{Binding SelectedItem.D.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="4"/>
 
-                <CheckBox x:Name="C_CheckBox" Content="C点" IsChecked="{Binding SelectedItem.CEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="3"/>
-                <TextBox x:Name="C_X_TextBox" Text="{Binding SelectedItem.C.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="3"/>
-                <TextBox x:Name="C_Y_TextBox" Text="{Binding SelectedItem.C.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="3"/>
-                <TextBox x:Name="C_Z_TextBox" Text="{Binding SelectedItem.C.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="3"/>
+                                <CheckBox x:Name="One_CheckBox" Content="1点" IsChecked="{Binding SelectedItem.OneEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="5"/>
+                                <TextBox x:Name="One_X_TextBox" Text="{Binding SelectedItem.One.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="5"/>
+                                <TextBox x:Name="One_Y_TextBox" Text="{Binding SelectedItem.One.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="5"/>
+                                <TextBox x:Name="One_Z_TextBox" Text="{Binding SelectedItem.One.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="5"/>
 
-                <CheckBox x:Name="D_CheckBox" Content="D点" IsChecked="{Binding SelectedItem.DEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="4"/>
-                <TextBox x:Name="D_X_TextBox" Text="{Binding SelectedItem.D.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="4"/>
-                <TextBox x:Name="D_Y_TextBox" Text="{Binding SelectedItem.D.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="4"/>
-                <TextBox x:Name="D_Z_TextBox" Text="{Binding SelectedItem.D.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="4"/>
+                                <CheckBox x:Name="Two_CheckBox" Content="2点" IsChecked="{Binding SelectedItem.TwoEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="6"/>
+                                <TextBox x:Name="Two_X_TextBox" Text="{Binding SelectedItem.Two.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="6"/>
+                                <TextBox x:Name="Two_Y_TextBox" Text="{Binding SelectedItem.Two.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="6"/>
+                                <TextBox x:Name="Two_Z_TextBox" Text="{Binding SelectedItem.Two.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="6"/>
 
-                <CheckBox x:Name="One_CheckBox" Content="1点" IsChecked="{Binding SelectedItem.OneEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="5"/>
-                <TextBox x:Name="One_X_TextBox" Text="{Binding SelectedItem.One.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="5"/>
-                <TextBox x:Name="One_Y_TextBox" Text="{Binding SelectedItem.One.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="5"/>
-                <TextBox x:Name="One_Z_TextBox" Text="{Binding SelectedItem.One.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="5"/>
+                                <CheckBox x:Name="Three_CheckBox" Content="3点" IsChecked="{Binding SelectedItem.ThreeEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="7"/>
+                                <TextBox x:Name="Three_X_TextBox" Text="{Binding SelectedItem.Three.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="7"/>
+                                <TextBox x:Name="Three_Y_TextBox" Text="{Binding SelectedItem.Three.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="7"/>
+                                <TextBox x:Name="Three_Z_TextBox" Text="{Binding SelectedItem.Three.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="7"/>
 
-                <CheckBox x:Name="Two_CheckBox" Content="2点" IsChecked="{Binding SelectedItem.TwoEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="6"/>
-                <TextBox x:Name="Two_X_TextBox" Text="{Binding SelectedItem.Two.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="6"/>
-                <TextBox x:Name="Two_Y_TextBox" Text="{Binding SelectedItem.Two.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="6"/>
-                <TextBox x:Name="Two_Z_TextBox" Text="{Binding SelectedItem.Two.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="6"/>
+                                <CheckBox x:Name="Four_CheckBox" Content="4点" IsChecked="{Binding SelectedItem.FourEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="8"/>
+                                <TextBox x:Name="Four_X_TextBox" Text="{Binding SelectedItem.Four.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="8"/>
+                                <TextBox x:Name="Four_Y_TextBox" Text="{Binding SelectedItem.Four.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="8"/>
+                                <TextBox x:Name="Four_Z_TextBox" Text="{Binding SelectedItem.Four.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="8"/>
+                            </Grid>
+                        </TabItem>
 
-                <CheckBox x:Name="Three_CheckBox" Content="3点" IsChecked="{Binding SelectedItem.ThreeEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="7"/>
-                <TextBox x:Name="Three_X_TextBox" Text="{Binding SelectedItem.Three.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="7"/>
-                <TextBox x:Name="Three_Y_TextBox" Text="{Binding SelectedItem.Three.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="7"/>
-                <TextBox x:Name="Three_Z_TextBox" Text="{Binding SelectedItem.Three.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="7"/>
+                        <TabItem Header="形状调整">
+                            <TabItem.Resources>
+                                <Style TargetType="ComboBox">
+                                    <Setter Property="Margin" Value="5"/>
+                                    <Setter Property="Padding" Value="4"/>
+                                </Style>
+                            </TabItem.Resources>
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
 
-                <CheckBox x:Name="Four_CheckBox" Content="4点" IsChecked="{Binding SelectedItem.FourEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="8"/>
-                <TextBox x:Name="Four_X_TextBox" Text="{Binding SelectedItem.Four.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="1" Grid.Row="8"/>
-                <TextBox x:Name="Four_Y_TextBox" Text="{Binding SelectedItem.Four.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="2" Grid.Row="8"/>
-                <TextBox x:Name="Four_Z_TextBox" Text="{Binding SelectedItem.Four.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="3" Grid.Row="8"/>
-            </Grid>
+                                    <TextBlock Text="分布形状：" Grid.Column="0"/>
+                                    <ComboBox x:Name="PointShape_ComboBox" Grid.Column="1"/>
 
-            <StackPanel Grid.Row="2">
-                <TextBlock Foreground="Red" FontWeight="Bold" Text="请【不要】在角色在线时编辑标点文件！"/>
-                <TextBlock Foreground="DarkGreen" FontWeight="Bold" Text="只能在【选角界面】或【关闭游戏时】编辑标点文件！"/>
-            </StackPanel>
+                                    <TextBlock Text="标点顺序：" Grid.Column="0" Grid.Row="1"/>
+                                    <ComboBox x:Name="PointOrder_ComboBox" Grid.Column="1" Grid.Row="1"/>
 
+                                    <TextBlock Text="与中心点间距：" Grid.Column="0" Grid.Row="2"/>
+                                    <TextBox x:Name="ShapeDistance_TextBox" Text="10" Grid.Column="1" Grid.Row="2"/>
 
-            <Grid Grid.Row="3">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+                                    <TextBlock Text="中心点位置：" Grid.Row="3"/>
+                                    <Grid Grid.Column="1" Grid.Row="3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
 
-                <Button x:Name="Load_Button" Content="读取标点文件" Click="Load_Button_Click"/>
-                <Button x:Name="Reload_Button" Content="重新加载文件" Grid.Column="1" Click="Reload_Button_Click"/>
-                <Button x:Name="Save_Button" Content="保存标点文件" Grid.Column="2" Click="Save_Button_Click"/>
-            </Grid>
-        </Grid>
+                                        <TextBlock Text="X：" Grid.Column="0" Grid.Row="0"/>
+                                        <TextBox x:Name="ShapeCenterX_TextBox" Text="0" Grid.Column="1" Grid.Row="0"/>
 
-        <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="LightGray"/>
+                                        <TextBlock Text="Y：" Grid.Column="0" Grid.Row="1"/>
+                                        <TextBox x:Name="ShapeCenterY_TextBox" Text="0" Grid.Column="1" Grid.Row="1"/>
 
-        <Grid Grid.Column="4">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+                                        <TextBlock Text="Z：" Grid.Column="0" Grid.Row="2"/>
+                                        <TextBox x:Name="ShapeCenterZ_TextBox" Text="0" Grid.Column="1" Grid.Row="2"/>
+                                    </Grid>
 
-            <TextBlock Text="标点相对位置预览：" HorizontalAlignment="Left" Margin="5,5,0,0"/>
-            
-            <Grid Grid.Row="1" x:Name="Preview_Container" Background="#FFD5C896" 
+                                    <Button x:Name="SetShapePos_Button" Content="设置点位置" Click="SetShapePos_Button_Click"
+                                            Grid.ColumnSpan="2" Grid.Row="7"/>
+                                </Grid>
+                            </StackPanel>
+                        </TabItem>
+                    </TabControl>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button x:Name="Import_Button" Content="从剪贴板导入标点" Grid.Column="0" Click="Import_Button_Click"/>
+
+                        <Button x:Name="Export_Button" Content="将标点导出至剪贴板" Grid.Column="1" Click="Export_Button_Click"/>
+                    </Grid>
+
+                    <StackPanel Grid.Row="3">
+                        <TextBlock Foreground="Red" FontWeight="Bold" Text="请【不要】在角色在线时编辑标点文件！"/>
+                        <TextBlock Foreground="DarkGreen" FontWeight="Bold" Text="只能在【选角界面】或【关闭游戏时】编辑标点文件！"/>
+                    </StackPanel>
+
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button x:Name="Load_Button" Content="读取标点文件" Click="Load_Button_Click"/>
+                        <Button x:Name="Reload_Button" Content="重新加载文件" Grid.Column="1" Click="Reload_Button_Click"/>
+                        <Button x:Name="Save_Button" Content="保存标点文件" Grid.Column="2" Click="Save_Button_Click"/>
+                    </Grid>
+                </Grid>
+
+                <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="LightGray"/>
+
+                <Grid Grid.Column="4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="标点相对位置预览：" HorizontalAlignment="Left" Margin="5,5,0,0"/>
+
+                    <Grid Grid.Row="1" x:Name="Preview_Container" Background="#FFD5C896" 
                   Margin="5" ClipToBounds="True"
                   SizeChanged="Preview_Container_SizeChanged">
-                <Canvas x:Name="Preview_Canvas" HorizontalAlignment="Center" VerticalAlignment="Center" Width="0" Height="0">
-                </Canvas>
-            </Grid>
+                        <Canvas x:Name="Preview_Canvas" HorizontalAlignment="Center" VerticalAlignment="Center" Width="0" Height="0">
+                        </Canvas>
+                    </Grid>
 
-            <Grid Grid.Row="2" Margin="5">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="点缩放："/>
-                <Slider x:Name="Scale_Slider" Grid.Column="1" 
+                    <Grid Grid.Row="2" Margin="5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="点缩放："/>
+                        <Slider x:Name="Scale_Slider" Grid.Column="1" 
                         VerticalAlignment="Center"
                         Minimum="0.05" Maximum="0.5" Value="0.1"
                         ValueChanged="Scale_Slider_ValueChanged"/>
-                <TextBlock Text="{Binding Value, ElementName=Scale_Slider, StringFormat={}{0:P0}}" Grid.Column="2" Width="30" TextAlignment="Right"/>
+                        <TextBlock Text="{Binding Value, ElementName=Scale_Slider, StringFormat={}{0:P0}}" Grid.Column="2" Width="30" TextAlignment="Right"/>
+                    </Grid>
+                </Grid>
             </Grid>
-        </Grid>
-    </Grid>
+        </TabItem>
+
+        <TabItem Header="使用帮助">
+            <Grid>
+                <RichTextBox x:Name="Help_TextBox" IsReadOnly="True" AcceptsReturn="True" AcceptsTab="True"/>
+            </Grid>
+        </TabItem>
+    </TabControl>
 </Window>

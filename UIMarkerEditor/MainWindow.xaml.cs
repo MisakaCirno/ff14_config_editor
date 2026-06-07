@@ -11,6 +11,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.ComponentModel;
 using System.Text.Json;
+using System.Globalization;
 using FF14ConfigEditor;
 using FF14ConfigEditor.UISave;
 
@@ -30,6 +31,19 @@ namespace UIMarkerEditor
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
 
+        // 给ComboBox用的ItemsSource
+        private readonly List<string> PointShape =
+        [
+            "圆形八方",
+            "方形八方",
+        ];
+
+        private readonly List<string> PointOrder =
+        [
+            "A1B2C3D4",
+            "A2B3C4D1",
+        ];
+
         public MainWindow()
         {
             InitializeComponent();
@@ -39,6 +53,12 @@ namespace UIMarkerEditor
         {
             Edit1_Grid.IsEnabled = false;
             Edit2_Grid.IsEnabled = false;
+
+            PointShape_ComboBox.ItemsSource = PointShape;
+            PointShape_ComboBox.SelectedIndex = 0;
+
+            PointOrder_ComboBox.ItemsSource = PointOrder;
+            PointOrder_ComboBox.SelectedIndex = 0;
         }
 
         private void Load_Button_Click(object sender, RoutedEventArgs e)
@@ -200,9 +220,9 @@ namespace UIMarkerEditor
                 {
                     return new MarkerSharePoint
                     {
-                        X = point.FloatX,
-                        Y = point.FloatY,
-                        Z = point.FloatZ,
+                        X = double.Parse(FormatCoordinate(point.FloatX)),
+                        Y = double.Parse(FormatCoordinate(point.FloatY)),
+                        Z = double.Parse(FormatCoordinate(point.FloatZ)),
                         Active = active
                     };
                 }
@@ -218,9 +238,34 @@ namespace UIMarkerEditor
 
                 string json = JsonSerializer.Serialize(markerShare, jsonOptions);
 
-                Clipboard.SetText(json);
+                // 兜底方案，如果没法直接复制成功，弹出一个窗口让用户复制
+                try
+                {
+                    Clipboard.SetText(json);
+                    MessageBox.Show("导出成功！\nJSON数据已复制到剪贴板。", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch
+                {
+                    // 弹出窗口
+                    Window copyWindow = new()
+                    {
+                        Title = "复制标点数据",
+                        Width = 400,
+                        Height = 300,
+                        Content = new TextBox
+                        {
+                            Text = json,
+                            IsReadOnly = true,
+                            TextWrapping = TextWrapping.Wrap,
+                            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+                        },
+                        // 设置窗口所有者和启动位置，确保弹出窗口在主窗口中央
+                        Owner = this,
+                        WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    };
 
-                MessageBox.Show("导出成功！\nJSON数据已复制到剪贴板。", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                    copyWindow.ShowDialog();
+                }
             }
             catch (Exception ex)
             {
@@ -473,6 +518,104 @@ namespace UIMarkerEditor
             {
                 MessageBox.Show($"无法打开链接：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private static string FormatCoordinate(float value)
+        {
+            // 四舍五入保留最多四位小数
+            return Math.Round(value, 4).ToString("F4");
+        }
+
+        private void SetShapePos_Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (currentWayMark == null)
+            {
+                MessageBox.Show("请先选择一个要设置的标点槽位。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (!TryReadDouble(ShapeDistance_TextBox, "与中心点间距", out double distance) ||
+                !TryReadDouble(ShapeCenterX_TextBox, "中心点 X", out double centerX) ||
+                !TryReadDouble(ShapeCenterY_TextBox, "中心点 Y", out double centerY) ||
+                !TryReadDouble(ShapeCenterZ_TextBox, "中心点 Z", out double centerZ))
+            {
+                return;
+            }
+
+            if (distance <= 0)
+            {
+                MessageBox.Show("与中心点间距必须大于 0。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            GamePosition centerPos = new(centerX, centerY, centerZ);
+            List<GamePosition> positions = PointShape_ComboBox.SelectedItem?.ToString() switch
+            {
+                "方形八方" => MarkerShapePosCalculator.Square(centerPos, distance),
+                _ => MarkerShapePosCalculator.Circle(centerPos, distance)
+            };
+
+            string order = PointOrder_ComboBox.SelectedItem?.ToString() ?? "A1B2C3D4";
+            string[] pointOrder = order switch
+            {
+                "A2B3C4D1" => ["A", "2", "B", "3", "C", "4", "D", "1"],
+                _ => ["A", "1", "B", "2", "C", "3", "D", "4"]
+            };
+
+            for (int i = 0; i < pointOrder.Length; i++)
+            {
+                SetPointPosition(currentWayMark, pointOrder[i], positions[i]);
+            }
+
+            currentWayMark.AEnabled = true;
+            currentWayMark.BEnabled = true;
+            currentWayMark.CEnabled = true;
+            currentWayMark.DEnabled = true;
+            currentWayMark.OneEnabled = true;
+            currentWayMark.TwoEnabled = true;
+            currentWayMark.ThreeEnabled = true;
+            currentWayMark.FourEnabled = true;
+            currentWayMark.timestamp = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            UpdatePreview();
+        }
+
+        private static bool TryReadDouble(TextBox textBox, string displayName, out double value)
+        {
+            string text = textBox.Text.Trim();
+            if (double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out value) ||
+                double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+            {
+                return true;
+            }
+
+            MessageBox.Show($"{displayName} 需要填写数字。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        private static void SetPointPosition(WayMark wayMark, string pointName, GamePosition position)
+        {
+            WayMarkPoint point = pointName switch
+            {
+                "A" => wayMark.A,
+                "B" => wayMark.B,
+                "C" => wayMark.C,
+                "D" => wayMark.D,
+                "1" => wayMark.One,
+                "2" => wayMark.Two,
+                "3" => wayMark.Three,
+                "4" => wayMark.Four,
+                _ => throw new ArgumentOutOfRangeException(nameof(pointName), pointName, "未知标点名称")
+            };
+
+            point.X = ToRawCoordinate(position.X);
+            point.Y = ToRawCoordinate(position.Y);
+            point.Z = ToRawCoordinate(position.Z);
+        }
+
+        private static int ToRawCoordinate(double value)
+        {
+            return (int)Math.Round(value * 1000, MidpointRounding.AwayFromZero);
         }
     }
 }
