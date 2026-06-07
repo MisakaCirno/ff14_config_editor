@@ -11,6 +11,47 @@
         Loaded="Window_Loaded" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <local:RegionIdToNameConverter x:Key="RegionIdToNameConverter"/>
+        <Style x:Key="RegionClearButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="#FFD01818"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#22D01818"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#44D01818"/>
+                                <Setter Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.92" ScaleY="0.92"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         
         <Style TargetType="Button">
             <Setter Property="Margin" Value="5"/>
@@ -134,19 +175,77 @@
 
                         <TextBlock Text="当前区域：" Grid.Column="0" />
 
-                        <ComboBox Grid.Column="1" 
-                          VerticalContentAlignment="Center"
-                          ItemsSource="{x:Static local:MapData.CachedDisplayDictValues}"
-                          Margin="5" Padding="5"
-                          DisplayMemberPath="DisplayName"
-                          SelectedValuePath="Index"
-                          SelectedValue="{Binding SelectedItem.RegionID, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
-                            <ComboBox.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <VirtualizingStackPanel />
-                                </ItemsPanelTemplate>
-                            </ComboBox.ItemsPanel>
-                        </ComboBox>
+                        <Grid x:Name="RegionSearch_Container"
+                              Grid.Column="1"
+                              Margin="5"
+                              MinHeight="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="24"/>
+                                <ColumnDefinition Width="24"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.ColumnSpan="3"
+                                    Background="White"
+                                    BorderBrush="#FFABADB3"
+                                    BorderThickness="1"/>
+                            <TextBox x:Name="RegionSearch_TextBox"
+                                     Margin="0"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     Padding="5"
+                                     HorizontalContentAlignment="Left"
+                                     TextAlignment="Left"
+                                     VerticalContentAlignment="Center"
+                                     TextChanged="RegionSearch_TextBox_TextChanged"
+                                     GotFocus="RegionSearch_TextBox_GotFocus"
+                                     GotKeyboardFocus="RegionSearch_TextBox_GotKeyboardFocus"
+                                     LostKeyboardFocus="RegionSearch_TextBox_LostKeyboardFocus"
+                                     PreviewMouseLeftButtonDown="RegionSearch_TextBox_PreviewMouseLeftButtonDown"
+                                     PreviewKeyDown="RegionSearch_TextBox_PreviewKeyDown"/>
+                            <Button x:Name="RegionClear_Button"
+                                    Grid.Column="1"
+                                    Content="×"
+                                    Style="{StaticResource RegionClearButtonStyle}"
+                                    Margin="0"
+                                    Padding="0"
+                                    Focusable="False"
+                                    Visibility="Collapsed"
+                                    PreviewMouseLeftButtonDown="RegionClear_Button_PreviewMouseLeftButtonDown"
+                                    PreviewMouseLeftButtonUp="RegionClear_Button_PreviewMouseLeftButtonUp"
+                                    Click="RegionClear_Button_Click"/>
+                            <Button x:Name="RegionDropDown_Button"
+                                    Grid.Column="2"
+                                    Content="▼"
+                                    Margin="0"
+                                    Padding="0"
+                                    FontSize="10"
+                                    Focusable="False"
+                                    Click="RegionDropDown_Button_Click"/>
+                            <Popup x:Name="RegionSearch_Popup"
+                                   PlacementTarget="{Binding ElementName=RegionSearch_Container}"
+                                   Placement="Bottom"
+                                   StaysOpen="False"
+                                   AllowsTransparency="True"
+                                   Closed="RegionSearch_Popup_Closed">
+                                <Border Background="White"
+                                        BorderBrush="#FFABADB3"
+                                        BorderThickness="1"
+                                        MaxHeight="260"
+                                        Width="{Binding ActualWidth, ElementName=RegionSearch_Container}">
+                                    <ListBox x:Name="RegionOptions_ListBox"
+                                             DisplayMemberPath="DisplayName"
+                                             PreviewKeyDown="RegionOptions_ListBox_PreviewKeyDown"
+                                             PreviewMouseLeftButtonDown="RegionOptions_ListBox_PreviewMouseLeftButtonDown"
+                                             PreviewMouseLeftButtonUp="RegionOptions_ListBox_PreviewMouseLeftButtonUp">
+                                        <ListBox.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel />
+                                            </ItemsPanelTemplate>
+                                        </ListBox.ItemsPanel>
+                                    </ListBox>
+                                </Border>
+                            </Popup>
+                        </Grid>
                     </Grid>
 
                     <TabControl Grid.Row="1">
