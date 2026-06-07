@@ -61,13 +61,45 @@
 
                     <TextBlock Text="标点预设列表：" HorizontalAlignment="Left" Margin="5,5,0,0"/>
 
-                    <ListBox x:Name="WayMark_ListBox" Margin="5" Grid.Row="1" SelectionChanged="WayMark_ListBox_SelectionChanged">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding RegionID, Converter={StaticResource RegionIdToNameConverter}}"/>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                    <Grid Grid.Row="1" Margin="5">
+                        <ListBox x:Name="WayMark_ListBox"
+                                 AllowDrop="True"
+                                 SelectionChanged="WayMark_ListBox_SelectionChanged"
+                                 PreviewMouseLeftButtonDown="WayMark_ListBox_PreviewMouseLeftButtonDown"
+                                 MouseMove="WayMark_ListBox_MouseMove"
+                                 DragOver="WayMark_ListBox_DragOver"
+                                 DragLeave="WayMark_ListBox_DragLeave"
+                                 Drop="WayMark_ListBox_Drop">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding RegionID, Converter={StaticResource RegionIdToNameConverter}}"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <Canvas x:Name="DragOverlay_Canvas" IsHitTestVisible="False" ClipToBounds="True">
+                            <Border x:Name="DropIndicator_Line"
+                                    Height="3"
+                                    Background="#FF267DFF"
+                                    CornerRadius="1.5"
+                                    Visibility="Collapsed"/>
+                            <Border x:Name="DragPreview_Border"
+                                    Background="#F2FFFFFF"
+                                    BorderBrush="#FF267DFF"
+                                    BorderThickness="1"
+                                    CornerRadius="4"
+                                    Padding="8,4"
+                                    Opacity="0.9"
+                                    Visibility="Collapsed">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.25"/>
+                                </Border.Effect>
+                                <TextBlock x:Name="DragPreview_TextBlock"
+                                           TextTrimming="CharacterEllipsis"
+                                           TextWrapping="NoWrap"/>
+                            </Border>
+                        </Canvas>
+                    </Grid>
 
                     <Grid Grid.Row="2">
                         <Grid.ColumnDefinitions>
@@ -78,8 +110,8 @@
                         </Grid.ColumnDefinitions>
 
                         <Button x:Name="ShareWebsite_Button" Content="标点分享网站" Click="ShareWebsite_Button_Click" Grid.Column="0"/>
-                        <Button x:Name="MoveUp_Button" Content="上移选中项" Grid.Column="2"/>
-                        <Button x:Name="MoveDown_Button" Content="下移选中项" Grid.Column="3"/>
+                        <Button x:Name="MoveUp_Button" Content="上移选中项" Click="MoveUp_Button_Click" Grid.Column="2"/>
+                        <Button x:Name="MoveDown_Button" Content="下移选中项" Click="MoveDown_Button_Click" Grid.Column="3"/>
                     </Grid>
                 </Grid>
 
