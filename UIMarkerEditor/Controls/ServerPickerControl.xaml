@@ -1,0 +1,48 @@
+<UserControl x:Class="UIMarkerEditor.Controls.ServerPickerControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Button x:Name="ServerPicker_Button"
+                HorizontalContentAlignment="Stretch"
+                Click="ServerPicker_Button_Click">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="ServerPicker_TextBlock"
+                           Text="请选择服务器"
+                           TextAlignment="Left"/>
+                <TextBlock Grid.Column="1"
+                           Text="▼"
+                           FontSize="10"
+                           Margin="8,0,0,0"/>
+            </Grid>
+        </Button>
+        <Popup x:Name="ServerPicker_Popup"
+               PlacementTarget="{Binding ElementName=ServerPicker_Button}"
+               Placement="Bottom"
+               StaysOpen="False"
+               AllowsTransparency="True">
+            <Border Background="White"
+                    BorderBrush="#FF888888"
+                    BorderThickness="1"
+                    Padding="6"
+                    Width="{Binding ActualWidth, ElementName=ServerPicker_Button}"
+                    MinWidth="360">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <ListBox x:Name="ServerArea_ListBox"
+                             DisplayMemberPath="DataCenter"
+                             SelectionChanged="ServerArea_ListBox_SelectionChanged"/>
+                    <ListBox x:Name="ServerWorld_ListBox"
+                             Grid.Column="1"
+                             SelectionChanged="ServerWorld_ListBox_SelectionChanged"/>
+                </Grid>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>

@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:UIMarkerEditor"
+        xmlns:controls="clr-namespace:UIMarkerEditor.Controls"
         mc:Ignorable="d"
         Title="FF14 标点预设编辑工具"
         Height="600" Width="1000"
@@ -773,50 +774,10 @@
                                          Grid.Column="1"
                                          TextChanged="CharacterDetail_TextChanged"/>
                                 <TextBlock Text="服务器：" Grid.Row="2"/>
-                                <Grid x:Name="ServerPicker_Container" Grid.Row="2" Grid.Column="1">
-                                    <Button x:Name="ServerPicker_Button"
-                                            HorizontalContentAlignment="Stretch"
-                                            Click="ServerPicker_Button_Click">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock x:Name="ServerPicker_TextBlock"
-                                                       Text="请选择服务器"
-                                                       TextAlignment="Left"/>
-                                            <TextBlock Grid.Column="1"
-                                                       Text="▼"
-                                                       FontSize="10"
-                                                       Margin="8,0,0,0"/>
-                                        </Grid>
-                                    </Button>
-                                    <Popup x:Name="ServerPicker_Popup"
-                                           PlacementTarget="{Binding ElementName=ServerPicker_Button}"
-                                           Placement="Bottom"
-                                           StaysOpen="False"
-                                           AllowsTransparency="True">
-                                        <Border Background="White"
-                                                BorderBrush="#FF888888"
-                                                BorderThickness="1"
-                                                Padding="6"
-                                                Width="{Binding ActualWidth, ElementName=ServerPicker_Button}"
-                                                MinWidth="360">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="150"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-                                                <ListBox x:Name="ServerArea_ListBox"
-                                                         DisplayMemberPath="DataCenter"
-                                                         SelectionChanged="ServerArea_ListBox_SelectionChanged"/>
-                                                <ListBox x:Name="ServerWorld_ListBox"
-                                                         Grid.Column="1"
-                                                         SelectionChanged="ServerWorld_ListBox_SelectionChanged"/>
-                                            </Grid>
-                                        </Border>
-                                    </Popup>
-                                </Grid>
+                                <controls:ServerPickerControl x:Name="CharacterServerPicker_Control"
+                                                              Grid.Row="2"
+                                                              Grid.Column="1"
+                                                              SelectedServerChanged="CharacterServerPicker_Control_SelectedServerChanged"/>
                                 <TextBlock Text="备注：" Grid.Row="3"/>
                                 <TextBox x:Name="CharacterNote_TextBox"
                                          Grid.Row="3"

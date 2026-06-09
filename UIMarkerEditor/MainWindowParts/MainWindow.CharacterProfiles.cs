@@ -37,9 +37,8 @@ namespace UIMarkerEditor
 
         private void RefreshServerPicker()
         {
-            ServerArea_ListBox.ItemsSource = appDataStore.ServerList.Groups;
-            UpdateServerPickerButtonText();
             suppressCharacterChangeTracking = true;
+            CharacterServerPicker_Control.SetServerGroups(appDataStore.ServerList.Groups);
             SelectServer(selectedCharacterDataCenter, selectedCharacterWorld);
             suppressCharacterChangeTracking = false;
         }
@@ -59,62 +58,26 @@ namespace UIMarkerEditor
 
         private (string DataCenter, string World)? GetSelectedServer()
         {
-            return string.IsNullOrWhiteSpace(selectedCharacterWorld)
-                ? null
-                : (selectedCharacterDataCenter, selectedCharacterWorld);
+            return CharacterServerPicker_Control.GetSelectedServer();
         }
 
         private void SelectServer(string dataCenter, string world)
         {
             selectedCharacterDataCenter = dataCenter;
             selectedCharacterWorld = world;
-
-            ServerGroup? selectedGroup = appDataStore.ServerList.Groups.FirstOrDefault(group =>
-                string.Equals(group.DataCenter, dataCenter, StringComparison.OrdinalIgnoreCase));
-            selectedGroup ??= appDataStore.ServerList.Groups.FirstOrDefault(group =>
-                group.Worlds.Any(candidateWorld => string.Equals(candidateWorld, world, StringComparison.OrdinalIgnoreCase)));
-            selectedGroup ??= appDataStore.ServerList.Groups.FirstOrDefault();
-
-            ServerArea_ListBox.SelectedItem = selectedGroup;
-            ServerWorld_ListBox.ItemsSource = selectedGroup?.Worlds;
-            ServerWorld_ListBox.SelectedItem = selectedGroup?.Worlds.FirstOrDefault(candidateWorld =>
-                string.Equals(candidateWorld, world, StringComparison.OrdinalIgnoreCase));
-
-            UpdateServerPickerButtonText();
+            CharacterServerPicker_Control.SelectServer(dataCenter, world);
         }
 
-        private void UpdateServerPickerButtonText()
+        private void CharacterServerPicker_Control_SelectedServerChanged(object sender, EventArgs e)
         {
-            ServerPicker_TextBlock.Text = string.IsNullOrWhiteSpace(selectedCharacterWorld)
-                ? "请选择服务器"
-                : $"{selectedCharacterDataCenter} / {selectedCharacterWorld}";
-        }
-
-        private void ServerPicker_Button_Click(object sender, RoutedEventArgs e)
-        {
-            ServerPicker_Popup.IsOpen = true;
-        }
-
-        private void ServerArea_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (ServerArea_ListBox.SelectedItem is ServerGroup group)
-            {
-                ServerWorld_ListBox.ItemsSource = group.Worlds;
-            }
-        }
-
-        private void ServerWorld_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (ServerArea_ListBox.SelectedItem is not ServerGroup group ||
-                ServerWorld_ListBox.SelectedItem is not string world)
+            (string DataCenter, string World)? selectedServer = CharacterServerPicker_Control.GetSelectedServer();
+            if (selectedServer == null)
             {
                 return;
             }
 
-            selectedCharacterDataCenter = group.DataCenter;
-            selectedCharacterWorld = world;
-            UpdateServerPickerButtonText();
-            ServerPicker_Popup.IsOpen = false;
+            selectedCharacterDataCenter = selectedServer.Value.DataCenter;
+            selectedCharacterWorld = selectedServer.Value.World;
             MarkCharacterDetailDirty();
         }
 
