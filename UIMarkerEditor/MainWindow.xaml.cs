@@ -109,6 +109,7 @@ namespace UIMarkerEditor
                 LoadConfigFile,
                 ConfirmSaveOrDiscardCharacterChanges,
                 RefreshCharacterList);
+            ToolSettings_Control.Initialize(appDataStore, this, RefreshBackupList, RefreshCharacterList);
             LoadSettingsIntoUi();
             RefreshBackupList();
             RefreshCharacterList();

@@ -487,77 +487,7 @@
         </TabItem>
 
         <TabItem Header="工具设置">
-            <Grid Margin="10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="170"/>
-                    <ColumnDefinition Width="5"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <ListBox SelectedIndex="0">
-                    <ListBoxItem Content="备份与数据"/>
-                    <ListBoxItem Content="界面设置（预留）"/>
-                    <ListBoxItem Content="其它工具（预留）"/>
-                </ListBox>
-
-                <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="LightGray"/>
-
-                <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                        <GroupBox Header="数据目录" Margin="5" Padding="8">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Text="当前位置：" Grid.Row="0"/>
-                                <TextBox x:Name="DataDirectory_TextBox" Grid.Row="0" Grid.Column="1"/>
-                                <Button Content="选择..." Grid.Row="0" Grid.Column="2" Click="BrowseDataDirectory_Button_Click"/>
-                                <TextBlock Grid.Row="1"
-                                           Grid.ColumnSpan="3"
-                                           HorizontalAlignment="Left"
-                                           TextWrapping="Wrap"
-                                           Text="数据目录用于保存软件配置、角色备注、服务器列表缓存和 UISAVE.DAT 备份。更改目录时可以选择是否迁移现有数据。"/>
-                            </Grid>
-                        </GroupBox>
-
-                        <GroupBox Header="自动备份" Margin="5" Padding="8">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <CheckBox x:Name="AutoBackup_CheckBox"
-                                          Content="保存前自动备份"
-                                          Grid.Row="0"
-                                          Grid.ColumnSpan="2"/>
-                                <TextBlock Text="最多保留备份数量：" Grid.Row="1"/>
-                                <TextBox x:Name="MaxBackupCount_TextBox" Grid.Row="1" Grid.Column="1"/>
-                                <TextBlock Text="最多保留天数：" Grid.Row="2"/>
-                                <TextBox x:Name="MaxBackupDays_TextBox" Grid.Row="2" Grid.Column="1"/>
-                            </Grid>
-                        </GroupBox>
-
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
-                            <Button Content="保存设置" Click="SaveSettings_Button_Click"/>
-                            <Button Content="恢复默认目录" Click="ResetDataDirectory_Button_Click"/>
-                            <Button Content="打开数据目录" Click="OpenDataDirectory_Button_Click"/>
-                        </StackPanel>
-                    </StackPanel>
-                </ScrollViewer>
-            </Grid>
+            <controls:ToolSettingsControl x:Name="ToolSettings_Control"/>
         </TabItem>
 
         <TabItem Header="使用帮助">
