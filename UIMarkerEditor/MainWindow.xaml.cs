@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -13,6 +13,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using System.Globalization;
 using System.Collections.ObjectModel;
+using System.IO;
 using FF14ConfigEditor;
 using FF14ConfigEditor.UISave;
 
@@ -42,6 +43,15 @@ namespace UIMarkerEditor
         private ToolTip? activeCoordinateInputTip;
         private TextBox? activeCoordinateInputTipTarget;
         private System.Windows.Threading.DispatcherTimer? activeCoordinateInputTipTimer;
+        private readonly AppDataStore appDataStore;
+        private readonly ObservableCollection<BackupMetadata> backupEntries = [];
+        private readonly ObservableCollection<CharacterProfile> characterEntries = [];
+        private string selectedCharacterDataCenter = string.Empty;
+        private string selectedCharacterWorld = string.Empty;
+        private bool isCreatingCharacterProfile = false;
+        private bool isCharacterDetailDirty = false;
+        private bool suppressCharacterSelectionChanged = false;
+        private bool suppressCharacterChangeTracking = false;
 
         private const int MinRawCoordinate = int.MinValue;
         private const int MaxRawCoordinate = int.MaxValue;
@@ -77,8 +87,9 @@ namespace UIMarkerEditor
 
         private readonly record struct CoordinateEditContext(WayMarkPoint Point, CoordinateAxis Axis);
 
-        public MainWindow()
+        public MainWindow(AppDataStore appDataStore)
         {
+            this.appDataStore = appDataStore;
             InitializeComponent();
         }
 
@@ -89,6 +100,7 @@ namespace UIMarkerEditor
             RegisterCoordinateTextBoxPasteHandlers();
             AddHandler(PreviewMouseDownEvent, new MouseButtonEventHandler(Window_PreviewMouseDown), true);
             AddHandler(PreviewKeyDownEvent, new KeyEventHandler(Window_PreviewKeyDown), true);
+            UpdateDataVersionText();
             UpdateMoveButtonState();
             RefreshRegionOptions();
 
@@ -97,6 +109,14 @@ namespace UIMarkerEditor
 
             PointOrder_ComboBox.ItemsSource = PointOrder;
             PointOrder_ComboBox.SelectedIndex = 0;
+
+            Backup_DataGrid.ItemsSource = backupEntries;
+            Character_DataGrid.ItemsSource = characterEntries;
+            LoadSettingsIntoUi();
+            RefreshServerPicker();
+            RefreshBackupList();
+            RefreshCharacterList();
+            _ = SyncServerListIfNeededAsync();
         }
 
         private void Load_Button_Click(object sender, RoutedEventArgs e)
@@ -145,6 +165,20 @@ namespace UIMarkerEditor
             // 保存修改后的UISAVE.DAT文件
             if (configUISave != null)
             {
+                if (appDataStore.Settings.AutoBackupBeforeSave)
+                {
+                    try
+                    {
+                        appDataStore.CreateBackup(configUISave.FilePath);
+                        RefreshBackupList();
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"保存前自动备份失败，已取消保存。\n{ex.Message}", "备份失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
+
                 // 在这里将修改后的数据写回UISAVE.DAT文件
                 configUISave.Save();
                 MessageBox.Show("文件已保存。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -162,6 +196,7 @@ namespace UIMarkerEditor
 
             if (configUISave != null && configUISave.Marks != null)
             {
+                RegisterLoadedCharacter(configUISave, filePath);
                 List<WayMark> markerSection = configUISave.Marks.WayMarks;
 
                 RefreshRegionOptions(markerSection.Select(mark => mark.RegionID));
@@ -181,6 +216,754 @@ namespace UIMarkerEditor
                 UpdateMoveButtonState();
                 return;
             }
+        }
+
+        private void RegisterLoadedCharacter(ConfigUISave loadedConfig, string filePath)
+        {
+            string userID = !string.IsNullOrWhiteSpace(loadedConfig.UserIDHex)
+                ? loadedConfig.UserIDHex
+                : AppDataStore.GetUserIDFromCharacterFolder(filePath) ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(userID)) return;
+
+            appDataStore.GetOrCreateCharacter(userID);
+            RefreshCharacterList();
+        }
+
+        private void RefreshBackupList()
+        {
+            backupEntries.Clear();
+            foreach (BackupMetadata backup in appDataStore.LoadBackups())
+            {
+                FillBackupDisplayFields(backup);
+                backupEntries.Add(backup);
+            }
+
+            UpdateBackupDetail(null);
+        }
+
+        private void RefreshCharacterList()
+        {
+            characterEntries.Clear();
+            foreach (CharacterProfile profile in appDataStore.Characters.OrderBy(c => c.DisplayName, StringComparer.OrdinalIgnoreCase))
+            {
+                characterEntries.Add(profile);
+            }
+
+            if (Character_DataGrid.SelectedItem == null && !isCreatingCharacterProfile)
+            {
+                UpdateCharacterDetailVisibility(showDetail: false);
+            }
+        }
+
+        private void RefreshServerPicker()
+        {
+            ServerArea_ListBox.ItemsSource = appDataStore.ServerList.Groups;
+            UpdateServerPickerButtonText();
+            suppressCharacterChangeTracking = true;
+            SelectServer(selectedCharacterDataCenter, selectedCharacterWorld);
+            suppressCharacterChangeTracking = false;
+        }
+
+        private async Task SyncServerListIfNeededAsync()
+        {
+            DateTime lastServerSyncCheck = appDataStore.ServerList.LastUpdated > appDataStore.ServerList.LastSyncAttempt
+                ? appDataStore.ServerList.LastUpdated
+                : appDataStore.ServerList.LastSyncAttempt;
+            if (DateTime.Now - lastServerSyncCheck < TimeSpan.FromDays(7)) return;
+
+            if (await appDataStore.TrySyncServerListAsync())
+            {
+                RefreshServerPicker();
+            }
+        }
+
+        private void UpdateDataVersionText()
+        {
+            string versionText = string.IsNullOrWhiteSpace(appDataStore.MapDataVersion)
+                ? "未知"
+                : appDataStore.MapDataVersion;
+            DataVersion_TextBlock.Text = $"当前版本：{versionText}";
+        }
+
+        private (string DataCenter, string World)? GetSelectedServer()
+        {
+            return string.IsNullOrWhiteSpace(selectedCharacterWorld)
+                ? null
+                : (selectedCharacterDataCenter, selectedCharacterWorld);
+        }
+
+        private void SelectServer(string dataCenter, string world)
+        {
+            selectedCharacterDataCenter = dataCenter;
+            selectedCharacterWorld = world;
+
+            ServerGroup? selectedGroup = appDataStore.ServerList.Groups.FirstOrDefault(group =>
+                string.Equals(group.DataCenter, dataCenter, StringComparison.OrdinalIgnoreCase));
+            selectedGroup ??= appDataStore.ServerList.Groups.FirstOrDefault(group =>
+                group.Worlds.Any(candidateWorld => string.Equals(candidateWorld, world, StringComparison.OrdinalIgnoreCase)));
+            selectedGroup ??= appDataStore.ServerList.Groups.FirstOrDefault();
+
+            ServerArea_ListBox.SelectedItem = selectedGroup;
+            ServerWorld_ListBox.ItemsSource = selectedGroup?.Worlds;
+            ServerWorld_ListBox.SelectedItem = selectedGroup?.Worlds.FirstOrDefault(candidateWorld =>
+                string.Equals(candidateWorld, world, StringComparison.OrdinalIgnoreCase));
+
+            UpdateServerPickerButtonText();
+        }
+
+        private void UpdateServerPickerButtonText()
+        {
+            ServerPicker_TextBlock.Text = string.IsNullOrWhiteSpace(selectedCharacterWorld)
+                ? "请选择服务器"
+                : $"{selectedCharacterDataCenter} / {selectedCharacterWorld}";
+        }
+
+        private void ServerPicker_Button_Click(object sender, RoutedEventArgs e)
+        {
+            ServerPicker_Popup.IsOpen = true;
+        }
+
+        private void ServerArea_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ServerArea_ListBox.SelectedItem is ServerGroup group)
+            {
+                ServerWorld_ListBox.ItemsSource = group.Worlds;
+            }
+        }
+
+        private void ServerWorld_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ServerArea_ListBox.SelectedItem is not ServerGroup group ||
+                ServerWorld_ListBox.SelectedItem is not string world)
+            {
+                return;
+            }
+
+            selectedCharacterDataCenter = group.DataCenter;
+            selectedCharacterWorld = world;
+            UpdateServerPickerButtonText();
+            ServerPicker_Popup.IsOpen = false;
+            MarkCharacterDetailDirty();
+        }
+
+        private void LoadSettingsIntoUi()
+        {
+            DataDirectory_TextBox.Text = appDataStore.DataDirectory;
+            MaxBackupCount_TextBox.Text = appDataStore.Settings.MaxBackupCount.ToString(CultureInfo.InvariantCulture);
+            MaxBackupDays_TextBox.Text = appDataStore.Settings.MaxBackupDays.ToString(CultureInfo.InvariantCulture);
+            AutoBackup_CheckBox.IsChecked = appDataStore.Settings.AutoBackupBeforeSave;
+        }
+
+        private void FillBackupDisplayFields(BackupMetadata backup)
+        {
+            CharacterProfile? profile = appDataStore.Characters.FirstOrDefault(character =>
+                string.Equals(character.UserID, backup.EffectiveUserID, StringComparison.OrdinalIgnoreCase));
+
+            backup.CharacterDisplayName = profile?.DisplayName ?? DisplayOptionalText(backup.EffectiveUserID);
+            backup.CharacterNameDisplay = profile != null && !string.IsNullOrWhiteSpace(profile.CharacterName)
+                ? profile.CharacterName
+                : DisplayOptionalText(backup.EffectiveUserID);
+            backup.ServerDisplayName = profile == null
+                ? "无"
+                : DisplayOptionalText(string.Join(" / ", new[] { profile.DataCenter, profile.World }
+                    .Where(part => !string.IsNullOrWhiteSpace(part))));
+        }
+
+        private bool HasCharacterProfile(string userID)
+        {
+            return appDataStore.Characters.Any(character =>
+                string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase) &&
+                HasCharacterRemark(character));
+        }
+
+        private static bool HasCharacterRemark(CharacterProfile profile)
+        {
+            return !string.IsNullOrWhiteSpace(profile.CharacterName) ||
+                !string.IsNullOrWhiteSpace(profile.DataCenter) ||
+                !string.IsNullOrWhiteSpace(profile.World) ||
+                !string.IsNullOrWhiteSpace(profile.Note);
+        }
+
+        private void Backup_DataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateBackupDetail(Backup_DataGrid.SelectedItem as BackupMetadata);
+        }
+
+        private void Backup_DataGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject) is DataGridRow row)
+            {
+                row.IsSelected = true;
+                Backup_DataGrid.SelectedItem = row.Item;
+                return;
+            }
+
+            Backup_DataGrid.SelectedItem = null;
+        }
+
+        private void Backup_ContextMenu_Opened(object sender, RoutedEventArgs e)
+        {
+            BackupMetadata? backup = Backup_DataGrid.SelectedItem as BackupMetadata;
+            bool hasBackup = backup != null;
+            bool hasBackupDirectory = backup != null && Directory.Exists(backup.BackupDirectory);
+            bool hasValidUserID = backup != null && IsValidUserID(backup.EffectiveUserID);
+            bool alreadyHasCharacterProfile = hasValidUserID && HasCharacterProfile(backup!.EffectiveUserID);
+            bool canCreateCharacter = hasValidUserID && !alreadyHasCharacterProfile;
+
+            RestoreBackup_MenuItem.IsEnabled = hasBackup;
+            RestoreBackupAs_MenuItem.IsEnabled = hasBackup;
+            DeleteBackup_MenuItem.IsEnabled = hasBackup;
+            OpenBackupDirectory_MenuItem.IsEnabled = hasBackupDirectory;
+            CreateCharacterFromBackup_MenuItem.IsEnabled = canCreateCharacter;
+            CreateCharacterFromBackup_MenuItem.Header = backup == null
+                ? "为此备份创建角色备注..."
+                : alreadyHasCharacterProfile
+                    ? "已有角色备注"
+                    : hasValidUserID
+                        ? "为此备份创建角色备注..."
+                        : "无法创建角色备注";
+        }
+
+        private void CreateCharacterFromBackup_MenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (!ConfirmSaveOrDiscardCharacterChanges()) return;
+
+            if (Backup_DataGrid.SelectedItem is not BackupMetadata backup)
+            {
+                MessageBox.Show("请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            string userID = backup.EffectiveUserID;
+            if (!IsValidUserID(userID))
+            {
+                MessageBox.Show("这个备份没有可用于创建角色备注的 16 位 User ID。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            CharacterProfile? existingProfile = appDataStore.Characters.FirstOrDefault(character =>
+                string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase));
+            if (existingProfile != null && HasCharacterRemark(existingProfile))
+            {
+                MessageBox.Show("这个备份对应的角色已经有备注。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            BackupCharacterProfileDialog dialog = new(userID, appDataStore.ServerList.Groups, existingProfile)
+            {
+                Owner = this
+            };
+
+            if (dialog.ShowDialog() != true) return;
+
+            CharacterProfile profile = appDataStore.GetOrCreateCharacter(userID);
+            profile.CharacterName = dialog.CharacterName;
+            profile.DataCenter = dialog.DataCenter;
+            profile.World = dialog.World;
+            profile.Note = dialog.Note;
+            profile.UpdatedAt = DateTime.Now;
+            appDataStore.SaveCharacters();
+
+            string selectedBackupId = backup.Id;
+            RefreshCharacterList();
+            RefreshBackupList();
+            Backup_DataGrid.SelectedItem = backupEntries.FirstOrDefault(entry => entry.Id == selectedBackupId);
+            MessageBox.Show("角色备注已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void UpdateBackupDetail(BackupMetadata? backup)
+        {
+            UpdateBackupActionButtons(backup);
+            if (backup == null)
+            {
+                ClearBackupDetailFields();
+                BackupSnapshot_TextBox.Text = string.Empty;
+                BackupEmpty_Panel.Visibility = Visibility.Visible;
+                BackupDetail_ScrollViewer.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            BackupEmpty_Panel.Visibility = Visibility.Collapsed;
+            BackupDetail_ScrollViewer.Visibility = Visibility.Visible;
+            BackupDetail_BackupTime_TextBox.Text = backup.BackupTime.ToString("yyyy-MM-dd HH:mm:ss");
+            BackupDetail_Character_TextBox.Text = backup.CharacterDisplayName;
+            BackupDetail_OriginalPath_TextBox.Text = backup.OriginalFilePath;
+            BackupDetail_FolderUserID_TextBox.Text = DisplayOptionalText(backup.FolderUserID);
+            BackupDetail_FileUserID_TextBox.Text = DisplayOptionalText(backup.FileUserID);
+            BackupDetail_SourceFileSize_TextBox.Text = $"{backup.SourceFileSize:N0} 字节";
+            BackupDetail_SourceSha256_TextBox.Text = backup.SourceFileSha256;
+            BackupDetail_BackupFile_TextBox.Text = backup.BackupFilePath;
+            BackupSnapshot_TextBox.Text = backup.MarkerSnapshots.Count == 0
+                ? "无"
+                : string.Join(Environment.NewLine, backup.MarkerSnapshots.Select(snapshot => snapshot.DisplayText));
+        }
+
+        private void UpdateBackupActionButtons(BackupMetadata? backup)
+        {
+            bool hasBackup = backup != null;
+            RestoreBackup_Button.IsEnabled = hasBackup;
+            RestoreBackupAs_Button.IsEnabled = hasBackup;
+            DeleteBackup_Button.IsEnabled = hasBackup;
+            OpenBackupDirectory_Button.IsEnabled = backup != null && Directory.Exists(backup.BackupDirectory);
+        }
+
+        private void ClearBackupDetailFields()
+        {
+            BackupDetail_BackupTime_TextBox.Text = string.Empty;
+            BackupDetail_Character_TextBox.Text = string.Empty;
+            BackupDetail_OriginalPath_TextBox.Text = string.Empty;
+            BackupDetail_FolderUserID_TextBox.Text = string.Empty;
+            BackupDetail_FileUserID_TextBox.Text = string.Empty;
+            BackupDetail_SourceFileSize_TextBox.Text = string.Empty;
+            BackupDetail_SourceSha256_TextBox.Text = string.Empty;
+            BackupDetail_BackupFile_TextBox.Text = string.Empty;
+            BackupSnapshot_TextBox.Text = string.Empty;
+        }
+
+        private void RefreshBackups_Button_Click(object sender, RoutedEventArgs e)
+        {
+            RefreshBackupList();
+        }
+
+        private void RestoreBackup_Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (Backup_DataGrid.SelectedItem is not BackupMetadata backup)
+            {
+                MessageBox.Show("请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            string warning = BuildRestoreWarning(backup, backup.OriginalFilePath);
+            if (MessageBox.Show(warning, "确认还原备份", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            try
+            {
+                BackupMetadata? safetyBackup = null;
+                if (File.Exists(backup.OriginalFilePath))
+                {
+                    safetyBackup = appDataStore.CreateBackup(backup.OriginalFilePath, cleanupAfterCreate: false);
+                }
+
+                appDataStore.RestoreBackup(backup, backup.OriginalFilePath);
+                appDataStore.CleanupBackups(backup.BackupDirectory, safetyBackup?.BackupDirectory ?? string.Empty);
+                RefreshBackupList();
+                if (string.Equals(currentFilePath, backup.OriginalFilePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    LoadConfigFile(currentFilePath);
+                }
+
+                MessageBox.Show("备份已还原到原文件路径。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"还原失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void RestoreBackupAs_Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (Backup_DataGrid.SelectedItem is not BackupMetadata backup)
+            {
+                MessageBox.Show("请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            Microsoft.Win32.SaveFileDialog saveFileDialog = new()
+            {
+                Title = "还原 UISAVE.DAT 到...",
+                FileName = "UISAVE.DAT",
+                Filter = "UISAVE.dat 文件 (UISAVE.dat)|UISAVE.dat|所有文件 (*.*)|*.*",
+                InitialDirectory = Directory.Exists(backup.OriginalDirectory) ? backup.OriginalDirectory : null
+            };
+
+            if (saveFileDialog.ShowDialog() != true) return;
+
+            try
+            {
+                appDataStore.RestoreBackup(backup, saveFileDialog.FileName);
+                MessageBox.Show("备份已还原到指定位置。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"还原失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DeleteBackup_Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (Backup_DataGrid.SelectedItem is not BackupMetadata backup)
+            {
+                MessageBox.Show("请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (MessageBox.Show("确定要删除这个备份吗？", "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            appDataStore.DeleteBackup(backup);
+            RefreshBackupList();
+        }
+
+        private void OpenBackupDirectory_Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (Backup_DataGrid.SelectedItem is BackupMetadata backup && Directory.Exists(backup.BackupDirectory))
+            {
+                OpenDirectory(backup.BackupDirectory);
+            }
+        }
+
+        private void RefreshCharacters_Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (!ConfirmSaveOrDiscardCharacterChanges()) return;
+
+            isCreatingCharacterProfile = false;
+            ClearCharacterDetailFields();
+            RefreshCharacterList();
+        }
+
+        private void Character_DataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (suppressCharacterSelectionChanged) return;
+
+            CharacterProfile? selectedProfile = Character_DataGrid.SelectedItem as CharacterProfile;
+            CharacterProfile? previousProfile = e.RemovedItems.OfType<CharacterProfile>().FirstOrDefault();
+            if (isCharacterDetailDirty && !ConfirmSaveOrDiscardCharacterChanges())
+            {
+                SetCharacterSelection(previousProfile);
+                return;
+            }
+
+            LoadCharacterProfileIntoDetail(selectedProfile);
+        }
+
+        private void Character_DataGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject) is DataGridRow row)
+            {
+                row.IsSelected = true;
+                Character_DataGrid.SelectedItem = row.Item;
+                return;
+            }
+
+            if (!ConfirmSaveOrDiscardCharacterChanges())
+            {
+                e.Handled = true;
+                return;
+            }
+
+            Character_DataGrid.SelectedItem = null;
+        }
+
+        private void Character_ContextMenu_Opened(object sender, RoutedEventArgs e)
+        {
+            DeleteCharacter_MenuItem.IsEnabled = Character_DataGrid.SelectedItem is CharacterProfile;
+        }
+
+        private void NewCharacter_Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (!ConfirmSaveOrDiscardCharacterChanges()) return;
+
+            isCreatingCharacterProfile = true;
+            SetCharacterSelection(null);
+            ClearCharacterDetailFields();
+            CharacterUserID_TextBox.IsReadOnly = false;
+            UpdateCharacterDetailVisibility(showDetail: true);
+            isCharacterDetailDirty = false;
+            CharacterUserID_TextBox.Focus();
+        }
+
+        private void ClearCharacterDetailFields()
+        {
+            suppressCharacterChangeTracking = true;
+            CharacterUserID_TextBox.Text = string.Empty;
+            CharacterName_TextBox.Text = string.Empty;
+            CharacterNote_TextBox.Text = string.Empty;
+            SelectServer(string.Empty, string.Empty);
+            suppressCharacterChangeTracking = false;
+            isCharacterDetailDirty = false;
+        }
+
+        private void UpdateCharacterDetailVisibility(bool showDetail)
+        {
+            CharacterEmpty_Panel.Visibility = showDetail ? Visibility.Collapsed : Visibility.Visible;
+            CharacterDetail_ScrollViewer.Visibility = showDetail ? Visibility.Visible : Visibility.Collapsed;
+            DeleteCharacter_Button.IsEnabled = showDetail && !isCreatingCharacterProfile && Character_DataGrid.SelectedItem != null;
+        }
+
+        private void SaveCharacter_Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (!TrySaveCharacterProfile(showSuccessMessage: true, out string savedUserID)) return;
+
+            RefreshCharacterListAndSelect(savedUserID);
+            RefreshBackupList();
+        }
+
+        private void CharacterDetail_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            MarkCharacterDetailDirty();
+        }
+
+        private void MarkCharacterDetailDirty()
+        {
+            if (suppressCharacterChangeTracking || CharacterDetail_ScrollViewer.Visibility != Visibility.Visible) return;
+
+            isCharacterDetailDirty = true;
+        }
+
+        private bool ConfirmSaveOrDiscardCharacterChanges()
+        {
+            if (!isCharacterDetailDirty) return true;
+
+            MessageBoxResult result = MessageBox.Show(
+                "当前角色备注有未保存的修改。\n\n选择“是”保存修改，选择“否”放弃修改，选择“取消”继续编辑。",
+                "未保存的角色备注",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Cancel) return false;
+            if (result == MessageBoxResult.No)
+            {
+                isCharacterDetailDirty = false;
+                return true;
+            }
+
+            if (!TrySaveCharacterProfile(showSuccessMessage: false, out string _)) return false;
+
+            Character_DataGrid.Items.Refresh();
+            RefreshBackupList();
+            return true;
+        }
+
+        private bool TrySaveCharacterProfile(bool showSuccessMessage, out string savedUserID)
+        {
+            string userID = CharacterUserID_TextBox.Text.Trim().ToUpperInvariant();
+            savedUserID = userID;
+            if (string.IsNullOrWhiteSpace(userID))
+            {
+                MessageBox.Show("User ID 不能为空。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            if (!IsValidUserID(userID))
+            {
+                MessageBox.Show("User ID 必须是 16 位十六进制字符。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            (string DataCenter, string World)? selectedServer = GetSelectedServer();
+            if (selectedServer == null)
+            {
+                MessageBox.Show("请选择角色所在服务器。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            CharacterProfile profile = appDataStore.GetOrCreateCharacter(userID);
+            profile.CharacterName = CharacterName_TextBox.Text.Trim();
+            profile.DataCenter = selectedServer.Value.DataCenter;
+            profile.World = selectedServer.Value.World;
+            profile.Note = CharacterNote_TextBox.Text.Trim();
+            profile.UpdatedAt = DateTime.Now;
+            appDataStore.SaveCharacters();
+            if (!characterEntries.Any(character => string.Equals(character.UserID, profile.UserID, StringComparison.OrdinalIgnoreCase)))
+            {
+                characterEntries.Add(profile);
+            }
+
+            isCreatingCharacterProfile = false;
+            isCharacterDetailDirty = false;
+            CharacterUserID_TextBox.IsReadOnly = true;
+
+            if (showSuccessMessage)
+            {
+                MessageBox.Show("角色备注已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+
+            return true;
+        }
+
+        private void RefreshCharacterListAndSelect(string userID)
+        {
+            suppressCharacterSelectionChanged = true;
+            RefreshCharacterList();
+            Character_DataGrid.SelectedItem = characterEntries.FirstOrDefault(character =>
+                string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase));
+            suppressCharacterSelectionChanged = false;
+            LoadCharacterProfileIntoDetail(Character_DataGrid.SelectedItem as CharacterProfile);
+        }
+
+        private void SetCharacterSelection(CharacterProfile? profile)
+        {
+            suppressCharacterSelectionChanged = true;
+            Character_DataGrid.SelectedItem = profile;
+            suppressCharacterSelectionChanged = false;
+            LoadCharacterProfileIntoDetail(profile);
+        }
+
+        private void LoadCharacterProfileIntoDetail(CharacterProfile? profile)
+        {
+            suppressCharacterChangeTracking = true;
+            if (profile == null)
+            {
+                if (!isCreatingCharacterProfile)
+                {
+                    ClearCharacterDetailFields();
+                    CharacterUserID_TextBox.IsReadOnly = false;
+                    UpdateCharacterDetailVisibility(showDetail: false);
+                }
+
+                suppressCharacterChangeTracking = false;
+                isCharacterDetailDirty = false;
+                return;
+            }
+
+            isCreatingCharacterProfile = false;
+            CharacterUserID_TextBox.IsReadOnly = true;
+            CharacterUserID_TextBox.Text = profile.UserID;
+            CharacterName_TextBox.Text = profile.CharacterName;
+            SelectServer(profile.DataCenter, profile.World);
+            CharacterNote_TextBox.Text = profile.Note;
+            UpdateCharacterDetailVisibility(showDetail: true);
+            suppressCharacterChangeTracking = false;
+            isCharacterDetailDirty = false;
+        }
+
+        private void DeleteCharacter_Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (Character_DataGrid.SelectedItem is not CharacterProfile profile) return;
+            if (MessageBox.Show("确定要删除这个角色备注吗？备份文件不会被删除。", "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            appDataStore.Characters.Remove(profile);
+            appDataStore.SaveCharacters();
+            isCreatingCharacterProfile = false;
+            SetCharacterSelection(null);
+            ClearCharacterDetailFields();
+            UpdateCharacterDetailVisibility(showDetail: false);
+            RefreshCharacterList();
+            RefreshBackupList();
+        }
+
+        private void BrowseDataDirectory_Button_Click(object sender, RoutedEventArgs e)
+        {
+            Microsoft.Win32.OpenFolderDialog dialog = new()
+            {
+                Title = "选择数据目录",
+                InitialDirectory = Directory.Exists(DataDirectory_TextBox.Text) ? DataDirectory_TextBox.Text : appDataStore.DataDirectory
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                DataDirectory_TextBox.Text = dialog.FolderName;
+            }
+        }
+
+        private void SaveSettings_Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (!TryReadPositiveInt(MaxBackupCount_TextBox, "最多保留备份数量", out int maxBackupCount) ||
+                !TryReadPositiveInt(MaxBackupDays_TextBox, "最多保留天数", out int maxBackupDays))
+            {
+                return;
+            }
+
+            try
+            {
+                string requestedDataDirectory = DataDirectory_TextBox.Text.Trim();
+                if (!string.Equals(requestedDataDirectory, appDataStore.DataDirectory, StringComparison.OrdinalIgnoreCase))
+                {
+                    MessageBoxResult migrateResult = MessageBox.Show(
+                        "是否将现有配置、角色备注和备份迁移到新目录？\n选择“否”将只切换目录，不复制旧数据。",
+                        "迁移数据目录",
+                        MessageBoxButton.YesNoCancel,
+                        MessageBoxImage.Question);
+                    if (migrateResult == MessageBoxResult.Cancel) return;
+
+                    appDataStore.ChangeDataDirectory(requestedDataDirectory, migrateResult == MessageBoxResult.Yes);
+                }
+
+                appDataStore.SaveSettings(new AppSettings
+                {
+                    MaxBackupCount = maxBackupCount,
+                    MaxBackupDays = maxBackupDays,
+                    AutoBackupBeforeSave = AutoBackup_CheckBox.IsChecked == true
+                });
+                appDataStore.CleanupBackups();
+                LoadSettingsIntoUi();
+                RefreshBackupList();
+                RefreshCharacterList();
+                MessageBox.Show("设置已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"保存设置失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ResetDataDirectory_Button_Click(object sender, RoutedEventArgs e)
+        {
+            DataDirectory_TextBox.Text = appDataStore.DefaultDataDirectory;
+        }
+
+        private void OpenDataDirectory_Button_Click(object sender, RoutedEventArgs e)
+        {
+            OpenDirectory(appDataStore.DataDirectory);
+        }
+
+        private static string BuildRestoreWarning(BackupMetadata backup, string targetFilePath)
+        {
+            string? targetFolderUserID = AppDataStore.GetUserIDFromCharacterFolder(targetFilePath);
+            string userIDWarning = !string.IsNullOrWhiteSpace(targetFolderUserID) &&
+                !string.IsNullOrWhiteSpace(backup.EffectiveUserID) &&
+                !string.Equals(targetFolderUserID, backup.EffectiveUserID, StringComparison.OrdinalIgnoreCase)
+                    ? $"\n\n警告：目标目录 User ID 为 {targetFolderUserID}，备份文件 User ID 为 {backup.EffectiveUserID}。"
+                    : string.Empty;
+
+            return
+                "将把下面的备份文件还原到原文件路径，并覆盖目标文件。\n\n" +
+                $"备份时间：{backup.BackupTime:yyyy-MM-dd HH:mm:ss}\n" +
+                $"角色备注：{DisplayOptionalText(backup.CharacterDisplayName)}\n" +
+                $"目录 User ID：{DisplayOptionalText(backup.FolderUserID)}\n" +
+                $"文件 User ID：{DisplayOptionalText(backup.FileUserID)}\n\n" +
+                $"原文件路径：\n{targetFilePath}\n\n" +
+                $"备份文件路径：\n{backup.BackupFilePath}\n\n" +
+                $"覆盖前会自动备份当前目标文件。确定继续吗？{userIDWarning}";
+        }
+
+        private static string DisplayOptionalText(string text)
+        {
+            return string.IsNullOrWhiteSpace(text) ? "无" : text;
+        }
+
+        private static bool IsValidUserID(string userID)
+        {
+            return userID.Length == 16 && userID.All(Uri.IsHexDigit);
+        }
+
+        private static bool TryReadPositiveInt(TextBox textBox, string displayName, out int value)
+        {
+            if (int.TryParse(textBox.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value) && value > 0)
+            {
+                return true;
+            }
+
+            MessageBox.Show($"{displayName} 必须是大于 0 的整数。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        private static void OpenDirectory(string directory)
+        {
+            if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
+            using Process? _ = Process.Start(new ProcessStartInfo
+            {
+                FileName = directory,
+                UseShellExecute = true
+            });
         }
 
         private void RefreshRegionOptions(IEnumerable<ushort>? extraRegionIds = null)
@@ -360,6 +1143,14 @@ namespace UIMarkerEditor
 
         private void RegionOptions_ListBox_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            if (FindVisualParent<ListBoxItem>(e.OriginalSource as DependencyObject)?.DataContext is MapData selectedRegion)
+            {
+                RegionOptions_ListBox.SelectedItem = selectedRegion;
+                CommitSelectedRegionOption(selectedRegion);
+                e.Handled = true;
+                return;
+            }
+
             CommitSelectedRegionOption();
         }
 
@@ -417,6 +1208,11 @@ namespace UIMarkerEditor
         private void CommitSelectedRegionOption()
         {
             if (RegionOptions_ListBox.SelectedItem is not MapData selectedRegion) return;
+            CommitSelectedRegionOption(selectedRegion);
+        }
+
+        private void CommitSelectedRegionOption(MapData selectedRegion)
+        {
             if (currentWayMark == null) return;
 
             currentWayMark.RegionID = selectedRegion.Index;
@@ -425,7 +1221,6 @@ namespace UIMarkerEditor
             regionOptionsView?.Refresh();
             RegionSearch_Popup.IsOpen = false;
             isSelectingRegionFromPopup = false;
-            RegionSearch_TextBox.Focus();
         }
 
         private void CommitRegionSearchText()

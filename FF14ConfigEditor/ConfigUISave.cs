@@ -34,6 +34,12 @@ namespace FF14ConfigEditor
         /// </summary>
         public List<UISaveSection> Sections { get; private set; } = [];
 
+        public string UserIDHex => userIDRaw.Length == 8
+            ? BitConverter.ToUInt64(userIDRaw, 0).ToString("X16")
+            : string.Empty;
+
+        public string UserIDRawBytesHex => BitConverter.ToString(userIDRaw);
+
         /// <summary>
         /// 每个Section对应的内容
         /// </summary>
@@ -189,7 +195,7 @@ namespace FF14ConfigEditor
 
             // 8字节用户ID，是int64
             userIDRaw = reader.ReadBytes(8);
-            DebugHelper.Log($"加密部分 - 用户ID: {BitConverter.ToInt64(userIDRaw, 0):X16}");
+            DebugHelper.Log($"加密部分 - 用户ID: {UserIDHex}");
 
             Sections.Clear();
 
