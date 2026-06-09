@@ -44,7 +44,6 @@ namespace UIMarkerEditor
         private TextBox? activeCoordinateInputTipTarget;
         private System.Windows.Threading.DispatcherTimer? activeCoordinateInputTipTimer;
         private readonly AppDataStore appDataStore;
-        private readonly ObservableCollection<BackupMetadata> backupEntries = [];
         private readonly ObservableCollection<CharacterProfile> characterEntries = [];
         private string selectedCharacterDataCenter = string.Empty;
         private string selectedCharacterWorld = string.Empty;
@@ -110,8 +109,14 @@ namespace UIMarkerEditor
             PointOrder_ComboBox.ItemsSource = PointOrder;
             PointOrder_ComboBox.SelectedIndex = 0;
 
-            Backup_DataGrid.ItemsSource = backupEntries;
             Character_DataGrid.ItemsSource = characterEntries;
+            BackupRestore_Control.Initialize(
+                appDataStore,
+                this,
+                () => currentFilePath,
+                LoadConfigFile,
+                ConfirmSaveOrDiscardCharacterChanges,
+                RefreshCharacterList);
             LoadSettingsIntoUi();
             RefreshServerPicker();
             RefreshBackupList();
