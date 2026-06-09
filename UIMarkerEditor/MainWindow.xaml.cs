@@ -28,55 +28,7 @@ namespace UIMarkerEditor
 
         private ConfigUISave? configUISave = null;
 
-        private Point dragStartPoint;
-        private WayMark? draggedWayMark;
-        private int currentDropTargetIndex = -1;
-        private readonly ObservableCollection<MapData> regionOptions = [];
-        private ICollectionView? regionOptionsView;
-        private string regionFilterText = string.Empty;
-        private bool suppressRegionTextChanged = false;
-        private bool isSelectingRegionFromPopup = false;
-        private bool isClearingRegionText = false;
-        private readonly Dictionary<TextBox, CoordinateEditContext> coordinateEditContexts = [];
-        private readonly Dictionary<TextBox, string> coordinateAcceptedTexts = [];
-        private readonly HashSet<TextBox> coordinateTextChangeGuards = [];
-        private ToolTip? activeCoordinateInputTip;
-        private TextBox? activeCoordinateInputTipTarget;
-        private System.Windows.Threading.DispatcherTimer? activeCoordinateInputTipTimer;
         private readonly AppDataStore appDataStore;
-        private const int MinRawCoordinate = int.MinValue;
-        private const int MaxRawCoordinate = int.MaxValue;
-        private const int CoordinateScale = 1000;
-        private const int MaxCoordinateTextLength = 12;
-        private const string CoordinateInputTip =
-            "坐标格式：\n-2147483.648 到 2147483.647的数字，最多 3 位小数。\n不可输入其他字符。";
-
-        private readonly JsonSerializerOptions jsonOptions = new()
-        {
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-        };
-
-        // 给ComboBox用的ItemsSource
-        private readonly List<string> PointShape =
-        [
-            "圆形八方",
-            "方形八方",
-        ];
-
-        private readonly List<string> PointOrder =
-        [
-            "A1B2C3D4",
-            "A2B3C4D1",
-        ];
-
-        private enum CoordinateAxis
-        {
-            X,
-            Y,
-            Z
-        }
-
-        private readonly record struct CoordinateEditContext(WayMarkPoint Point, CoordinateAxis Axis);
 
         public MainWindow(AppDataStore appDataStore)
         {
@@ -86,21 +38,10 @@ namespace UIMarkerEditor
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            Edit1_Grid.IsEnabled = false;
-            Edit2_Grid.IsEnabled = false;
-            RegisterCoordinateTextBoxPasteHandlers();
-            AddHandler(PreviewMouseDownEvent, new MouseButtonEventHandler(Window_PreviewMouseDown), true);
-            AddHandler(PreviewKeyDownEvent, new KeyEventHandler(Window_PreviewKeyDown), true);
             UpdateDataVersionText();
-            UpdateMoveButtonState();
-            RefreshRegionOptions();
-
-            PointShape_ComboBox.ItemsSource = PointShape;
-            PointShape_ComboBox.SelectedIndex = 0;
-
-            PointOrder_ComboBox.ItemsSource = PointOrder;
-            PointOrder_ComboBox.SelectedIndex = 0;
-
+            WayMarkEditor_Control.LoadRequested += WayMarkEditor_LoadRequested;
+            WayMarkEditor_Control.ReloadRequested += WayMarkEditor_ReloadRequested;
+            WayMarkEditor_Control.SaveRequested += WayMarkEditor_SaveRequested;
             CharacterProfiles_Control.Initialize(appDataStore, this, RefreshBackupList);
             BackupRestore_Control.Initialize(
                 appDataStore,
@@ -196,9 +137,7 @@ namespace UIMarkerEditor
                 RegisterLoadedCharacter(configUISave, filePath);
                 List<WayMark> markerSection = configUISave.Marks.WayMarks;
 
-                RefreshRegionOptions(markerSection.Select(mark => mark.RegionID));
-                WayMark_ListBox.ItemsSource = markerSection;
-                UpdateMoveButtonState();
+                WayMarkEditor_Control.SetWayMarks(markerSection);
 
                 // 输出所有的enableFlag和regionID以供调试
                 foreach (WayMark mark in markerSection)
@@ -210,9 +149,24 @@ namespace UIMarkerEditor
             else
             {
                 MessageBox.Show("无法加载UISAVE.DAT文件。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                UpdateMoveButtonState();
+                WayMarkEditor_Control.ClearWayMarks();
                 return;
             }
+        }
+
+        private void WayMarkEditor_LoadRequested(object? sender, EventArgs e)
+        {
+            Load_Button_Click(sender ?? this, new RoutedEventArgs());
+        }
+
+        private void WayMarkEditor_ReloadRequested(object? sender, EventArgs e)
+        {
+            Reload_Button_Click(sender ?? this, new RoutedEventArgs());
+        }
+
+        private void WayMarkEditor_SaveRequested(object? sender, EventArgs e)
+        {
+            Save_Button_Click(sender ?? this, new RoutedEventArgs());
         }
 
         private void RegisterLoadedCharacter(ConfigUISave loadedConfig, string filePath)

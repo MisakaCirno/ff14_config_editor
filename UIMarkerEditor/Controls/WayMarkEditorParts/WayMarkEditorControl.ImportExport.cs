@@ -17,9 +17,9 @@ using System.IO;
 using FF14ConfigEditor;
 using FF14ConfigEditor.UISave;
 
-namespace UIMarkerEditor
+namespace UIMarkerEditor.Controls
 {
-    public partial class MainWindow
+    public partial class WayMarkEditorControl
     {
         private void Import_Button_Click(object sender, RoutedEventArgs e)
         {
@@ -141,7 +141,7 @@ namespace UIMarkerEditor
                             VerticalScrollBarVisibility = ScrollBarVisibility.Auto
                         },
                         // 设置窗口所有者和启动位置，确保弹出窗口在主窗口中央
-                        Owner = this,
+                        Owner = Window.GetWindow(this),
                         WindowStartupLocation = WindowStartupLocation.CenterOwner
                     };
 

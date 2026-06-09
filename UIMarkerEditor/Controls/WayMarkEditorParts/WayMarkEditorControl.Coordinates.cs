@@ -17,9 +17,9 @@ using System.IO;
 using FF14ConfigEditor;
 using FF14ConfigEditor.UISave;
 
-namespace UIMarkerEditor
+namespace UIMarkerEditor.Controls
 {
-    public partial class MainWindow
+    public partial class WayMarkEditorControl
     {
         private void Coordinate_TextBox_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
         {
