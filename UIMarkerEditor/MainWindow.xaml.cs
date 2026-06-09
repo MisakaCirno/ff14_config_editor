@@ -44,14 +44,6 @@ namespace UIMarkerEditor
         private TextBox? activeCoordinateInputTipTarget;
         private System.Windows.Threading.DispatcherTimer? activeCoordinateInputTipTimer;
         private readonly AppDataStore appDataStore;
-        private readonly ObservableCollection<CharacterProfile> characterEntries = [];
-        private string selectedCharacterDataCenter = string.Empty;
-        private string selectedCharacterWorld = string.Empty;
-        private bool isCreatingCharacterProfile = false;
-        private bool isCharacterDetailDirty = false;
-        private bool suppressCharacterSelectionChanged = false;
-        private bool suppressCharacterChangeTracking = false;
-
         private const int MinRawCoordinate = int.MinValue;
         private const int MaxRawCoordinate = int.MaxValue;
         private const int CoordinateScale = 1000;
@@ -109,7 +101,7 @@ namespace UIMarkerEditor
             PointOrder_ComboBox.ItemsSource = PointOrder;
             PointOrder_ComboBox.SelectedIndex = 0;
 
-            Character_DataGrid.ItemsSource = characterEntries;
+            CharacterProfiles_Control.Initialize(appDataStore, this, RefreshBackupList);
             BackupRestore_Control.Initialize(
                 appDataStore,
                 this,
@@ -118,7 +110,6 @@ namespace UIMarkerEditor
                 ConfirmSaveOrDiscardCharacterChanges,
                 RefreshCharacterList);
             LoadSettingsIntoUi();
-            RefreshServerPicker();
             RefreshBackupList();
             RefreshCharacterList();
             _ = SyncServerListIfNeededAsync();
