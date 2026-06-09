@@ -11,7 +11,7 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground" Value="#FFD01818"/>
             <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontWeight" Value="Normal"/>
             <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
             <Setter Property="RenderTransform">
                 <Setter.Value>
@@ -146,22 +146,23 @@
 
                         <Grid x:Name="RegionSearch_Container"
                               Grid.Column="1"
-                              Margin="5"
-                              MinHeight="30">
+                              Margin="4"
+                              MinHeight="26">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="24"/>
-                                <ColumnDefinition Width="24"/>
+                                <ColumnDefinition Width="22"/>
+                                <ColumnDefinition Width="22"/>
                             </Grid.ColumnDefinitions>
                             <Border Grid.ColumnSpan="3"
                                     Background="White"
                                     BorderBrush="#FFABADB3"
-                                    BorderThickness="1"/>
+                                    BorderThickness="1"
+                                    CornerRadius="5"/>
                             <TextBox x:Name="RegionSearch_TextBox"
                                      Margin="0"
                                      BorderThickness="0"
                                      Background="Transparent"
-                                     Padding="5"
+                                     Padding="4,2"
                                      HorizontalContentAlignment="Left"
                                      TextAlignment="Left"
                                      VerticalContentAlignment="Center"
@@ -185,6 +186,9 @@
                             <Button x:Name="RegionDropDown_Button"
                                     Grid.Column="2"
                                     Content="▼"
+                                    Background="Transparent"
+                                    BorderBrush="Transparent"
+                                    BorderThickness="0"
                                     Margin="0"
                                     Padding="0"
                                     FontSize="10"
@@ -221,9 +225,9 @@
                         <TabItem Header="标点位置">
                             <Grid x:Name="Edit2_Grid" >
                                 <Grid.Resources>
-                                    <Style TargetType="{x:Type TextBox}">
-                                        <Setter Property="Margin" Value="5"/>
-                                        <Setter Property="Padding" Value="5"/>
+                                    <Style TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
+                                        <Setter Property="Margin" Value="4"/>
+                                        <Setter Property="Padding" Value="4,2"/>
                                         <Setter Property="HorizontalContentAlignment" Value="Center"/>
                                         <Setter Property="VerticalContentAlignment" Value="Center"/>
                                         <EventSetter Event="GotKeyboardFocus" Handler="Coordinate_TextBox_GotKeyboardFocus"/>
@@ -301,9 +305,16 @@
 
                         <TabItem Header="形状调整">
                             <TabItem.Resources>
-                                <Style TargetType="ComboBox">
-                                    <Setter Property="Margin" Value="5"/>
-                                    <Setter Property="Padding" Value="4"/>
+                                <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+                                    <Setter Property="Margin" Value="4"/>
+                                    <Setter Property="Padding" Value="6,3"/>
+                                </Style>
+                                <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                    <Setter Property="Margin" Value="4"/>
+                                    <Setter Property="Padding" Value="4,2"/>
+                                    <Setter Property="MinHeight" Value="26"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
                                 </Style>
                             </TabItem.Resources>
                             <StackPanel>
@@ -313,15 +324,15 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
-                                        <RowDefinition Height="*"/>
-                                        <RowDefinition Height="*"/>
-                                        <RowDefinition Height="*"/>
-                                        <RowDefinition Height="*"/>
-                                        <RowDefinition Height="*"/>
-                                        <RowDefinition Height="*"/>
-                                        <RowDefinition Height="*"/>
-                                        <RowDefinition Height="*"/>
-                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
 
                                     <TextBlock Text="分布形状：" Grid.Column="0"/>
@@ -340,9 +351,9 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <Grid.RowDefinitions>
-                                            <RowDefinition Height="*"/>
-                                            <RowDefinition Height="*"/>
-                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
 
                                         <TextBlock Text="X：" Grid.Column="0" Grid.Row="0"/>

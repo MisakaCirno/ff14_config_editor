@@ -1,74 +1,199 @@
 <UserControl x:Class="UIMarkerEditor.Controls.ToolSettingsControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Margin="10">
+    <Grid Background="{StaticResource AppBackgroundBrush}">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="170"/>
-            <ColumnDefinition Width="5"/>
+            <ColumnDefinition Width="220"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <ListBox SelectedIndex="0">
-            <ListBoxItem Content="备份与数据"/>
-            <ListBoxItem Content="界面设置（预留）"/>
-            <ListBoxItem Content="其它工具（预留）"/>
-        </ListBox>
+        <Border Grid.Column="0"
+                Background="{StaticResource AppSurfaceBrush}"
+                BorderBrush="{StaticResource AppBorderBrush}"
+                BorderThickness="0,0,1,0"
+                Padding="12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-        <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="LightGray"/>
-
-        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
-            <StackPanel>
-                <GroupBox Header="数据目录" Margin="5" Padding="8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Text="当前位置：" Grid.Row="0"/>
-                        <TextBox x:Name="DataDirectory_TextBox" Grid.Row="0" Grid.Column="1"/>
-                        <Button Content="选择..." Grid.Row="0" Grid.Column="2" Click="BrowseDataDirectory_Button_Click"/>
-                        <TextBlock Grid.Row="1"
-                                   Grid.ColumnSpan="3"
-                                   HorizontalAlignment="Left"
-                                   TextWrapping="Wrap"
-                                   Text="数据目录用于保存软件配置、角色备注、服务器列表缓存和 UISAVE.DAT 备份。更改目录时可以选择是否迁移现有数据。"/>
-                    </Grid>
-                </GroupBox>
-
-                <GroupBox Header="自动备份" Margin="5" Padding="8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <CheckBox x:Name="AutoBackup_CheckBox"
-                                  Content="保存前自动备份"
-                                  Grid.Row="0"
-                                  Grid.ColumnSpan="2"/>
-                        <TextBlock Text="最多保留备份数量：" Grid.Row="1"/>
-                        <TextBox x:Name="MaxBackupCount_TextBox" Grid.Row="1" Grid.Column="1"/>
-                        <TextBlock Text="最多保留天数：" Grid.Row="2"/>
-                        <TextBox x:Name="MaxBackupDays_TextBox" Grid.Row="2" Grid.Column="1"/>
-                    </Grid>
-                </GroupBox>
-
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
-                    <Button Content="保存设置" Click="SaveSettings_Button_Click"/>
-                    <Button Content="恢复默认目录" Click="ResetDataDirectory_Button_Click"/>
-                    <Button Content="打开数据目录" Click="OpenDataDirectory_Button_Click"/>
+                <StackPanel Margin="8,8,8,16">
+                    <TextBlock Text="工具设置"
+                               FontSize="22"
+                               Padding="0"
+                               HorizontalAlignment="Left"/>
+                    <TextBlock Text="管理本地数据、备份和后续工具选项"
+                               Foreground="{StaticResource AppMutedTextBrush}"
+                               TextWrapping="Wrap"
+                               HorizontalAlignment="Left"
+                               Padding="0"
+                               Margin="0,6,0,0"/>
                 </StackPanel>
+
+                <ListBox Grid.Row="1"
+                         SelectedIndex="0">
+                    <ListBoxItem Content="备份与数据"/>
+                    <ListBoxItem Content="界面设置（预留）" IsEnabled="False"/>
+                    <ListBoxItem Content="其它工具（预留）" IsEnabled="False"/>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Column="1"
+                      VerticalScrollBarVisibility="Auto"
+                      Padding="28,24">
+            <StackPanel MaxWidth="760">
+                <TextBlock Text="备份与数据"
+                           FontSize="28"
+                           Padding="0"
+                           HorizontalAlignment="Left"/>
+                <TextBlock Text="配置软件本地数据存放位置，以及保存 UISAVE.DAT 前的自动备份策略。"
+                           Foreground="{StaticResource AppMutedTextBrush}"
+                           TextWrapping="Wrap"
+                           HorizontalAlignment="Left"
+                           Padding="0"
+                           Margin="0,8,0,22"/>
+
+                <Border Background="{StaticResource AppSurfaceBrush}"
+                        BorderBrush="{StaticResource AppBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="18"
+                        Margin="0,0,0,14">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Text="数据目录"
+                                   FontSize="14"
+                                   HorizontalAlignment="Left"
+                                   Padding="0"/>
+                        <TextBlock Grid.Row="1"
+                                   Text="用于保存软件配置、角色备注、服务器列表缓存和 UISAVE.DAT 备份。更改目录时可以选择是否迁移现有数据。"
+                                   Foreground="{StaticResource AppMutedTextBrush}"
+                                   TextWrapping="Wrap"
+                                   HorizontalAlignment="Left"
+                                   Padding="0"
+                                   Margin="0,6,0,14"/>
+
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox x:Name="DataDirectory_TextBox"
+                                     Grid.Column="0"
+                                     HorizontalContentAlignment="Left"
+                                     TextAlignment="Left"/>
+                            <Button Content="选择..."
+                                     Grid.Column="1"
+                                     Click="BrowseDataDirectory_Button_Click"/>
+                            <Button Content="恢复默认"
+                                     Grid.Column="2"
+                                     Click="ResetDataDirectory_Button_Click"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <Border Background="{StaticResource AppSurfaceBrush}"
+                        BorderBrush="{StaticResource AppBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="18"
+                        Margin="0,0,0,14">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel>
+                                <TextBlock Text="自动备份"
+                                           FontSize="14"
+                                           HorizontalAlignment="Left"
+                                           Padding="0"/>
+                                <TextBlock Text="保存文件前先备份原始 UISAVE.DAT，降低误操作和写入失败带来的风险。"
+                                           Foreground="{StaticResource AppMutedTextBrush}"
+                                           TextWrapping="Wrap"
+                                           HorizontalAlignment="Left"
+                                           Padding="0"
+                                           Margin="0,6,18,0"/>
+                            </StackPanel>
+
+                            <CheckBox x:Name="AutoBackup_CheckBox"
+                                      Grid.Column="1"
+                                      Content="启用"
+                                      VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Separator Grid.Row="1" Margin="0,16"/>
+
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="150"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Margin="0,0,18,12">
+                                <TextBlock Text="最多保留备份数量"
+                                           FontSize="14"
+                                           HorizontalAlignment="Left"
+                                           Padding="0"/>
+                                <TextBlock Text="超过数量限制后，较旧的备份会在清理时被删除。"
+                                           Foreground="{StaticResource AppMutedTextBrush}"
+                                           TextWrapping="Wrap"
+                                           HorizontalAlignment="Left"
+                                           Padding="0"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <TextBox x:Name="MaxBackupCount_TextBox"
+                                     Grid.Column="1"/>
+
+                            <StackPanel Grid.Row="1" Margin="0,0,18,0">
+                                <TextBlock Text="最多保留天数"
+                                           FontSize="14"
+                                           HorizontalAlignment="Left"
+                                           Padding="0"/>
+                                <TextBlock Text="超过保存天数的旧备份会在清理时被删除。"
+                                           Foreground="{StaticResource AppMutedTextBrush}"
+                                           TextWrapping="Wrap"
+                                           HorizontalAlignment="Left"
+                                           Padding="0"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <TextBox x:Name="MaxBackupDays_TextBox"
+                                     Grid.Row="1"
+                                     Grid.Column="1"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <Border Background="#00FFFFFF" Padding="0,4,0,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="打开数据目录"
+                                Click="OpenDataDirectory_Button_Click"/>
+                        <Button Content="保存设置"
+                                Click="SaveSettings_Button_Click"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
     </Grid>

@@ -18,7 +18,7 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground" Value="#FFD01818"/>
             <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontWeight" Value="Normal"/>
             <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
             <Setter Property="RenderTransform">
                 <Setter.Value>
@@ -53,40 +53,13 @@
                 </Setter.Value>
             </Setter>
         </Style>
-
-        <Style TargetType="Button">
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="Padding" Value="5"/>
-        </Style>
-
-        <Style TargetType="CheckBox">
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="Padding" Value="5"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-
-        <Style TargetType="TextBox">
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="Padding" Value="5"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-
-        <Style TargetType="TextBlock">
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Padding" Value="5"/>
-        </Style>
-
         <Style x:Key="BackupFieldLabelStyle" TargetType="TextBlock">
             <Setter Property="HorizontalAlignment" Value="Left"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Padding" Value="5,8,5,2"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
 
-        <Style x:Key="BackupReadOnlyTextBoxStyle" TargetType="TextBox">
+        <Style x:Key="BackupReadOnlyTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
             <Setter Property="Margin" Value="5,0,5,4"/>
             <Setter Property="Padding" Value="6,4"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -95,10 +68,6 @@
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="Background" Value="#FFF8F8F8"/>
             <Setter Property="BorderBrush" Value="#FFBDBDBD"/>
-        </Style>
-
-        <Style TargetType="TabItem">
-            <Setter Property="Padding" Value="10,5"/>
         </Style>
     </Window.Resources>
     <TabControl>
