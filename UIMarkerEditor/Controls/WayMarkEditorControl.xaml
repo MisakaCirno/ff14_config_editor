@@ -125,7 +125,7 @@
                     </Grid>
                 </Grid>
 
-                <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="LightGray"/>
+                <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
 
                 <Grid Grid.Column="2">
                     <Grid.RowDefinitions>
@@ -402,7 +402,7 @@
                     </Grid>
                 </Grid>
 
-                <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="LightGray"/>
+                <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
 
                 <controls:WayMarkPreviewControl x:Name="WayMarkPreview_Control" Grid.Column="4"/>
             </Grid>

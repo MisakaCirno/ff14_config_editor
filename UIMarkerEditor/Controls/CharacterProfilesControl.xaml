@@ -62,7 +62,7 @@
             </DataGrid>
         </GroupBox>
 
-        <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="LightGray"/>
+        <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>
 
         <GroupBox x:Name="CharacterDetail_GroupBox"
                   Grid.Column="2"

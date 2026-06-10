@@ -257,6 +257,34 @@
         </Setter>
     </Style>
 
+    <Style TargetType="GridSplitter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Cursor" Value="SizeWE"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="GridSplitter">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Border x:Name="SplitterGrip"
+                                Width="5"
+                                HorizontalAlignment="Center"
+                                Background="{StaticResource AppBorderBrush}"
+                                CornerRadius="1"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="SplitterGrip" Property="Width" Value="3"/>
+                            <Setter TargetName="SplitterGrip" Property="Background" Value="{StaticResource AppBorderStrongBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="SplitterGrip" Property="Width" Value="3"/>
+                            <Setter TargetName="SplitterGrip" Property="Background" Value="{StaticResource AppAccentBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style TargetType="DataGrid">
         <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}"/>
