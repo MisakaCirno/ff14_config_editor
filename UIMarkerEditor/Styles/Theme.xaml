@@ -272,11 +272,9 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="SplitterGrip" Property="Width" Value="3"/>
-                            <Setter TargetName="SplitterGrip" Property="Background" Value="{StaticResource AppBorderStrongBrush}"/>
+                            <Setter TargetName="SplitterGrip" Property="Background" Value="{StaticResource AppAccentHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsDragging" Value="True">
-                            <Setter TargetName="SplitterGrip" Property="Width" Value="3"/>
                             <Setter TargetName="SplitterGrip" Property="Background" Value="{StaticResource AppAccentBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
