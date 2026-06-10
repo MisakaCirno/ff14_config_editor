@@ -24,6 +24,34 @@ namespace UIMarkerEditor
     /// </summary>
     public partial class MainWindow : Window
     {
+        public static readonly RoutedUICommand OpenWayMarkFileCommand = new(
+            "读取标点文件",
+            nameof(OpenWayMarkFileCommand),
+            typeof(MainWindow),
+            [new KeyGesture(Key.O, ModifierKeys.Control)]);
+
+        public static readonly RoutedUICommand ReloadWayMarkFileCommand = new(
+            "重新加载文件",
+            nameof(ReloadWayMarkFileCommand),
+            typeof(MainWindow),
+            [new KeyGesture(Key.R, ModifierKeys.Control)]);
+
+        public static readonly RoutedUICommand SaveWayMarkFileCommand = new(
+            "保存标点文件",
+            nameof(SaveWayMarkFileCommand),
+            typeof(MainWindow),
+            [new KeyGesture(Key.S, ModifierKeys.Control)]);
+
+        private const string DefaultWindowTitle = "FF14 标点预设编辑工具";
+        private static readonly IReadOnlyDictionary<string, string> DataCenterAbbreviations =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["豆豆柴"] = "狗",
+                ["莫古力"] = "猪",
+                ["陆行鸟"] = "鸟",
+                ["猫小胖"] = "猫"
+            };
+
         private string currentFilePath = string.Empty;
 
         private ConfigUISave? configUISave = null;
@@ -34,14 +62,13 @@ namespace UIMarkerEditor
         {
             this.appDataStore = appDataStore;
             InitializeComponent();
+            Title = DefaultWindowTitle;
+            UpdateMaximizeRestoreButton();
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             UpdateDataVersionText();
-            WayMarkEditor_Control.LoadRequested += WayMarkEditor_LoadRequested;
-            WayMarkEditor_Control.ReloadRequested += WayMarkEditor_ReloadRequested;
-            WayMarkEditor_Control.SaveRequested += WayMarkEditor_SaveRequested;
             CharacterProfiles_Control.Initialize(appDataStore, this, RefreshBackupList);
             BackupRestore_Control.Initialize(
                 appDataStore,
@@ -57,7 +84,7 @@ namespace UIMarkerEditor
             _ = SyncServerListIfNeededAsync();
         }
 
-        private void Load_Button_Click(object sender, RoutedEventArgs e)
+        private void OpenWayMarkFile()
         {
             // 打开文件对话框，只允许选择 UISAVE.dat
             Microsoft.Win32.OpenFileDialog openFileDialog = new()
@@ -85,7 +112,34 @@ namespace UIMarkerEditor
                 LoadConfigFile(currentFilePath);
             }
         }
-        private void Reload_Button_Click(object sender, RoutedEventArgs e)
+
+        private void OpenWayMarkFileCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            OpenWayMarkFile();
+        }
+
+        private void ReloadWayMarkFileCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            ReloadWayMarkFile();
+        }
+
+        private void SaveWayMarkFileCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            SaveWayMarkFile();
+        }
+
+        private void CurrentWayMarkFileCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = HasLoadedWayMarkFile();
+            e.Handled = true;
+        }
+
+        private bool HasLoadedWayMarkFile()
+        {
+            return !string.IsNullOrWhiteSpace(currentFilePath) && configUISave != null;
+        }
+
+        private void ReloadWayMarkFile()
         {
             // 重新加载标点列表
             if (!string.IsNullOrEmpty(currentFilePath))
@@ -98,7 +152,7 @@ namespace UIMarkerEditor
             }
         }
 
-        private void Save_Button_Click(object sender, RoutedEventArgs e)
+        private void SaveWayMarkFile()
         {
             // 保存修改后的UISAVE.DAT文件
             if (configUISave != null)
@@ -135,6 +189,7 @@ namespace UIMarkerEditor
             if (configUISave != null && configUISave.Marks != null)
             {
                 RegisterLoadedCharacter(configUISave, filePath);
+                UpdateCurrentFileStatus(filePath);
                 List<WayMark> markerSection = configUISave.Marks.WayMarks;
 
                 WayMarkEditor_Control.SetWayMarks(markerSection);
@@ -149,24 +204,55 @@ namespace UIMarkerEditor
             else
             {
                 MessageBox.Show("无法加载UISAVE.DAT文件。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                currentFilePath = string.Empty;
+                configUISave = null;
+                ResetCurrentFileStatus();
                 WayMarkEditor_Control.ClearWayMarks();
+                CommandManager.InvalidateRequerySuggested();
                 return;
             }
+
+            CommandManager.InvalidateRequerySuggested();
         }
 
-        private void WayMarkEditor_LoadRequested(object? sender, EventArgs e)
+        private void UpdateCurrentFileStatus(string filePath)
         {
-            Load_Button_Click(sender ?? this, new RoutedEventArgs());
+            string fullPath = System.IO.Path.GetFullPath(filePath);
+            string displayText = fullPath + CreateCharacterStatusSuffix(filePath);
+            CurrentFileStatus_TextBlock.Text = displayText;
+            CurrentFileStatus_TextBlock.ToolTip = displayText;
         }
 
-        private void WayMarkEditor_ReloadRequested(object? sender, EventArgs e)
+        private void ResetCurrentFileStatus()
         {
-            Reload_Button_Click(sender ?? this, new RoutedEventArgs());
+            const string displayText = "未加载 UISAVE 文件";
+            CurrentFileStatus_TextBlock.Text = displayText;
+            CurrentFileStatus_TextBlock.ToolTip = displayText;
         }
 
-        private void WayMarkEditor_SaveRequested(object? sender, EventArgs e)
+        private string CreateCharacterStatusSuffix(string filePath)
         {
-            Save_Button_Click(sender ?? this, new RoutedEventArgs());
+            string? folderUserID = AppDataStore.GetUserIDFromCharacterFolder(filePath);
+            if (string.IsNullOrWhiteSpace(folderUserID)) return string.Empty;
+
+            CharacterProfile? profile = appDataStore.Characters.FirstOrDefault(character =>
+                string.Equals(character.UserID, folderUserID, StringComparison.OrdinalIgnoreCase));
+            if (profile == null) return string.Empty;
+
+            string characterName = profile.CharacterName.Trim();
+            if (string.IsNullOrWhiteSpace(characterName)) return string.Empty;
+
+            string dataCenter = profile.DataCenter.Trim();
+            string world = profile.World.Trim();
+            DataCenterAbbreviations.TryGetValue(dataCenter, out string? abbreviation);
+            string dataCenterDisplay = abbreviation ?? dataCenter;
+            string serverFirstChar = string.IsNullOrWhiteSpace(world) ? string.Empty : world[..1];
+            string serverDisplay = string.Join("-", new[] { dataCenterDisplay, serverFirstChar }
+                .Where(value => !string.IsNullOrWhiteSpace(value)));
+
+            return string.IsNullOrWhiteSpace(serverDisplay)
+                ? $" - {characterName}"
+                : $" - {characterName}（{serverDisplay}）";
         }
 
         private void RegisterLoadedCharacter(ConfigUISave loadedConfig, string filePath)
@@ -178,6 +264,48 @@ namespace UIMarkerEditor
 
             appDataStore.GetOrCreateCharacter(userID);
             RefreshCharacterList();
+        }
+
+        private void MinimizeWindow_Button_Click(object sender, RoutedEventArgs e)
+        {
+            SystemCommands.MinimizeWindow(this);
+        }
+
+        private void MaximizeRestoreWindow_Button_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleWindowMaximizeRestore();
+        }
+
+        private void CloseWindow_Button_Click(object sender, RoutedEventArgs e)
+        {
+            SystemCommands.CloseWindow(this);
+        }
+
+        private void Window_StateChanged(object? sender, EventArgs e)
+        {
+            UpdateMaximizeRestoreButton();
+        }
+
+        private void ToggleWindowMaximizeRestore()
+        {
+            if (WindowState == WindowState.Maximized)
+            {
+                SystemCommands.RestoreWindow(this);
+            }
+            else
+            {
+                SystemCommands.MaximizeWindow(this);
+            }
+        }
+
+        private void UpdateMaximizeRestoreButton()
+        {
+            if (!IsInitialized) return;
+
+            bool isMaximized = WindowState == WindowState.Maximized;
+            MaximizeIcon_Rectangle.Visibility = isMaximized ? Visibility.Collapsed : Visibility.Visible;
+            RestoreIcon_Path.Visibility = isMaximized ? Visibility.Visible : Visibility.Collapsed;
+            MaximizeRestoreWindow_Button.ToolTip = isMaximized ? "还原" : "最大化";
         }
     }
 }

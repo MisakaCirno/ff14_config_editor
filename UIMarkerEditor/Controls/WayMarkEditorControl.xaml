@@ -133,7 +133,6 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <Grid x:Name="Edit1_Grid" Grid.Row="0">
@@ -389,17 +388,6 @@
                         <TextBlock Foreground="DarkGreen" FontWeight="Bold" Text="只能在【选角界面】或【关闭游戏时】编辑标点文件！"/>
                     </StackPanel>
 
-                    <Grid Grid.Row="4">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <Button x:Name="Load_Button" Content="读取标点文件" Click="Load_Button_Click"/>
-                        <Button x:Name="Reload_Button" Content="重新加载文件" Grid.Column="1" Click="Reload_Button_Click"/>
-                        <Button x:Name="Save_Button" Content="保存标点文件" Grid.Column="2" Click="Save_Button_Click"/>
-                    </Grid>
                 </Grid>
 
                 <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>

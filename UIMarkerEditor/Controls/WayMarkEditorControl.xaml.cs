@@ -61,12 +61,6 @@ public partial class WayMarkEditorControl : UserControl
         "A2B3C4D1",
     ];
 
-    public event EventHandler? LoadRequested;
-
-    public event EventHandler? ReloadRequested;
-
-    public event EventHandler? SaveRequested;
-
     private enum CoordinateAxis
     {
         X,
@@ -117,21 +111,6 @@ public partial class WayMarkEditorControl : UserControl
         WayMark_ListBox.ItemsSource = null;
         WayMarkPreview_Control.SetWayMark(null);
         UpdateMoveButtonState();
-    }
-
-    private void Load_Button_Click(object sender, RoutedEventArgs e)
-    {
-        LoadRequested?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void Reload_Button_Click(object sender, RoutedEventArgs e)
-    {
-        ReloadRequested?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void Save_Button_Click(object sender, RoutedEventArgs e)
-    {
-        SaveRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private static T? FindVisualParent<T>(DependencyObject? source) where T : DependencyObject

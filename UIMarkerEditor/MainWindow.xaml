@@ -5,13 +5,130 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:UIMarkerEditor"
         xmlns:controls="clr-namespace:UIMarkerEditor.Controls"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
         Title="FF14 标点预设编辑工具"
         Height="600" Width="1000"
         MinHeight="600" MinWidth="850"
-        Loaded="Window_Loaded" WindowStartupLocation="CenterScreen">
+        Loaded="Window_Loaded"
+        StateChanged="Window_StateChanged"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource AppBackgroundBrush}">
+    <Window.CommandBindings>
+        <CommandBinding Command="{x:Static local:MainWindow.OpenWayMarkFileCommand}"
+                        Executed="OpenWayMarkFileCommand_Executed"/>
+        <CommandBinding Command="{x:Static local:MainWindow.ReloadWayMarkFileCommand}"
+                        Executed="ReloadWayMarkFileCommand_Executed"
+                        CanExecute="CurrentWayMarkFileCommand_CanExecute"/>
+        <CommandBinding Command="{x:Static local:MainWindow.SaveWayMarkFileCommand}"
+                        Executed="SaveWayMarkFileCommand_Executed"
+                        CanExecute="CurrentWayMarkFileCommand_CanExecute"/>
+    </Window.CommandBindings>
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="38"
+                            ResizeBorderThickness="6"
+                            GlassFrameThickness="0,38,0,0"
+                            CornerRadius="0"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <local:RegionIdToNameConverter x:Key="RegionIdToNameConverter"/>
+        <Style x:Key="TitleBarButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="#FF2D3742"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Cursor" Value="Arrow"/>
+            <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FFD6E9FA"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FFC1DBF3"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="TitleBarCloseButtonStyle" TargetType="Button" BasedOn="{StaticResource TitleBarButtonStyle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FFE81123"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FFC50F1F"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="TitleBarMenuItemStyle" TargetType="{x:Type MenuItem}">
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Margin" Value="2,5"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type MenuItem}">
+                        <Border x:Name="MenuItemBorder"
+                                Background="Transparent"
+                                CornerRadius="5">
+                            <ContentPresenter ContentSource="Header"
+                                              Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="MenuItemBorder" Property="Background" Value="#FFD6E9FA"/>
+                            </Trigger>
+                            <Trigger Property="IsSubmenuOpen" Value="True">
+                                <Setter TargetName="MenuItemBorder" Property="Background" Value="#FFC1DBF3"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="RegionClearButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
@@ -70,27 +187,160 @@
             <Setter Property="BorderBrush" Value="#FFBDBDBD"/>
         </Style>
     </Window.Resources>
-    <TabControl>
-        <TabItem Header="标点编辑">
-            <controls:WayMarkEditorControl x:Name="WayMarkEditor_Control"/>
-        </TabItem>
+    <Grid Background="{StaticResource AppBackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="38"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="24"/>
+        </Grid.RowDefinitions>
 
-        <TabItem Header="备份还原">
-            <controls:BackupRestoreControl x:Name="BackupRestore_Control"/>
-        </TabItem>
+        <Border x:Name="TitleBar_Border"
+                Grid.Row="0"
+                Background="#FFF5F8FB"
+                BorderBrush="#FFE3EAF1"
+                BorderThickness="0,0,0,1"
+                CornerRadius="0"
+                Grid.IsSharedSizeScope="True">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="TitleBarSide"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="TitleBarSide"/>
+                    </Grid.ColumnDefinitions>
 
-        <TabItem Header="角色备注">
-            <controls:CharacterProfilesControl x:Name="CharacterProfiles_Control"/>
-        </TabItem>
+                    <TextBlock x:Name="TitleTextBlock"
+                               Grid.Column="1"
+                               Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
+                               Foreground="{StaticResource AppTextBrush}"
+                               Padding="0"
+                               Margin="12,0"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               TextAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               IsHitTestVisible="False"/>
 
-        <TabItem Header="工具设置">
-            <controls:ToolSettingsControl x:Name="ToolSettings_Control"/>
-        </TabItem>
+                    <StackPanel Grid.Column="0"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center">
+                        <Image Source="Assets/Image/s_a.png"
+                               Margin="2"
+                               VerticalAlignment="Center"
+                               IsHitTestVisible="False"
+                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                        <Menu Background="Transparent"
+                              BorderThickness="0"
+                              VerticalAlignment="Center"
+                              ItemContainerStyle="{StaticResource TitleBarMenuItemStyle}"
+                              shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                            <MenuItem Header="读取"
+                                      Command="{x:Static local:MainWindow.OpenWayMarkFileCommand}"
+                                      InputGestureText="Ctrl+O"
+                                      ToolTip="读取标点文件 (Ctrl+O)"/>
+                            <MenuItem Header="保存"
+                                      Command="{x:Static local:MainWindow.SaveWayMarkFileCommand}"
+                                      InputGestureText="Ctrl+S"
+                                      ToolTip="保存标点文件 (Ctrl+S)"/>
+                            <MenuItem Header="重新加载"
+                                      Command="{x:Static local:MainWindow.ReloadWayMarkFileCommand}"
+                                      InputGestureText="Ctrl+R"
+                                      ToolTip="重新加载当前文件 (Ctrl+R)"/>
+                        </Menu>
+                    </StackPanel>
 
-        <TabItem Header="使用帮助">
-            <Grid>
-                <RichTextBox x:Name="Help_TextBox" IsReadOnly="True" AcceptsReturn="True" AcceptsTab="True"/>
-            </Grid>
-        </TabItem>
-    </TabControl>
+                    <StackPanel Grid.Column="2"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right">
+                        <Button x:Name="MinimizeWindow_Button"
+                                Style="{StaticResource TitleBarButtonStyle}"
+                                ToolTip="最小化"
+                                Click="MinimizeWindow_Button_Click">
+                            <Path Width="10"
+                                  Height="1"
+                                  Data="M 0 0 H 10"
+                                  Stretch="Fill"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1"/>
+                        </Button>
+                        <Button x:Name="MaximizeRestoreWindow_Button"
+                                Style="{StaticResource TitleBarButtonStyle}"
+                                ToolTip="最大化"
+                                Click="MaximizeRestoreWindow_Button_Click">
+                            <Grid Width="10" Height="10">
+                                <Rectangle x:Name="MaximizeIcon_Rectangle"
+                                           Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                           StrokeThickness="1"/>
+                                <Path x:Name="RestoreIcon_Path"
+                                      Data="M 3 0 H 10 V 7 M 0 3 H 7 V 10 H 0 Z"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="1"
+                                      Fill="Transparent"
+                                      Visibility="Collapsed"/>
+                            </Grid>
+                        </Button>
+                        <Button x:Name="CloseWindow_Button"
+                                Style="{StaticResource TitleBarCloseButtonStyle}"
+                                ToolTip="关闭"
+                                Click="CloseWindow_Button_Click">
+                            <Path Width="10"
+                                  Height="10"
+                                  Data="M 0 0 L 10 10 M 10 0 L 0 10"
+                                  Stretch="Fill"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TabControl Grid.Row="1">
+                <TabItem Header="标点编辑">
+                    <controls:WayMarkEditorControl x:Name="WayMarkEditor_Control"/>
+                </TabItem>
+
+                <TabItem Header="备份还原">
+                    <controls:BackupRestoreControl x:Name="BackupRestore_Control"/>
+                </TabItem>
+
+                <TabItem Header="角色备注">
+                    <controls:CharacterProfilesControl x:Name="CharacterProfiles_Control"/>
+                </TabItem>
+
+                <TabItem Header="工具设置">
+                    <controls:ToolSettingsControl x:Name="ToolSettings_Control"/>
+                </TabItem>
+
+                <TabItem Header="使用帮助">
+                    <Grid>
+                        <RichTextBox x:Name="Help_TextBox" IsReadOnly="True" AcceptsReturn="True" AcceptsTab="True"/>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+
+            <Border Grid.Row="2"
+                    Background="#FFF5F8FB"
+                    BorderBrush="#FFE3EAF1"
+                    BorderThickness="0,1,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="当前文件："
+                               Foreground="{StaticResource AppMutedTextBrush}"
+                               Padding="10,0,0,0"
+                               VerticalAlignment="Center"/>
+                    <TextBlock x:Name="CurrentFileStatus_TextBlock"
+                               Grid.Column="1"
+                               Text="未加载 UISAVE 文件"
+                               ToolTip="未加载 UISAVE 文件"
+                               Foreground="{StaticResource AppTextBrush}"
+                               Padding="0,0,10,0"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Center"
+                               TextAlignment="Left"
+                               TextTrimming="CharacterEllipsis"/>
+                </Grid>
+            </Border>
+    </Grid>
 </Window>
