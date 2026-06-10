@@ -221,7 +221,7 @@
                         </Grid>
                     </Grid>
 
-                    <TabControl Grid.Row="1">
+                    <TabControl Grid.Row="1" Margin="5">
                         <TabItem Header="标点位置">
                             <Grid x:Name="Edit2_Grid" >
                                 <Grid.Resources>
