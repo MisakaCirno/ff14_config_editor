@@ -255,6 +255,8 @@ namespace UIMarkerEditor.Controls
 
         private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
+            CloseRegionSearchIfClickedOutside(e.OriginalSource as DependencyObject);
+
             if (activeCoordinateInputTipTarget == null) return;
 
             TextBox? clickedTextBox = FindVisualParent<TextBox>(e.OriginalSource as DependencyObject);

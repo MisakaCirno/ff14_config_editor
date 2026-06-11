@@ -97,7 +97,7 @@ namespace UIMarkerEditor.Controls
         {
             regionFilterText = string.Empty;
             regionOptionsView?.Refresh();
-            RegionClear_Button.Visibility = Visibility.Visible;
+            SetRegionClearButtonVisible(true);
         }
 
         private void OpenRegionPopupAfterFocus()
@@ -118,7 +118,7 @@ namespace UIMarkerEditor.Controls
             if (IsFocusInRegionOptions(e.NewFocus as DependencyObject)) return;
 
             CommitRegionSearchText();
-            RegionClear_Button.Visibility = Visibility.Collapsed;
+            SetRegionClearButtonVisible(false);
         }
 
         private void RegionSearch_TextBox_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -253,6 +253,41 @@ namespace UIMarkerEditor.Controls
             CommitRegionSearchText();
         }
 
+        private void CloseRegionSearchIfClickedOutside(DependencyObject? clickedElement)
+        {
+            if (!RegionSearch_TextBox.IsKeyboardFocusWithin && !RegionSearch_Popup.IsOpen) return;
+            if (IsElementWithin(clickedElement, RegionSearch_Container) ||
+                IsElementWithin(clickedElement, RegionOptions_ListBox))
+            {
+                return;
+            }
+
+            CommitRegionSearchText();
+            RegionSearch_Popup.IsOpen = false;
+            SetRegionClearButtonVisible(false);
+            Keyboard.ClearFocus();
+        }
+
+        private void SetRegionClearButtonVisible(bool visible)
+        {
+            RegionClear_Button.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private static bool IsElementWithin(DependencyObject? element, DependencyObject container)
+        {
+            while (element != null)
+            {
+                if (element == container)
+                {
+                    return true;
+                }
+
+                element = VisualTreeHelper.GetParent(element);
+            }
+
+            return false;
+        }
+
         private void OpenRegionPopup()
         {
             if (!RegionSearch_TextBox.IsKeyboardFocusWithin) return;
@@ -275,6 +310,7 @@ namespace UIMarkerEditor.Controls
             regionFilterText = string.Empty;
             regionOptionsView?.Refresh();
             RegionSearch_Popup.IsOpen = false;
+            SetRegionClearButtonVisible(false);
             isSelectingRegionFromPopup = false;
         }
 

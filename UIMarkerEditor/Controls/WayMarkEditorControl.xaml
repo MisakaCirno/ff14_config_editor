@@ -47,7 +47,7 @@
             </Setter>
         </Style>
     </UserControl.Resources>
-            <Grid>
+            <Grid Background="Transparent">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -82,7 +82,18 @@
                                  Drop="WayMark_ListBox_Drop">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding RegionID, Converter={StaticResource RegionIdToNameConverter}}"/>
+                                    <TextBlock Text="{Binding RegionID, Converter={StaticResource RegionIdToNameConverter}}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{StaticResource AppTextBrush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding RegionID}" Value="0">
+                                                        <Setter Property="Foreground" Value="DarkGreen"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
@@ -149,7 +160,7 @@
                               MinHeight="26">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="22"/>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="22"/>
                             </Grid.ColumnDefinitions>
                             <Border Grid.ColumnSpan="3"
@@ -174,6 +185,7 @@
                             <Button x:Name="RegionClear_Button"
                                     Grid.Column="1"
                                     Content="×"
+                                    Width="22"
                                     Style="{StaticResource RegionClearButtonStyle}"
                                     Margin="0"
                                     Padding="0"
@@ -205,10 +217,16 @@
                                         MaxHeight="260"
                                         Width="{Binding ActualWidth, ElementName=RegionSearch_Container}">
                                     <ListBox x:Name="RegionOptions_ListBox"
-                                             DisplayMemberPath="DisplayName"
                                              PreviewKeyDown="RegionOptions_ListBox_PreviewKeyDown"
                                              PreviewMouseLeftButtonDown="RegionOptions_ListBox_PreviewMouseLeftButtonDown"
                                              PreviewMouseLeftButtonUp="RegionOptions_ListBox_PreviewMouseLeftButtonUp">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           HorizontalAlignment="Stretch"
+                                                           TextAlignment="Left"/>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
                                         <ListBox.ItemsPanel>
                                             <ItemsPanelTemplate>
                                                 <VirtualizingStackPanel />
