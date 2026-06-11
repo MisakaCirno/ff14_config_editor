@@ -86,7 +86,8 @@ public partial class ToolSettingsControl : UserControl
             {
                 MaxBackupCount = maxBackupCount,
                 MaxBackupDays = maxBackupDays,
-                AutoBackupBeforeSave = AutoBackup_CheckBox.IsChecked == true
+                AutoBackupBeforeSave = AutoBackup_CheckBox.IsChecked == true,
+                RecentFiles = [.. appDataStore.Settings.RecentFiles]
             });
             appDataStore.CleanupBackups();
             LoadSettingsIntoUi();

@@ -120,8 +120,8 @@
                         </Grid.ColumnDefinitions>
 
                         <Button x:Name="ShareWebsite_Button" Content="标点分享网站" Click="ShareWebsite_Button_Click" Grid.Column="0"/>
-                        <Button x:Name="MoveUp_Button" Content="上移选中项" Click="MoveUp_Button_Click" Grid.Column="2"/>
-                        <Button x:Name="MoveDown_Button" Content="下移选中项" Click="MoveDown_Button_Click" Grid.Column="3"/>
+                        <Button x:Name="MoveUp_Button" Content="↑" Click="MoveUp_Button_Click" Grid.Column="2"/>
+                        <Button x:Name="MoveDown_Button" Content="↓" Click="MoveDown_Button_Click" Grid.Column="3"/>
                     </Grid>
                 </Grid>
 

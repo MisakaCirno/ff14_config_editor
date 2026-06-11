@@ -1,4 +1,5 @@
 <Window x:Class="UIMarkerEditor.MainWindow"
+        x:Name="RootWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -41,7 +42,7 @@
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="#FF2D3742"/>
+            <Setter Property="Foreground" Value="#FFF7FAFC"/>
             <Setter Property="FontWeight" Value="Normal"/>
             <Setter Property="Focusable" Value="False"/>
             <Setter Property="Cursor" Value="Arrow"/>
@@ -57,10 +58,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FFD6E9FA"/>
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FF3E536B"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FFC1DBF3"/>
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FF263646"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.45"/>
@@ -99,27 +100,126 @@
             <Setter Property="MinHeight" Value="0"/>
             <Setter Property="Margin" Value="2,5"/>
             <Setter Property="Padding" Value="10,0"/>
-            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}"/>
+            <Setter Property="Foreground" Value="#FFF7FAFC"/>
             <Setter Property="FontWeight" Value="Normal"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type MenuItem}">
-                        <Border x:Name="MenuItemBorder"
-                                Background="Transparent"
-                                CornerRadius="5">
-                            <ContentPresenter ContentSource="Header"
-                                              Margin="{TemplateBinding Padding}"
-                                              HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"
-                                              RecognizesAccessKey="True"/>
-                        </Border>
+                        <Grid>
+                            <Border x:Name="MenuItemBorder"
+                                    Background="Transparent"
+                                    CornerRadius="5">
+                                <TextBlock Text="{TemplateBinding Header}"
+                                           Foreground="{TemplateBinding Foreground}"
+                                           Margin="{TemplateBinding Padding}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                   Placement="Bottom"
+                                   PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                                   PopupAnimation="Fade">
+                                <Border Background="{StaticResource AppSurfaceBrush}"
+                                        BorderBrush="{StaticResource AppBorderStrongBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        MinWidth="150"
+                                        Padding="3"
+                                        SnapsToDevicePixels="True">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                                </Border>
+                            </Popup>
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="MenuItemBorder" Property="Background" Value="#FFD6E9FA"/>
+                                <Setter TargetName="MenuItemBorder" Property="Background" Value="#FF3E536B"/>
                             </Trigger>
                             <Trigger Property="IsSubmenuOpen" Value="True">
-                                <Setter TargetName="MenuItemBorder" Property="Background" Value="#FFC1DBF3"/>
+                                <Setter TargetName="MenuItemBorder" Property="Background" Value="#FF263646"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="TitleBarSubMenuItemStyle" TargetType="{x:Type MenuItem}">
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="MinWidth" Value="145"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type MenuItem}">
+                        <Grid>
+                            <Border x:Name="MenuItemBorder"
+                                    Background="Transparent"
+                                    BorderBrush="Transparent"
+                                    BorderThickness="1"
+                                    CornerRadius="5"
+                                    Margin="1">
+                                <Grid Margin="{TemplateBinding Padding}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter ContentSource="Header"
+                                                      TextElement.Foreground="{TemplateBinding Foreground}"
+                                                      VerticalAlignment="Center"
+                                                      RecognizesAccessKey="True"/>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{TemplateBinding InputGestureText}"
+                                               Foreground="{StaticResource AppMutedTextBrush}"
+                                               Margin="24,0,0,0"
+                                               VerticalAlignment="Center"/>
+                                    <Path x:Name="SubmenuArrow"
+                                          Grid.Column="2"
+                                          Data="M 0 0 L 4 4 L 0 8 Z"
+                                          Fill="{StaticResource AppMutedTextBrush}"
+                                          Margin="12,0,0,0"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          Visibility="Collapsed"/>
+                                </Grid>
+                            </Border>
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                   Placement="Right"
+                                   PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                                   PopupAnimation="Fade">
+                                <Border Background="{StaticResource AppSurfaceBrush}"
+                                        BorderBrush="{StaticResource AppBorderStrongBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        MinWidth="180"
+                                        Padding="3"
+                                        SnapsToDevicePixels="True">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="HasItems" Value="True">
+                                <Setter TargetName="SubmenuArrow" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="MenuItemBorder" Property="Background" Value="{StaticResource MainTabItem.MouseOver.Background}"/>
+                                <Setter TargetName="MenuItemBorder" Property="BorderBrush" Value="{StaticResource MainTabItem.Selected.Border}"/>
+                            </Trigger>
+                            <Trigger Property="IsSubmenuOpen" Value="True">
+                                <Setter TargetName="MenuItemBorder" Property="Background" Value="{StaticResource MainTabItem.MouseOver.Background}"/>
+                                <Setter TargetName="MenuItemBorder" Property="BorderBrush" Value="{StaticResource MainTabItem.Selected.Border}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.45"/>
@@ -196,8 +296,8 @@
 
         <Border x:Name="TitleBar_Border"
                 Grid.Row="0"
-                Background="#FFF5F8FB"
-                BorderBrush="#FFE3EAF1"
+                Background="#FF2F4054"
+                BorderBrush="#FF243244"
                 BorderThickness="0,0,0,1"
                 CornerRadius="0"
                 Grid.IsSharedSizeScope="True">
@@ -211,7 +311,7 @@
                     <TextBlock x:Name="TitleTextBlock"
                                Grid.Column="1"
                                Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
-                               Foreground="{StaticResource AppTextBrush}"
+                               Foreground="#FFF7FAFC"
                                Padding="0"
                                Margin="12,0"
                                HorizontalAlignment="Center"
@@ -233,18 +333,34 @@
                               VerticalAlignment="Center"
                               ItemContainerStyle="{StaticResource TitleBarMenuItemStyle}"
                               shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                            <MenuItem Header="读取"
-                                      Command="{x:Static local:MainWindow.OpenWayMarkFileCommand}"
-                                      InputGestureText="Ctrl+O"
-                                      ToolTip="读取标点文件 (Ctrl+O)"/>
-                            <MenuItem Header="保存"
-                                      Command="{x:Static local:MainWindow.SaveWayMarkFileCommand}"
-                                      InputGestureText="Ctrl+S"
-                                      ToolTip="保存标点文件 (Ctrl+S)"/>
-                            <MenuItem Header="重新加载"
-                                      Command="{x:Static local:MainWindow.ReloadWayMarkFileCommand}"
-                                      InputGestureText="Ctrl+R"
-                                      ToolTip="重新加载当前文件 (Ctrl+R)"/>
+                            <MenuItem x:Name="File_MenuItem"
+                                      Header="文件"
+                                      SubmenuOpened="File_MenuItem_SubmenuOpened">
+                                <MenuItem Header="读取"
+                                          Style="{StaticResource TitleBarSubMenuItemStyle}"
+                                          Command="{x:Static local:MainWindow.OpenWayMarkFileCommand}"
+                                          CommandTarget="{Binding ElementName=RootWindow}"
+                                          InputGestureText="Ctrl+O"/>
+                                <MenuItem x:Name="RecentFiles_MenuItem"
+                                          Header="最近打开"
+                                          Style="{StaticResource TitleBarSubMenuItemStyle}"/>
+                                <Separator/>
+                                <MenuItem Header="保存"
+                                          Style="{StaticResource TitleBarSubMenuItemStyle}"
+                                          Command="{x:Static local:MainWindow.SaveWayMarkFileCommand}"
+                                          CommandTarget="{Binding ElementName=RootWindow}"
+                                          InputGestureText="Ctrl+S"/>
+                                <MenuItem Header="重新加载"
+                                          Style="{StaticResource TitleBarSubMenuItemStyle}"
+                                          Command="{x:Static local:MainWindow.ReloadWayMarkFileCommand}"
+                                          CommandTarget="{Binding ElementName=RootWindow}"
+                                          InputGestureText="Ctrl+R"/>
+                                <Separator/>
+                                <MenuItem Header="退出"
+                                          Style="{StaticResource TitleBarSubMenuItemStyle}"
+                                          InputGestureText="Alt+F4"
+                                          Click="ExitMenuItem_Click"/>
+                            </MenuItem>
                         </Menu>
                     </StackPanel>
 
@@ -293,7 +409,9 @@
                 </Grid>
             </Border>
 
-            <TabControl Grid.Row="1">
+            <TabControl Grid.Row="1"
+                        ItemContainerStyle="{StaticResource MainTabItemStyle}"
+                        Style="{StaticResource MainTabControlStyle}">
                 <TabItem Header="标点编辑">
                     <controls:WayMarkEditorControl x:Name="WayMarkEditor_Control"/>
                 </TabItem>
@@ -318,8 +436,8 @@
             </TabControl>
 
             <Border Grid.Row="2"
-                    Background="#FFF5F8FB"
-                    BorderBrush="#FFE3EAF1"
+                    Background="#FFEEF4F7"
+                    BorderBrush="#FFD7E4EA"
                     BorderThickness="0,1,0,0">
                 <Grid>
                     <Grid.ColumnDefinitions>

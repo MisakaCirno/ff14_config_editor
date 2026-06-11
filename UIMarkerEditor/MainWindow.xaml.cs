@@ -64,6 +64,7 @@ namespace UIMarkerEditor
             InitializeComponent();
             Title = DefaultWindowTitle;
             UpdateMaximizeRestoreButton();
+            RefreshRecentFileMenu();
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -128,6 +129,38 @@ namespace UIMarkerEditor
             SaveWayMarkFile();
         }
 
+        private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            SystemCommands.CloseWindow(this);
+        }
+
+        private void File_MenuItem_SubmenuOpened(object sender, RoutedEventArgs e)
+        {
+            CommandManager.InvalidateRequerySuggested();
+            RefreshRecentFileMenu();
+        }
+
+        private void RecentFile_MenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem { Tag: string filePath }) return;
+
+            if (!File.Exists(filePath))
+            {
+                MessageBox.Show(this, "这个最近文件已经不存在。", "最近打开", MessageBoxButton.OK, MessageBoxImage.Information);
+                RefreshRecentFileMenu();
+                return;
+            }
+
+            currentFilePath = filePath;
+            LoadConfigFile(currentFilePath);
+        }
+
+        private void ClearRecentFiles_MenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            appDataStore.ClearRecentFiles();
+            RefreshRecentFileMenu();
+        }
+
         private void CurrentWayMarkFileCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
             e.CanExecute = HasLoadedWayMarkFile();
@@ -190,6 +223,8 @@ namespace UIMarkerEditor
             {
                 RegisterLoadedCharacter(configUISave, filePath);
                 UpdateCurrentFileStatus(filePath);
+                appDataStore.AddRecentFile(filePath);
+                RefreshRecentFileMenu();
                 List<WayMark> markerSection = configUISave.Marks.WayMarks;
 
                 WayMarkEditor_Control.SetWayMarks(markerSection);
@@ -218,7 +253,7 @@ namespace UIMarkerEditor
         private void UpdateCurrentFileStatus(string filePath)
         {
             string fullPath = System.IO.Path.GetFullPath(filePath);
-            string displayText = fullPath + CreateCharacterStatusSuffix(filePath);
+            string displayText = BuildFileDisplayText(fullPath);
             CurrentFileStatus_TextBlock.Text = displayText;
             CurrentFileStatus_TextBlock.ToolTip = displayText;
         }
@@ -230,17 +265,79 @@ namespace UIMarkerEditor
             CurrentFileStatus_TextBlock.ToolTip = displayText;
         }
 
-        private string CreateCharacterStatusSuffix(string filePath)
+        private void RefreshRecentFileMenu()
         {
-            string? folderUserID = AppDataStore.GetUserIDFromCharacterFolder(filePath);
-            if (string.IsNullOrWhiteSpace(folderUserID)) return string.Empty;
+            RecentFiles_MenuItem.Items.Clear();
+            Style subMenuItemStyle = (Style)FindResource("TitleBarSubMenuItemStyle");
+            List<string> recentFiles = appDataStore.GetRecentFiles();
 
+            RecentFiles_MenuItem.IsEnabled = true;
+            if (recentFiles.Count == 0)
+            {
+                RecentFiles_MenuItem.Items.Add(new MenuItem
+                {
+                    Header = "暂无最近文件",
+                    IsEnabled = false,
+                    Style = subMenuItemStyle
+                });
+                return;
+            }
+
+            foreach (string filePath in recentFiles)
+            {
+                bool exists = File.Exists(filePath);
+                RecentFiles_MenuItem.Items.Add(new MenuItem
+                {
+                    Header = BuildRecentFileDisplayName(filePath, exists),
+                    ToolTip = exists ? filePath : $"{filePath}\n文件不存在",
+                    Tag = filePath,
+                    IsEnabled = exists,
+                    Style = subMenuItemStyle
+                });
+
+                if (RecentFiles_MenuItem.Items[^1] is MenuItem item)
+                {
+                    item.Click += RecentFile_MenuItem_Click;
+                }
+            }
+
+            RecentFiles_MenuItem.Items.Add(new Separator());
+            RecentFiles_MenuItem.Items.Add(new MenuItem
+            {
+                Header = "清空最近记录",
+                Style = subMenuItemStyle
+            });
+
+            if (RecentFiles_MenuItem.Items[^1] is MenuItem clearItem)
+            {
+                clearItem.Click += ClearRecentFiles_MenuItem_Click;
+            }
+        }
+
+        private string BuildRecentFileDisplayName(string filePath, bool fileExists)
+        {
+            string displayName = BuildFileDisplayText(filePath);
+
+            return fileExists ? displayName : $"{displayName}（文件不存在）";
+        }
+
+        private string BuildFileDisplayText(string filePath)
+        {
+            string fullPath = System.IO.Path.GetFullPath(filePath);
+            string? folderUserID = AppDataStore.GetUserIDFromCharacterFolder(fullPath);
+            if (string.IsNullOrWhiteSpace(folderUserID)) return fullPath;
+
+            string characterName = BuildCharacterCompactName(folderUserID);
+            return string.Equals(characterName, folderUserID, StringComparison.OrdinalIgnoreCase)
+                ? fullPath
+                : $"{characterName} - {fullPath}";
+        }
+
+        private string BuildCharacterCompactName(string userID)
+        {
             CharacterProfile? profile = appDataStore.Characters.FirstOrDefault(character =>
-                string.Equals(character.UserID, folderUserID, StringComparison.OrdinalIgnoreCase));
-            if (profile == null) return string.Empty;
-
-            string characterName = profile.CharacterName.Trim();
-            if (string.IsNullOrWhiteSpace(characterName)) return string.Empty;
+                string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase));
+            if (profile == null || string.IsNullOrWhiteSpace(profile.CharacterName)) return userID;
 
             string dataCenter = profile.DataCenter.Trim();
             string world = profile.World.Trim();
@@ -251,8 +348,8 @@ namespace UIMarkerEditor
                 .Where(value => !string.IsNullOrWhiteSpace(value)));
 
             return string.IsNullOrWhiteSpace(serverDisplay)
-                ? $" - {characterName}"
-                : $" - {characterName}（{serverDisplay}）";
+                ? profile.CharacterName
+                : $"{profile.CharacterName}（{serverDisplay}）";
         }
 
         private void RegisterLoadedCharacter(ConfigUISave loadedConfig, string filePath)

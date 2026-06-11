@@ -7,12 +7,12 @@
     <SolidColorBrush x:Key="AppBorderStrongBrush" Color="#FFC8C8C8"/>
     <SolidColorBrush x:Key="AppTextBrush" Color="#FF1F1F1F"/>
     <SolidColorBrush x:Key="AppMutedTextBrush" Color="#FF666666"/>
-    <SolidColorBrush x:Key="AppAccentBrush" Color="#FF0067C0"/>
-    <SolidColorBrush x:Key="AppAccentHoverBrush" Color="#FF0B74D1"/>
-    <SolidColorBrush x:Key="AppAccentPressedBrush" Color="#FF005BA8"/>
+    <SolidColorBrush x:Key="AppAccentBrush" Color="#FF355C73"/>
+    <SolidColorBrush x:Key="AppAccentHoverBrush" Color="#FF466F89"/>
+    <SolidColorBrush x:Key="AppAccentPressedBrush" Color="#FF263646"/>
     <SolidColorBrush x:Key="AppControlHoverBrush" Color="#FFF2F2F2"/>
     <SolidColorBrush x:Key="AppControlPressedBrush" Color="#FFE8E8E8"/>
-    <SolidColorBrush x:Key="AppSelectionBrush" Color="#FFC8E2FF"/>
+    <SolidColorBrush x:Key="AppSelectionBrush" Color="#FFC8DDEA"/>
 
     <Style TargetType="Window">
         <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}"/>
