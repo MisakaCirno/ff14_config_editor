@@ -8,26 +8,34 @@ namespace UIMarkerEditor.Controls;
 
 public partial class ToolSettingsControl : UserControl
 {
+    private static readonly TimeSpan ManualRefreshCooldown = TimeSpan.FromMinutes(5);
     private AppDataStore? appDataStore;
     private Window? ownerWindow;
     private Action refreshBackupList = () => { };
     private Action refreshCharacterList = () => { };
+    private Action refreshServerListConsumers = () => { };
+    private Action refreshMapDataConsumers = () => { };
 
     public ToolSettingsControl()
     {
         InitializeComponent();
+        SettingsNavigation_ListBox.SelectedIndex = 0;
     }
 
     public void Initialize(
         AppDataStore appDataStore,
         Window ownerWindow,
         Action refreshBackupList,
-        Action refreshCharacterList)
+        Action refreshCharacterList,
+        Action refreshServerListConsumers,
+        Action refreshMapDataConsumers)
     {
         this.appDataStore = appDataStore;
         this.ownerWindow = ownerWindow;
         this.refreshBackupList = refreshBackupList;
         this.refreshCharacterList = refreshCharacterList;
+        this.refreshServerListConsumers = refreshServerListConsumers;
+        this.refreshMapDataConsumers = refreshMapDataConsumers;
     }
 
     public void LoadSettingsIntoUi()
@@ -38,6 +46,23 @@ public partial class ToolSettingsControl : UserControl
         MaxBackupCount_TextBox.Text = appDataStore.Settings.MaxBackupCount.ToString(CultureInfo.InvariantCulture);
         MaxBackupDays_TextBox.Text = appDataStore.Settings.MaxBackupDays.ToString(CultureInfo.InvariantCulture);
         AutoBackup_CheckBox.IsChecked = appDataStore.Settings.AutoBackupBeforeSave;
+        LimitBackupCount_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCount;
+        LimitBackupDays_CheckBox.IsChecked = appDataStore.Settings.LimitBackupDays;
+        UpdateBackupLimitInputState();
+        RefreshStatusFields();
+    }
+
+    public void RefreshOnlineDataStatus()
+    {
+        RefreshStatusFields();
+    }
+
+    private void SettingsNavigation_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (SettingsNavigation_ListBox.SelectedItem is not ListBoxItem { Tag: string sectionName }) return;
+        if (FindName(sectionName) is not FrameworkElement section) return;
+
+        section.BringIntoView();
     }
 
     private void BrowseDataDirectory_Button_Click(object sender, RoutedEventArgs e)
@@ -56,12 +81,21 @@ public partial class ToolSettingsControl : UserControl
         }
     }
 
+    private void BackupLimit_CheckChanged(object sender, RoutedEventArgs e)
+    {
+        UpdateBackupLimitInputState();
+    }
+
     private void SaveSettings_Button_Click(object sender, RoutedEventArgs e)
     {
         if (appDataStore == null) return;
 
-        if (!TryReadPositiveInt(MaxBackupCount_TextBox, "最多保留备份数量", out int maxBackupCount) ||
-            !TryReadPositiveInt(MaxBackupDays_TextBox, "最多保留天数", out int maxBackupDays))
+        bool limitBackupCount = LimitBackupCount_CheckBox.IsChecked == true;
+        bool limitBackupDays = LimitBackupDays_CheckBox.IsChecked == true;
+        int maxBackupCount = appDataStore.Settings.MaxBackupCount;
+        int maxBackupDays = appDataStore.Settings.MaxBackupDays;
+        if ((limitBackupCount && !TryReadPositiveInt(MaxBackupCount_TextBox, "最多保留备份数量", out maxBackupCount)) ||
+            (limitBackupDays && !TryReadPositiveInt(MaxBackupDays_TextBox, "最多保留天数", out maxBackupDays)))
         {
             return;
         }
@@ -84,9 +118,13 @@ public partial class ToolSettingsControl : UserControl
 
             appDataStore.SaveSettings(new AppSettings
             {
-                MaxBackupCount = maxBackupCount,
-                MaxBackupDays = maxBackupDays,
+                MaxBackupCount = limitBackupCount ? maxBackupCount : appDataStore.Settings.MaxBackupCount,
+                MaxBackupDays = limitBackupDays ? maxBackupDays : appDataStore.Settings.MaxBackupDays,
+                LimitBackupCount = limitBackupCount,
+                LimitBackupDays = limitBackupDays,
                 AutoBackupBeforeSave = AutoBackup_CheckBox.IsChecked == true,
+                LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
+                WindowLayout = appDataStore.Settings.WindowLayout,
                 RecentFiles = [.. appDataStore.Settings.RecentFiles]
             });
             appDataStore.CleanupBackups();
@@ -113,6 +151,152 @@ public partial class ToolSettingsControl : UserControl
         if (appDataStore == null) return;
 
         OpenDirectory(appDataStore.DataDirectory);
+    }
+
+    private async void RefreshMapData_Button_Click(object sender, RoutedEventArgs e)
+    {
+        if (appDataStore == null) return;
+        if (!CanStartManualRefresh(appDataStore.Settings.LastMapDataManualRefreshAttempt, out TimeSpan waitTime))
+        {
+            ShowRefreshCooldownMessage("地图数据", waitTime);
+            return;
+        }
+
+        SetManualRefreshButtonsEnabled(false);
+        DateTime attemptTime = DateTime.Now;
+        try
+        {
+            SaveSettingsPreservingEditableValues(settings =>
+            {
+                settings.LastMapDataManualRefreshAttempt = attemptTime;
+            });
+
+            MapDataLoadResult result = await appDataStore.ForceRefreshMapDataAsync();
+            RefreshStatusFields();
+            if (!result.Success)
+            {
+                MessageBox.Show(ownerWindow, "地图数据刷新失败，请稍后再试。", "在线数据缓存", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            refreshMapDataConsumers();
+            string versionText = string.IsNullOrWhiteSpace(result.Version) ? "未知版本" : result.Version;
+            MessageBox.Show(ownerWindow, $"地图数据已刷新到：{versionText}", "在线数据缓存", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        finally
+        {
+            SetManualRefreshButtonsEnabled(true);
+            RefreshStatusFields();
+        }
+    }
+
+    private async void RefreshServerList_Button_Click(object sender, RoutedEventArgs e)
+    {
+        if (appDataStore == null) return;
+        if (!CanStartManualRefresh(appDataStore.ServerList.LastSyncAttempt, out TimeSpan waitTime))
+        {
+            ShowRefreshCooldownMessage("服务器列表", waitTime);
+            return;
+        }
+
+        SetManualRefreshButtonsEnabled(false);
+        try
+        {
+            bool success = await appDataStore.TrySyncServerListAsync();
+            RefreshStatusFields();
+            if (!success)
+            {
+                MessageBox.Show(ownerWindow, "服务器列表刷新失败，已继续使用本地缓存。", "在线数据缓存", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            refreshServerListConsumers();
+            MessageBox.Show(ownerWindow, "服务器列表已刷新。", "在线数据缓存", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        finally
+        {
+            SetManualRefreshButtonsEnabled(true);
+            RefreshStatusFields();
+        }
+    }
+
+    private void RefreshStatusFields()
+    {
+        if (appDataStore == null) return;
+
+        MapDataVersion_TextBox.Text = string.IsNullOrWhiteSpace(appDataStore.MapDataVersion)
+            ? "未加载"
+            : appDataStore.MapDataVersion;
+
+        int dataCenterCount = appDataStore.ServerList.Groups.Count;
+        int worldCount = appDataStore.ServerList.Groups.Sum(group => group.Worlds.Count);
+        ServerListStatus_TextBox.Text = $"{dataCenterCount} 个大区，{worldCount} 个服务器";
+        MapDataRefreshStatus_TextBox.Text = FormatOptionalTime(appDataStore.Settings.LastMapDataManualRefreshAttempt);
+        ServerListSyncAttempt_TextBox.Text = FormatOptionalTime(appDataStore.ServerList.LastSyncAttempt);
+        ServerListSource_TextBox.Text = string.IsNullOrWhiteSpace(appDataStore.ServerList.SourceUrl)
+            ? "未知"
+            : appDataStore.ServerList.SourceUrl;
+    }
+
+    private void UpdateBackupLimitInputState()
+    {
+        MaxBackupCount_TextBox.IsEnabled = LimitBackupCount_CheckBox.IsChecked == true;
+        MaxBackupDays_TextBox.IsEnabled = LimitBackupDays_CheckBox.IsChecked == true;
+    }
+
+    private bool CanStartManualRefresh(DateTime lastAttempt, out TimeSpan waitTime)
+    {
+        waitTime = TimeSpan.Zero;
+        if (lastAttempt == DateTime.MinValue) return true;
+
+        TimeSpan elapsed = DateTime.Now - lastAttempt;
+        if (elapsed >= ManualRefreshCooldown) return true;
+
+        waitTime = ManualRefreshCooldown - elapsed;
+        return false;
+    }
+
+    private void ShowRefreshCooldownMessage(string dataName, TimeSpan waitTime)
+    {
+        int waitSeconds = Math.Max(1, (int)Math.Ceiling(waitTime.TotalSeconds));
+        MessageBox.Show(
+            ownerWindow,
+            $"{dataName}刚刚刷新过，请约 {waitSeconds} 秒后再试。",
+            "刷新过于频繁",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
+    private void SetManualRefreshButtonsEnabled(bool isEnabled)
+    {
+        RefreshMapData_Button.IsEnabled = isEnabled;
+        RefreshServerList_Button.IsEnabled = isEnabled;
+    }
+
+    private void SaveSettingsPreservingEditableValues(Action<AppSettings> updateSettings)
+    {
+        if (appDataStore == null) return;
+
+        AppSettings settings = new()
+        {
+            MaxBackupCount = appDataStore.Settings.MaxBackupCount,
+            MaxBackupDays = appDataStore.Settings.MaxBackupDays,
+            LimitBackupCount = appDataStore.Settings.LimitBackupCount,
+            LimitBackupDays = appDataStore.Settings.LimitBackupDays,
+            AutoBackupBeforeSave = appDataStore.Settings.AutoBackupBeforeSave,
+            LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
+            WindowLayout = appDataStore.Settings.WindowLayout,
+            RecentFiles = [.. appDataStore.Settings.RecentFiles]
+        };
+        updateSettings(settings);
+        appDataStore.SaveSettings(settings);
+    }
+
+    private static string FormatOptionalTime(DateTime value)
+    {
+        return value == DateTime.MinValue
+            ? "尚未刷新"
+            : value.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture);
     }
 
     private void TryReadPositiveIntFailed(string displayName)

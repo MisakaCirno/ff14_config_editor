@@ -90,7 +90,7 @@ public sealed partial class AppDataStore
             .Where(directory => !string.IsNullOrWhiteSpace(directory))
             .Select(NormalizeDirectoryPath)];
 
-        if (Settings.MaxBackupDays > 0)
+        if (Settings.LimitBackupDays && Settings.MaxBackupDays > 0)
         {
             DateTime cutoff = DateTime.Now.AddDays(-Settings.MaxBackupDays);
             foreach (BackupMetadata backup in backups.Where(b =>
@@ -101,7 +101,7 @@ public sealed partial class AppDataStore
             }
         }
 
-        if (Settings.MaxBackupCount > 0)
+        if (Settings.LimitBackupCount && Settings.MaxBackupCount > 0)
         {
             foreach (BackupMetadata backup in backups
                 .Where(b => !preservedDirectories.Contains(NormalizeDirectoryPath(b.BackupDirectory)))

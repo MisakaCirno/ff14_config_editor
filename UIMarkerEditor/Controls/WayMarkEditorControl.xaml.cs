@@ -96,6 +96,16 @@ public partial class WayMarkEditorControl : UserControl
         DataVersion_TextBlock.Text = $"当前版本：{versionText}";
     }
 
+    public void RefreshMapDataDisplay()
+    {
+        RefreshRegionOptions(wayMarks?.Select(mark => mark.RegionID));
+        WayMark_ListBox.Items.Refresh();
+        if (currentWayMark != null)
+        {
+            SetRegionSearchText(currentWayMark.RegionID);
+        }
+    }
+
     public void SetWayMarks(List<WayMark> markerSection)
     {
         wayMarks = markerSection;

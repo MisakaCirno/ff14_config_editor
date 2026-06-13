@@ -13,8 +13,26 @@ public sealed class AppSettings
 {
     public int MaxBackupCount { get; set; } = 100;
     public int MaxBackupDays { get; set; } = 90;
+    public bool LimitBackupCount { get; set; } = true;
+    public bool LimitBackupDays { get; set; } = true;
     public bool AutoBackupBeforeSave { get; set; } = true;
+    public DateTime LastMapDataManualRefreshAttempt { get; set; } = DateTime.MinValue;
+    public WindowLayoutSettings WindowLayout { get; set; } = new();
     public List<string> RecentFiles { get; set; } = [];
+}
+
+public sealed class WindowLayoutSettings
+{
+    public double Left { get; set; } = double.NaN;
+    public double Top { get; set; } = double.NaN;
+    public double Width { get; set; } = double.NaN;
+    public double Height { get; set; } = double.NaN;
+    public string WindowState { get; set; } = nameof(System.Windows.WindowState.Normal);
+    public double WayMarkListRatio { get; set; } = 1d / 3d;
+    public double WayMarkEditorRatio { get; set; } = 1d / 3d;
+    public double WayMarkPreviewRatio { get; set; } = 1d / 3d;
+    public double BackupListRatio { get; set; } = 0.4;
+    public double CharacterListRatio { get; set; } = 0.4;
 }
 
 public sealed class CharacterProfile

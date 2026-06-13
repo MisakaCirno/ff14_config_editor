@@ -90,7 +90,7 @@ public partial class CharacterProfilesControl : UserControl
         return true;
     }
 
-    private void RefreshServerPicker()
+    public void RefreshServerPicker()
     {
         if (appDataStore == null) return;
 

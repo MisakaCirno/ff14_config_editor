@@ -15,6 +15,16 @@ public sealed partial class AppDataStore
 {
     public async Task<MapDataLoadResult> EnsureMapDataAvailableAsync()
     {
+        return await LoadMapDataAsync(forceRefresh: false);
+    }
+
+    public async Task<MapDataLoadResult> ForceRefreshMapDataAsync()
+    {
+        return await LoadMapDataAsync(forceRefresh: true);
+    }
+
+    private async Task<MapDataLoadResult> LoadMapDataAsync(bool forceRefresh)
+    {
         try
         {
             using HttpClient httpClient = new()
@@ -25,7 +35,8 @@ public sealed partial class AppDataStore
             string remoteVersionContent = await GetUtf8StringAsync(httpClient, MapDataVersionUrl);
             string remoteVersion = ParseMapDataVersion(remoteVersionContent);
             string localVersion = ReadMapDataVersion();
-            if (File.Exists(MapDataInstanceFilePath) &&
+            if (!forceRefresh &&
+                File.Exists(MapDataInstanceFilePath) &&
                 !string.IsNullOrWhiteSpace(remoteVersion) &&
                 string.Equals(remoteVersion, localVersion, StringComparison.OrdinalIgnoreCase))
             {

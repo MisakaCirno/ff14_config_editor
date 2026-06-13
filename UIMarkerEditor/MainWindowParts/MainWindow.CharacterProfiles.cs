@@ -7,9 +7,10 @@ namespace UIMarkerEditor
             CharacterProfiles_Control.RefreshCharacterList();
         }
 
-        private Task SyncServerListIfNeededAsync()
+        private async Task SyncServerListIfNeededAsync()
         {
-            return CharacterProfiles_Control.SyncServerListIfNeededAsync();
+            await CharacterProfiles_Control.SyncServerListIfNeededAsync();
+            ToolSettings_Control.RefreshOnlineDataStatus();
         }
 
         private bool ConfirmSaveOrDiscardCharacterChanges()
