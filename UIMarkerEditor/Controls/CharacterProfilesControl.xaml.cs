@@ -50,6 +50,26 @@ public partial class CharacterProfilesControl : UserControl
         }
     }
 
+    public void ApplyLayoutSettings(WindowLayoutSettings layout)
+    {
+        double listRatio = ClampRatio(layout.CharacterListRatio);
+        CharacterList_Column.Width = new GridLength(listRatio, GridUnitType.Star);
+        CharacterDetail_Column.Width = new GridLength(1 - listRatio, GridUnitType.Star);
+    }
+
+    public void CaptureLayoutSettings(WindowLayoutSettings layout)
+    {
+        double totalWidth = CharacterList_Column.ActualWidth + CharacterDetail_Column.ActualWidth;
+        if (totalWidth <= 1) return;
+
+        layout.CharacterListRatio = CharacterList_Column.ActualWidth / totalWidth;
+    }
+
+    private static double ClampRatio(double value)
+    {
+        return double.IsFinite(value) ? Math.Clamp(value, 0.15, 0.85) : 0.4;
+    }
+
     public async Task SyncServerListIfNeededAsync()
     {
         if (appDataStore == null) return;

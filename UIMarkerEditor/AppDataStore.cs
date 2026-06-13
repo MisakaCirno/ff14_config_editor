@@ -184,6 +184,7 @@ public sealed partial class AppDataStore
     private void LoadSettings()
     {
         Settings = ReadJson<AppSettings>(SettingsFilePath) ?? new AppSettings();
+        Settings.WindowLayout ??= new WindowLayoutSettings();
     }
 
     private void LoadCharacters()

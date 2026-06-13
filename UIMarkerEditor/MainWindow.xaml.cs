@@ -63,6 +63,7 @@ namespace UIMarkerEditor
             this.appDataStore = appDataStore;
             InitializeComponent();
             Title = DefaultWindowTitle;
+            ApplySavedLayoutSettings();
             UpdateMaximizeRestoreButton();
             RefreshRecentFileMenu();
         }

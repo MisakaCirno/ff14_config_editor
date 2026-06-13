@@ -123,6 +123,34 @@ public partial class WayMarkEditorControl : UserControl
         UpdateMoveButtonState();
     }
 
+    public void ApplyLayoutSettings(WindowLayoutSettings layout)
+    {
+        double listRatio = ClampRatio(layout.WayMarkListRatio);
+        double editorRatio = ClampRatio(layout.WayMarkEditorRatio);
+        double previewRatio = ClampRatio(layout.WayMarkPreviewRatio);
+        double total = listRatio + editorRatio + previewRatio;
+        if (total <= 0) return;
+
+        WayMarkList_Column.Width = new GridLength(listRatio / total, GridUnitType.Star);
+        WayMarkEditor_Column.Width = new GridLength(editorRatio / total, GridUnitType.Star);
+        WayMarkPreview_Column.Width = new GridLength(previewRatio / total, GridUnitType.Star);
+    }
+
+    public void CaptureLayoutSettings(WindowLayoutSettings layout)
+    {
+        double totalWidth = WayMarkList_Column.ActualWidth + WayMarkEditor_Column.ActualWidth + WayMarkPreview_Column.ActualWidth;
+        if (totalWidth <= 1) return;
+
+        layout.WayMarkListRatio = WayMarkList_Column.ActualWidth / totalWidth;
+        layout.WayMarkEditorRatio = WayMarkEditor_Column.ActualWidth / totalWidth;
+        layout.WayMarkPreviewRatio = WayMarkPreview_Column.ActualWidth / totalWidth;
+    }
+
+    private static double ClampRatio(double value)
+    {
+        return double.IsFinite(value) && value > 0.05 ? value : 0.05;
+    }
+
     private static T? FindVisualParent<T>(DependencyObject? source) where T : DependencyObject
     {
         while (source != null)

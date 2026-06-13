@@ -55,6 +55,26 @@ public partial class BackupRestoreControl : UserControl
         UpdateBackupDetail(null);
     }
 
+    public void ApplyLayoutSettings(WindowLayoutSettings layout)
+    {
+        double listRatio = ClampRatio(layout.BackupListRatio);
+        BackupList_Column.Width = new GridLength(listRatio, GridUnitType.Star);
+        BackupDetail_Column.Width = new GridLength(1 - listRatio, GridUnitType.Star);
+    }
+
+    public void CaptureLayoutSettings(WindowLayoutSettings layout)
+    {
+        double totalWidth = BackupList_Column.ActualWidth + BackupDetail_Column.ActualWidth;
+        if (totalWidth <= 1) return;
+
+        layout.BackupListRatio = BackupList_Column.ActualWidth / totalWidth;
+    }
+
+    private static double ClampRatio(double value)
+    {
+        return double.IsFinite(value) ? Math.Clamp(value, 0.15, 0.85) : 0.4;
+    }
+
     private void FillBackupDisplayFields(BackupMetadata backup)
     {
         if (appDataStore == null) return;

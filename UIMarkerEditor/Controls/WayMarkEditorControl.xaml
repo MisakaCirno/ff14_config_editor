@@ -47,13 +47,13 @@
             </Setter>
         </Style>
     </UserControl.Resources>
-            <Grid Background="Transparent">
+            <Grid x:Name="WayMarkRoot_Grid" Background="Transparent">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition x:Name="WayMarkList_Column" Width="*"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition x:Name="WayMarkEditor_Column" Width="*"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition x:Name="WayMarkPreview_Column" Width="*"/>
                 </Grid.ColumnDefinitions>
 
                 <Grid>
