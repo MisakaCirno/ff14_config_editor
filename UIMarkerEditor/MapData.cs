@@ -22,6 +22,11 @@ public class MapData
         return result;
     }
 
+    public static IReadOnlySet<ushort> GetKnownMapIds()
+    {
+        return indexToName.Keys.ToHashSet();
+    }
+
     public static IEnumerable<MapData> CachedDisplayDictValues => GetMapDataDisplayDict().Values;
 
     public static bool HasData => indexToName.Count > 0;

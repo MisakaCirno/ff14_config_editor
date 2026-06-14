@@ -70,11 +70,5 @@ namespace UIMarkerEditor.Controls
             }
         }
 
-        private static string FormatCoordinate(float value)
-        {
-            // 四舍五入保留最多四位小数
-            return Math.Round(value, 4).ToString("F4");
-        }
-
     }
 }

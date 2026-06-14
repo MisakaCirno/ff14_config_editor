@@ -45,18 +45,22 @@ namespace UIMarkerEditor.Controls
                     return;
                 }
 
-                if (!TryCreateValidatedImport(markerShare, out ImportedMarker importedMarker, out string validationError))
+                if (!MarkerShareConverter.TryCreateValidatedImport(
+                    markerShare,
+                    MapData.GetKnownMapIds(),
+                    out ValidatedMarkerShare importedMarker,
+                    out string validationError))
                 {
                     MessageBox.Show(validationError, "导入数据无效", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
-                // Update currentMark only after all imported data has been validated.
+                // 所有导入数据校验通过后，再修改当前标点槽位。
                 currentMark.RegionID = importedMarker.RegionID;
                 RefreshRegionOptions(GetLoadedRegionIds());
                 SetRegionSearchText(currentMark.RegionID);
 
-                static void UpdatePoint(WayMarkPoint point, ImportedMarkerPoint importedPoint, Action<bool> setEnabled)
+                static void UpdatePoint(WayMarkPoint point, ValidatedMarkerSharePoint importedPoint, Action<bool> setEnabled)
                 {
                     point.X = importedPoint.RawX;
                     point.Y = importedPoint.RawY;
@@ -73,7 +77,7 @@ namespace UIMarkerEditor.Controls
                 UpdatePoint(currentMark.Three, importedMarker.Three, val => currentMark.ThreeEnabled = val);
                 UpdatePoint(currentMark.Four, importedMarker.Four, val => currentMark.FourEnabled = val);
 
-                // Update timestamp
+                // 更新时间戳。
                 currentMark.timestamp = (int)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
 
                 // 强制更新UI（如果需要）
@@ -87,124 +91,6 @@ namespace UIMarkerEditor.Controls
             }
         }
 
-        private static bool TryCreateValidatedImport(MarkerShare markerShare, out ImportedMarker importedMarker, out string errorMessage)
-        {
-            importedMarker = default;
-            errorMessage = string.Empty;
-
-            if (!markerShare.MapID.HasValue)
-            {
-                errorMessage = "缺少地图 ID。";
-                return false;
-            }
-
-            int mapID = markerShare.MapID.Value;
-            if (mapID < ushort.MinValue || mapID > ushort.MaxValue)
-            {
-                errorMessage = $"地图 ID 超出可保存范围：{mapID}。";
-                return false;
-            }
-
-            if (!TryCreateImportedPoint("A", markerShare.A, out ImportedMarkerPoint a, out errorMessage) ||
-                !TryCreateImportedPoint("B", markerShare.B, out ImportedMarkerPoint b, out errorMessage) ||
-                !TryCreateImportedPoint("C", markerShare.C, out ImportedMarkerPoint c, out errorMessage) ||
-                !TryCreateImportedPoint("D", markerShare.D, out ImportedMarkerPoint d, out errorMessage) ||
-                !TryCreateImportedPoint("1", markerShare.One, out ImportedMarkerPoint one, out errorMessage) ||
-                !TryCreateImportedPoint("2", markerShare.Two, out ImportedMarkerPoint two, out errorMessage) ||
-                !TryCreateImportedPoint("3", markerShare.Three, out ImportedMarkerPoint three, out errorMessage) ||
-                !TryCreateImportedPoint("4", markerShare.Four, out ImportedMarkerPoint four, out errorMessage))
-            {
-                return false;
-            }
-
-            importedMarker = new ImportedMarker(
-                (ushort)mapID,
-                a,
-                b,
-                c,
-                d,
-                one,
-                two,
-                three,
-                four);
-            return true;
-        }
-
-        private static bool TryCreateImportedPoint(
-            string pointName,
-            MarkerSharePoint? sharePoint,
-            out ImportedMarkerPoint importedPoint,
-            out string errorMessage)
-        {
-            importedPoint = default;
-            errorMessage = string.Empty;
-            if (sharePoint == null)
-            {
-                errorMessage = $"缺少 {pointName} 点数据。";
-                return false;
-            }
-
-            if (!TryConvertImportedCoordinate(pointName, "X", sharePoint.X, out int rawX, out errorMessage) ||
-                !TryConvertImportedCoordinate(pointName, "Y", sharePoint.Y, out int rawY, out errorMessage) ||
-                !TryConvertImportedCoordinate(pointName, "Z", sharePoint.Z, out int rawZ, out errorMessage))
-            {
-                return false;
-            }
-
-            importedPoint = new ImportedMarkerPoint(rawX, rawY, rawZ, sharePoint.Active);
-            return true;
-        }
-
-        private static bool TryConvertImportedCoordinate(
-            string pointName,
-            string axisName,
-            double value,
-            out int rawCoordinate,
-            out string errorMessage)
-        {
-            rawCoordinate = 0;
-            errorMessage = string.Empty;
-            if (!double.IsFinite(value))
-            {
-                errorMessage = $"{pointName} 点 {axisName} 坐标不是有效数字。";
-                return false;
-            }
-
-            decimal decimalValue;
-            try
-            {
-                decimalValue = (decimal)value;
-            }
-            catch (OverflowException)
-            {
-                errorMessage = $"{pointName} 点 {axisName} 坐标超出可保存范围：{value}。";
-                return false;
-            }
-
-            decimal rawValue = decimalValue * CoordinateScale;
-            if (rawValue < MinRawCoordinate || rawValue > MaxRawCoordinate)
-            {
-                errorMessage = $"{pointName} 点 {axisName} 坐标超出可保存范围：{value}。";
-                return false;
-            }
-
-            rawCoordinate = (int)rawValue;
-            return true;
-        }
-
-        private readonly record struct ImportedMarker(
-            ushort RegionID,
-            ImportedMarkerPoint A,
-            ImportedMarkerPoint B,
-            ImportedMarkerPoint C,
-            ImportedMarkerPoint D,
-            ImportedMarkerPoint One,
-            ImportedMarkerPoint Two,
-            ImportedMarkerPoint Three,
-            ImportedMarkerPoint Four);
-
-        private readonly record struct ImportedMarkerPoint(int RawX, int RawY, int RawZ, bool Active);
-
         private void Export_Button_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -215,32 +101,7 @@ namespace UIMarkerEditor.Controls
                     return;
                 }
 
-                MarkerShare markerShare = new()
-                {
-                    MapID = currentMark.RegionID,
-                    Name = MapData.GetName(currentMark.RegionID)
-                };
-
-                static MarkerSharePoint CreatePoint(WayMarkPoint point, bool active)
-                {
-                    return new MarkerSharePoint
-                    {
-                        X = double.Parse(FormatCoordinate(point.FloatX)),
-                        Y = double.Parse(FormatCoordinate(point.FloatY)),
-                        Z = double.Parse(FormatCoordinate(point.FloatZ)),
-                        Active = active
-                    };
-                }
-
-                markerShare.A = CreatePoint(currentMark.A, currentMark.AEnabled);
-                markerShare.B = CreatePoint(currentMark.B, currentMark.BEnabled);
-                markerShare.C = CreatePoint(currentMark.C, currentMark.CEnabled);
-                markerShare.D = CreatePoint(currentMark.D, currentMark.DEnabled);
-                markerShare.One = CreatePoint(currentMark.One, currentMark.OneEnabled);
-                markerShare.Two = CreatePoint(currentMark.Two, currentMark.TwoEnabled);
-                markerShare.Three = CreatePoint(currentMark.Three, currentMark.ThreeEnabled);
-                markerShare.Four = CreatePoint(currentMark.Four, currentMark.FourEnabled);
-
+                MarkerShare markerShare = MarkerShareConverter.CreateShare(currentMark, MapData.GetName);
                 string json = JsonSerializer.Serialize(markerShare, jsonOptions);
 
                 // 兜底方案，如果没法直接复制成功，弹出一个窗口让用户复制

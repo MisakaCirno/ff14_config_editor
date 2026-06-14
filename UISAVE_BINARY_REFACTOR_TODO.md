@@ -180,27 +180,27 @@
 - `[x]` 当前导入已校验 `MapID` 存在且在 `ushort` 范围内。
 - `[x]` 当前导入已校验 8 个点都存在。
 - `[x]` 当前导入已校验坐标为有限数，并能转换到 raw int 范围。
-- `[ ]` 剪贴板导入默认拒绝 `MapID = 0`，除非后续明确支持空槽分享。
-- `[ ]` 剪贴板导入默认要求 `MapID` 存在于当前地图数据中；加载原始文件仍允许未知 RegionID。
-- `[ ]` 坐标导入对超过 3 位小数的值要明确处理：推荐拒绝，避免静默截断。
-- `[ ]` 如果选择四舍五入，必须在错误信息和测试中说明；不要继续隐式 `(int)` 截断。
-- `[ ]` 导出避免使用受系统区域影响的 `double.Parse(FormatCoordinate(...))`。
-- `[ ]` 导出坐标建议使用 invariant culture，或直接由 raw int 转成稳定数值。
-- `[ ]` `Name` 只作为展示字段，不作为可信校验字段。
-- `[ ]` 是否要求至少一个 Active 点保持开放：不建议二进制层限制；导入层可以提示但不硬拒绝。
-- `[ ]` 如果要严格判断 `Active` 是否缺失，可将共享 DTO 中 `Active` 改为 `bool?` 并补兼容策略。
+- `[x]` 剪贴板导入默认拒绝 `MapID = 0`，除非后续明确支持空槽分享。
+- `[x]` 剪贴板导入默认要求 `MapID` 存在于当前地图数据中；加载原始文件仍允许未知 RegionID。
+- `[x]` 坐标导入对超过 3 位小数的值要明确处理：推荐拒绝，避免静默截断。
+- `[x]` 未选择四舍五入；超过 3 位小数直接报错，不再隐式 `(int)` 截断。
+- `[x]` 导出避免使用受系统区域影响的 `double.Parse(FormatCoordinate(...))`。
+- `[x]` 导出坐标直接由 raw int 转成稳定数值。
+- `[x]` `Name` 只作为展示字段，不作为可信校验字段。
+- `[x]` 不要求至少一个 Active 点保持开启；全关闭的分享仍可导入。
+- `[x]` 共享 DTO 中 `Active` 改为 `bool?`，缺失时导入报错。
 
 ### 阶段六测试
 
-- `[ ]` `MapID` 缺失时报错。
-- `[ ]` `MapID` 超出 `ushort` 范围时报错。
-- `[ ]` `MapID = 0` 在剪贴板导入时报错。
-- `[ ]` 未知 `MapID` 在剪贴板导入时报错。
-- `[ ]` 缺少任意点位时报错。
-- `[ ]` 非有限坐标时报错。
-- `[ ]` raw int 范围外坐标时报错。
-- `[ ]` 超过 3 位小数坐标时报错或按明确规则处理。
-- `[ ]` 导出 JSON 在不同系统区域设置下保持稳定。
+- `[x]` `MapID` 缺失时报错。
+- `[x]` `MapID` 超出 `ushort` 范围时报错。
+- `[x]` `MapID = 0` 在剪贴板导入时报错。
+- `[x]` 未知 `MapID` 在剪贴板导入时报错。
+- `[x]` 缺少任意点位时报错。
+- `[x]` 非有限坐标时报错。
+- `[x]` raw int 范围外坐标时报错。
+- `[x]` 超过 3 位小数坐标时报错或按明确规则处理。
+- `[x]` 导出 JSON 在不同系统区域设置下保持稳定。
 
 ## 阶段七：异常与 UI 文案
 
@@ -233,7 +233,7 @@
 3. `[x]` FMARKER tail 固定长度：长度必须 4，内容先保留。
 4. `[x]` payload 和 section 长度复核：统一 `long` 边界计算和异常信息。
 5. `[x]` 保存前校验补齐：确保保存失败不写目标文件。
-6. `[ ]` 剪贴板导入导出收紧：`MapID`、坐标精度、culture 稳定性。
+6. `[x]` 剪贴板导入导出收紧：`MapID`、坐标精度、culture 稳定性。
 7. `[ ]` section 名称映射补充：新增已知 section 名称，但不影响未知 section 保留。
 8. `[ ]` UI 友好错误和日志分级。
 
@@ -270,3 +270,9 @@
 - 改动文件：`FF14ConfigEditor/ConfigUISave.cs`、`FF14ConfigEditor/UISave/UISaveBinaryReader.cs`、`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`
 - 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
 - 剩余风险：异常 offset 来源细分和 UI 级诊断信息导出仍留到异常/UI 文案阶段处理。
+
+- 日期：2026-06-14
+- 阶段：阶段六，剪贴板导入导出收紧
+- 改动文件：`FF14ConfigEditor/UISave/MarkerShare.cs`、`UIMarkerEditor/Controls/WayMarkEditorParts/WayMarkEditorControl.ImportExport.cs`、`UIMarkerEditor/MapData.cs`、`FF14ConfigEditor.Tests/MarkerShareConverterTests.cs`
+- 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
+- 剩余风险：剪贴板 JSON 的 UI 文案和异常分层仍留到异常/UI 文案阶段处理。
