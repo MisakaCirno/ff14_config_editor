@@ -89,7 +89,6 @@ namespace UIMarkerEditor
             LoadSettingsIntoUi();
             RefreshBackupList();
             RefreshCharacterList();
-            _ = SyncServerListIfNeededAsync();
         }
 
         private void OpenWayMarkFile()

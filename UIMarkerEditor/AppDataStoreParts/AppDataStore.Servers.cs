@@ -13,7 +13,33 @@ namespace UIMarkerEditor;
 
 public sealed partial class AppDataStore
 {
+    private static readonly TimeSpan ServerListAutoSyncInterval = TimeSpan.FromDays(7);
+
+    public async Task<ServerListLoadResult> EnsureServerListAvailableAsync()
+    {
+        if (HasValidServerListCache() && !ShouldSyncServerList())
+        {
+            return new ServerListLoadResult(true, false, CacheAvailable: true);
+        }
+
+        ServerListLoadResult syncResult = await SyncServerListAsync(saveFailureAttempt: HasValidServerListCache());
+        if (syncResult.Success)
+        {
+            return syncResult;
+        }
+
+        return HasValidServerListCache()
+            ? new ServerListLoadResult(true, false, UsedCache: true, CacheAvailable: true)
+            : syncResult;
+    }
+
     public async Task<bool> TrySyncServerListAsync()
+    {
+        ServerListLoadResult result = await SyncServerListAsync(saveFailureAttempt: HasValidServerListCache());
+        return result.Success;
+    }
+
+    private async Task<ServerListLoadResult> SyncServerListAsync(bool saveFailureAttempt)
     {
         DateTime syncAttemptTime = DateTime.Now;
         try
@@ -46,9 +72,7 @@ public sealed partial class AppDataStore
 
             if (groups.Count == 0)
             {
-                ServerList.LastSyncAttempt = syncAttemptTime;
-                SaveServerList();
-                return false;
+                return HandleServerListSyncFailure(syncAttemptTime, saveFailureAttempt);
             }
 
             ServerList = new ServerListCache
@@ -59,25 +83,56 @@ public sealed partial class AppDataStore
                 Groups = groups
             };
             SaveServerList();
-            return true;
+            return new ServerListLoadResult(true, true, CacheAvailable: true);
         }
         catch
         {
-            ServerList.LastSyncAttempt = syncAttemptTime;
-            SaveServerList();
-            return false;
+            return HandleServerListSyncFailure(syncAttemptTime, saveFailureAttempt);
         }
     }
 
     private void LoadServerList()
     {
         ServerListCache? cachedServerList = ReadJson<ServerListCache>(ServersFilePath);
-        ServerList = cachedServerList?.Groups.Count > 0 ? cachedServerList : ServerListCache.CreateBuiltin();
+        ServerList = cachedServerList != null && IsValidServerListCache(cachedServerList)
+            ? cachedServerList
+            : new ServerListCache();
     }
 
     private void SaveServerList()
     {
         WriteJson(ServersFilePath, ServerList);
+    }
+
+    private ServerListLoadResult HandleServerListSyncFailure(DateTime syncAttemptTime, bool saveFailureAttempt)
+    {
+        bool cacheAvailable = HasValidServerListCache();
+        if (saveFailureAttempt && cacheAvailable)
+        {
+            ServerList.LastSyncAttempt = syncAttemptTime;
+            SaveServerList();
+        }
+
+        return new ServerListLoadResult(false, false, CacheAvailable: cacheAvailable);
+    }
+
+    private bool HasValidServerListCache()
+    {
+        return IsValidServerListCache(ServerList);
+    }
+
+    private bool ShouldSyncServerList()
+    {
+        DateTime lastServerSyncCheck = ServerList.LastUpdated > ServerList.LastSyncAttempt
+            ? ServerList.LastUpdated
+            : ServerList.LastSyncAttempt;
+        return lastServerSyncCheck == DateTime.MinValue ||
+            DateTime.Now - lastServerSyncCheck >= ServerListAutoSyncInterval;
+    }
+
+    private static bool IsValidServerListCache(ServerListCache? serverList)
+    {
+        return serverList?.Groups.Count > 0 && serverList.LastUpdated > DateTime.MinValue;
     }
 
     private static List<Uri> ExtractServerPageResourceUris(string html, Uri baseUri)

@@ -7,7 +7,18 @@ public sealed class BootstrapSettings
     public string DataDirectory { get; set; } = string.Empty;
 }
 
-public sealed record MapDataLoadResult(bool Success, bool Updated, string Version);
+public sealed record MapDataLoadResult(
+    bool Success,
+    bool Updated,
+    string Version,
+    bool UsedCache = false,
+    bool CacheAvailable = false);
+
+public sealed record ServerListLoadResult(
+    bool Success,
+    bool Updated,
+    bool UsedCache = false,
+    bool CacheAvailable = false);
 
 public sealed class AppSettings
 {

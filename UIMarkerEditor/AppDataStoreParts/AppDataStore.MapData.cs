@@ -15,15 +15,15 @@ public sealed partial class AppDataStore
 {
     public async Task<MapDataLoadResult> EnsureMapDataAvailableAsync()
     {
-        return await LoadMapDataAsync(forceRefresh: false);
+        return await LoadMapDataAsync(forceRefresh: false, allowCacheFallback: true);
     }
 
     public async Task<MapDataLoadResult> ForceRefreshMapDataAsync()
     {
-        return await LoadMapDataAsync(forceRefresh: true);
+        return await LoadMapDataAsync(forceRefresh: true, allowCacheFallback: false);
     }
 
-    private async Task<MapDataLoadResult> LoadMapDataAsync(bool forceRefresh)
+    private async Task<MapDataLoadResult> LoadMapDataAsync(bool forceRefresh, bool allowCacheFallback)
     {
         try
         {
@@ -40,26 +40,47 @@ public sealed partial class AppDataStore
                 !string.IsNullOrWhiteSpace(remoteVersion) &&
                 string.Equals(remoteVersion, localVersion, StringComparison.OrdinalIgnoreCase))
             {
-                if (!LoadMapDataCache()) return new MapDataLoadResult(false, false, remoteVersion);
+                if (!LoadMapDataCache())
+                {
+                    return new MapDataLoadResult(false, false, remoteVersion);
+                }
 
                 MapDataVersion = remoteVersion;
-                return new MapDataLoadResult(true, false, remoteVersion);
+                return new MapDataLoadResult(true, false, remoteVersion, CacheAvailable: true);
             }
 
             string instanceJson = await GetUtf8StringAsync(httpClient, MapDataInstanceUrl);
             Dictionary<ushort, string> mapNames = ParseMapNamesFromInstanceJson(instanceJson);
-            if (mapNames.Count == 0) return new MapDataLoadResult(false, false, remoteVersion);
+            if (mapNames.Count == 0)
+            {
+                return allowCacheFallback
+                    ? LoadMapDataCacheFallback(remoteVersion)
+                    : new MapDataLoadResult(false, false, remoteVersion);
+            }
 
             WriteText(MapDataInstanceFilePath, instanceJson);
             WriteText(MapDataVersionFilePath, string.IsNullOrWhiteSpace(remoteVersion) ? remoteVersionContent : remoteVersion);
             MapData.ApplyMapNames(mapNames);
             MapDataVersion = remoteVersion;
-            return new MapDataLoadResult(true, true, remoteVersion);
+            return new MapDataLoadResult(true, true, remoteVersion, CacheAvailable: true);
         }
         catch
         {
-            return new MapDataLoadResult(false, false, string.Empty);
+            return allowCacheFallback
+                ? LoadMapDataCacheFallback(string.Empty)
+                : new MapDataLoadResult(false, false, string.Empty);
         }
+    }
+
+    private MapDataLoadResult LoadMapDataCacheFallback(string version)
+    {
+        if (!LoadMapDataCache())
+        {
+            return new MapDataLoadResult(false, false, version);
+        }
+
+        string cacheVersion = string.IsNullOrWhiteSpace(MapDataVersion) ? version : MapDataVersion;
+        return new MapDataLoadResult(true, false, cacheVersion, UsedCache: true, CacheAvailable: true);
     }
 
     private bool LoadMapDataCache()
@@ -79,6 +100,7 @@ public sealed partial class AppDataStore
         }
 
         MapData.ApplyMapNames(mapNames);
+        MapDataVersion = ReadMapDataVersion();
         return true;
     }
 

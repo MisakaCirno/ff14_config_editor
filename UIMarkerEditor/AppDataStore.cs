@@ -46,7 +46,7 @@ public sealed partial class AppDataStore
 
     public AppSettings Settings { get; private set; } = new();
     public ObservableCollection<CharacterProfile> Characters { get; } = [];
-    public ServerListCache ServerList { get; private set; } = ServerListCache.CreateBuiltin();
+    public ServerListCache ServerList { get; private set; } = new();
     public string MapDataVersion { get; private set; } = string.Empty;
 
     public AppDataStore()
@@ -124,7 +124,7 @@ public sealed partial class AppDataStore
         {
             Settings = new AppSettings();
             Characters.Clear();
-            ServerList = ServerListCache.CreateBuiltin();
+            ServerList = new ServerListCache();
         }
 
         DataDirectory = targetDirectory;
@@ -175,10 +175,6 @@ public sealed partial class AppDataStore
             WriteJson(CharactersFilePath, new List<CharacterProfile>());
         }
 
-        if (!File.Exists(ServersFilePath))
-        {
-            SaveServerList();
-        }
     }
 
     private void LoadSettings()

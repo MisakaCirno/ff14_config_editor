@@ -15,13 +15,25 @@ public partial class App : Application
         appDataStore.Initialize();
 
         MapDataLoadResult mapDataLoadResult = await appDataStore.EnsureMapDataAvailableAsync();
-        if (!mapDataLoadResult.Success)
+        ServerListLoadResult serverListLoadResult = await appDataStore.EnsureServerListAvailableAsync();
+        if (!mapDataLoadResult.Success || !serverListLoadResult.Success)
         {
             MessageBox.Show(
-                "地图数据获取失败，工具无法启动。\n请检查网络连接后重新打开工具。",
-                "地图数据加载失败",
+                BuildRequiredOnlineDataFailureMessage(mapDataLoadResult, serverListLoadResult),
+                "在线数据加载失败",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
+            Shutdown();
+            return;
+        }
+
+        if ((mapDataLoadResult.UsedCache || serverListLoadResult.UsedCache) &&
+            MessageBox.Show(
+                BuildCacheModeConfirmMessage(mapDataLoadResult, serverListLoadResult),
+                "使用本地缓存启动",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        {
             Shutdown();
             return;
         }
@@ -41,5 +53,45 @@ public partial class App : Application
         MainWindow mainWindow = new(appDataStore);
         MainWindow = mainWindow;
         mainWindow.Show();
+    }
+
+    private static string BuildRequiredOnlineDataFailureMessage(
+        MapDataLoadResult mapDataLoadResult,
+        ServerListLoadResult serverListLoadResult)
+    {
+        List<string> failedItems = [];
+        if (!mapDataLoadResult.Success)
+        {
+            failedItems.Add("地图数据");
+        }
+
+        if (!serverListLoadResult.Success)
+        {
+            failedItems.Add("服务器列表");
+        }
+
+        return
+            $"无法获取必要的在线数据：{string.Join("、", failedItems)}。\n\n" +
+            "本地也没有可用缓存，工具无法启动。请检查网络连接后重新打开工具。";
+    }
+
+    private static string BuildCacheModeConfirmMessage(
+        MapDataLoadResult mapDataLoadResult,
+        ServerListLoadResult serverListLoadResult)
+    {
+        List<string> cachedItems = [];
+        if (mapDataLoadResult.UsedCache)
+        {
+            cachedItems.Add("地图数据");
+        }
+
+        if (serverListLoadResult.UsedCache)
+        {
+            cachedItems.Add("服务器列表");
+        }
+
+        return
+            $"在线检查失败，但已找到本地缓存：{string.Join("、", cachedItems)}。\n\n" +
+            "是否使用本地缓存启动？";
     }
 }
