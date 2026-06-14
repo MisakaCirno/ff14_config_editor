@@ -67,7 +67,8 @@ namespace FF14ConfigEditor.UISave
             {
                 throw new UISaveFormatException(
                     "段数据不能为空。",
-                    sectionIndex: index);
+                    sectionIndex: index,
+                    fieldName: "段数据");
             }
 
             if (length < 0)
@@ -75,7 +76,8 @@ namespace FF14ConfigEditor.UISave
                 throw new UISaveFormatException(
                     "段长度不能为负数。",
                     sectionIndex: index,
-                    expectedLength: 0);
+                    expectedLength: 0,
+                    fieldName: "段长度");
             }
 
             if (length != data.Length)
@@ -84,14 +86,15 @@ namespace FF14ConfigEditor.UISave
                     "段长度与数据长度不一致。",
                     sectionIndex: index,
                     expectedLength: length,
-                    remainingLength: data.Length);
+                    remainingLength: data.Length,
+                    fieldName: "段长度");
             }
         }
 
         protected void ValidateSectionFields()
         {
-            ValidateByteArray(unknown1, Unknown1ByteLength, "段 unknown1", index);
-            ValidateByteArray(unknown2, Unknown2ByteLength, "段 unknown2", index);
+            ValidateByteArray(unknown1, Unknown1ByteLength, "段未知字段 1", index);
+            ValidateByteArray(unknown2, Unknown2ByteLength, "段未知字段 2", index);
             ValidateByteArray(endFlag, EndFlagByteLength, "段结束标记", index);
         }
 
@@ -107,7 +110,8 @@ namespace FF14ConfigEditor.UISave
                     $"{fieldName} 不能为空。",
                     sectionIndex: sectionIndex,
                     expectedLength: expectedLength,
-                    remainingLength: 0);
+                    remainingLength: 0,
+                    fieldName: fieldName);
             }
 
             if (value.Length != expectedLength)
@@ -116,7 +120,8 @@ namespace FF14ConfigEditor.UISave
                     $"{fieldName} 必须正好是 {expectedLength} 字节。",
                     sectionIndex: sectionIndex,
                     expectedLength: expectedLength,
-                    remainingLength: value.Length);
+                    remainingLength: value.Length,
+                    fieldName: fieldName);
             }
         }
 

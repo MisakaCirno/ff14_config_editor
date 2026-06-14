@@ -154,31 +154,43 @@ namespace FF14ConfigEditor
             byte[] fileFormatVersionRaw = UISaveBinaryReader.ReadExact(
                 reader,
                 FileFormatVersionByteLength,
-                "文件格式版本");
+                "文件格式版本",
+                offsetOrigin: UISaveOffsetOrigin.File);
             DebugHelper.Log($"文件格式版本: {BitConverter.ToString(fileFormatVersionRaw)}");
 
             long encryptedLengthOffset = UISaveBinaryReader.GetOffset(reader);
-            int encryptLength = UISaveBinaryReader.ReadInt32(reader, "加密数据长度");
+            int encryptLength = UISaveBinaryReader.ReadInt32(
+                reader,
+                "加密数据长度",
+                offsetOrigin: UISaveOffsetOrigin.File);
             DebugHelper.Log($"加密数据长度: {encryptLength}");
             if (encryptLength < 0)
             {
                 throw new UISaveFormatException(
                     $"加密数据长度不能为负数：{encryptLength}。",
                     offset: encryptedLengthOffset,
-                    expectedLength: 0);
+                    expectedLength: 0,
+                    fieldName: "加密数据长度",
+                    offsetOrigin: UISaveOffsetOrigin.File);
             }
 
             byte[] fileUnknownRaw = UISaveBinaryReader.ReadExact(
                 reader,
                 FileUnknownByteLength,
-                "文件未知头部");
+                "文件未知头部",
+                offsetOrigin: UISaveOffsetOrigin.File);
             DebugHelper.Log($"未知头部: {BitConverter.ToString(fileUnknownRaw)}");
 
-            UISaveBinaryReader.EnsureRemaining(reader, encryptLength, "加密数据");
+            UISaveBinaryReader.EnsureRemaining(
+                reader,
+                encryptLength,
+                "加密数据",
+                offsetOrigin: UISaveOffsetOrigin.File);
             byte[] encryptedData = UISaveBinaryReader.ReadExact(
                 reader,
                 encryptLength,
-                "加密数据");
+                "加密数据",
+                offsetOrigin: UISaveOffsetOrigin.File);
             byte[] fileTailRaw = ReadRemainingFileTail(reader);
             byte[] decryptedData = Utils.DecryptData(encryptedData);
 
@@ -203,13 +215,15 @@ namespace FF14ConfigEditor
             byte[] payloadUnknownRaw = UISaveBinaryReader.ReadExact(
                 reader,
                 PayloadUnknownByteLength,
-                "加密部分未知头");
+                "加密部分未知头",
+                offsetOrigin: UISaveOffsetOrigin.DecryptedPayload);
             DebugHelper.Log($"加密部分 - 未知: {BitConverter.ToString(payloadUnknownRaw)}");
 
             byte[] userIDRaw = UISaveBinaryReader.ReadExact(
                 reader,
                 UserIdByteLength,
-                "加密部分用户 ID");
+                "加密部分用户 ID",
+                offsetOrigin: UISaveOffsetOrigin.DecryptedPayload);
             DebugHelper.Log($"加密部分 - 用户ID: {FormatUserIdHex(userIDRaw)}");
 
             List<UISaveSection> sections = [];
@@ -224,34 +238,46 @@ namespace FF14ConfigEditor
                     payloadTailRaw = UISaveBinaryReader.ReadExact(
                         reader,
                         checked((int)remaining),
-                        "加密部分尾部填充");
-                    DebugHelper.LogUnknownPreserved($"解密 payload 末尾存在 {payloadTailRaw.Length} 字节尾部填充，已原样保留。");
+                        "加密部分尾部填充",
+                        offsetOrigin: UISaveOffsetOrigin.DecryptedPayload);
+                    DebugHelper.LogUnknownPreserved($"解密数据末尾存在 {payloadTailRaw.Length} 字节尾部填充，已原样保留。");
                     break;
                 }
 
-                short index = UISaveBinaryReader.ReadInt16(reader, "段索引");
+                short index = UISaveBinaryReader.ReadInt16(
+                    reader,
+                    "段索引",
+                    offsetOrigin: UISaveOffsetOrigin.DecryptedPayload);
                 byte[] sectionUnknown1 = UISaveBinaryReader.ReadExact(
                     reader,
                     UISaveSection.Unknown1ByteLength,
-                    "段 unknown1",
-                    index);
+                    "段未知字段 1",
+                    index,
+                    UISaveOffsetOrigin.DecryptedPayload);
 
                 long sectionLengthOffset = ms.Position;
-                int sectionLength = UISaveBinaryReader.ReadInt32(reader, "段长度", index);
+                int sectionLength = UISaveBinaryReader.ReadInt32(
+                    reader,
+                    "段长度",
+                    index,
+                    UISaveOffsetOrigin.DecryptedPayload);
                 if (sectionLength < 0)
                 {
                     throw new UISaveFormatException(
                         $"段长度不能为负数：{sectionLength}。",
                         offset: sectionLengthOffset,
                         sectionIndex: index,
-                        expectedLength: 0);
+                        expectedLength: 0,
+                        fieldName: "段长度",
+                        offsetOrigin: UISaveOffsetOrigin.DecryptedPayload);
                 }
 
                 byte[] sectionUnknown2 = UISaveBinaryReader.ReadExact(
                     reader,
                     UISaveSection.Unknown2ByteLength,
-                    "段 unknown2",
-                    index);
+                    "段未知字段 2",
+                    index,
+                    UISaveOffsetOrigin.DecryptedPayload);
 
                 long bytesNeeded = (long)sectionLength + UISaveSection.EndFlagByteLength;
                 long bytesRemaining = ms.Length - ms.Position;
@@ -262,15 +288,23 @@ namespace FF14ConfigEditor
                         offset: sectionStartOffset,
                         sectionIndex: index,
                         expectedLength: bytesNeeded,
-                        remainingLength: bytesRemaining);
+                        remainingLength: bytesRemaining,
+                        fieldName: "段数据和结束标记",
+                        offsetOrigin: UISaveOffsetOrigin.DecryptedPayload);
                 }
 
-                byte[] sectionData = UISaveBinaryReader.ReadExact(reader, sectionLength, "段数据", index);
+                byte[] sectionData = UISaveBinaryReader.ReadExact(
+                    reader,
+                    sectionLength,
+                    "段数据",
+                    index,
+                    UISaveOffsetOrigin.DecryptedPayload);
                 byte[] endFlag = UISaveBinaryReader.ReadExact(
                     reader,
                     UISaveSection.EndFlagByteLength,
                     "段结束标记",
-                    index);
+                    index,
+                    UISaveOffsetOrigin.DecryptedPayload);
                 if (endFlag.Any(value => value != 0))
                 {
                     DebugHelper.LogWarning($"段 {index} 的结束标记不是全零，已原样保留。");
@@ -339,14 +373,18 @@ namespace FF14ConfigEditor
         {
             if (Sections is null)
             {
-                throw new UISaveFormatException("段列表不能为空。");
+                throw new UISaveFormatException(
+                    "段列表不能为空。",
+                    fieldName: "段列表");
             }
 
             for (int i = 0; i < Sections.Count; i++)
             {
                 if (Sections[i] is null)
                 {
-                    throw new UISaveFormatException($"段列表第 {i} 项不能为空。");
+                    throw new UISaveFormatException(
+                        $"段列表第 {i} 项不能为空。",
+                        fieldName: $"段列表第 {i} 项");
                 }
             }
         }
@@ -365,10 +403,16 @@ namespace FF14ConfigEditor
                     "文件尾部过大，无法一次读取。",
                     offset: UISaveBinaryReader.GetOffset(reader),
                     expectedLength: int.MaxValue,
-                    remainingLength: remaining.Value);
+                    remainingLength: remaining.Value,
+                    fieldName: "文件尾部填充",
+                    offsetOrigin: UISaveOffsetOrigin.File);
             }
 
-            byte[] fileTail = UISaveBinaryReader.ReadExact(reader, (int)remaining.Value, "文件尾部填充");
+            byte[] fileTail = UISaveBinaryReader.ReadExact(
+                reader,
+                (int)remaining.Value,
+                "文件尾部填充",
+                offsetOrigin: UISaveOffsetOrigin.File);
             DebugHelper.LogUnknownPreserved($"加密数据之后存在 {fileTail.Length} 字节文件尾部填充，已原样保留。");
             return fileTail;
         }
@@ -380,7 +424,8 @@ namespace FF14ConfigEditor
                 throw new UISaveFormatException(
                     $"{fieldName} 不能为空。",
                     expectedLength: expectedLength,
-                    remainingLength: 0);
+                    remainingLength: 0,
+                    fieldName: fieldName);
             }
 
             if (value.Length != expectedLength)
@@ -388,7 +433,8 @@ namespace FF14ConfigEditor
                 throw new UISaveFormatException(
                     $"{fieldName} 必须正好是 {expectedLength} 字节。",
                     expectedLength: expectedLength,
-                    remainingLength: value.Length);
+                    remainingLength: value.Length,
+                    fieldName: fieldName);
             }
         }
 
@@ -396,7 +442,9 @@ namespace FF14ConfigEditor
         {
             if (value is null)
             {
-                throw new UISaveFormatException($"{fieldName} 不能为空。");
+                throw new UISaveFormatException(
+                    $"{fieldName} 不能为空。",
+                    fieldName: fieldName);
             }
         }
 

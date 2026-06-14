@@ -44,7 +44,8 @@ namespace FF14ConfigEditor.UISave
                 reader,
                 MarkerHeaderByteLength,
                 "FMARKER 标记头",
-                index);
+                index,
+                UISaveOffsetOrigin.FMarkerSectionData);
             DebugHelper.Log($"Marker 标记头: {BitConverter.ToString(markerHeader)}");
 
             List<WayMark> parsedWayMarks = [];
@@ -64,7 +65,8 @@ namespace FF14ConfigEditor.UISave
                 reader,
                 MarkerTailByteLength,
                 "FMARKER 标记尾部",
-                index);
+                index,
+                UISaveOffsetOrigin.FMarkerSectionData);
             DebugHelper.Log($"Marker 尾部: {markerTail.Length} bytes");
             if (markerTail.Any(value => value != 0))
             {
@@ -102,7 +104,8 @@ namespace FF14ConfigEditor.UISave
             {
                 throw new UISaveFormatException(
                     "FMARKER 标点预设列表不能为空。",
-                    sectionIndex: index);
+                    sectionIndex: index,
+                    fieldName: "FMARKER 标点预设列表");
             }
 
             for (int i = 0; i < WayMarks.Count; i++)
@@ -129,7 +132,8 @@ namespace FF14ConfigEditor.UISave
                         $"FMARKER 第 {i + 1} 个标点预设写出长度不是 {WayMarkByteLength} 字节。",
                         sectionIndex: index,
                         expectedLength: WayMarkByteLength,
-                        remainingLength: writtenLength);
+                        remainingLength: writtenLength,
+                        fieldName: $"FMARKER 第 {i + 1} 个标点预设");
                 }
             }
 
@@ -143,7 +147,8 @@ namespace FF14ConfigEditor.UISave
             {
                 throw new UISaveFormatException(
                     $"FMARKER 第 {wayMarkIndex + 1} 个标点预设不能为空。",
-                    sectionIndex: index);
+                    sectionIndex: index,
+                    fieldName: $"FMARKER 第 {wayMarkIndex + 1} 个标点预设");
             }
 
             ValidateWayMarkPointForSave(wayMark.A, "A", wayMarkIndex);
@@ -162,7 +167,8 @@ namespace FF14ConfigEditor.UISave
             {
                 throw new UISaveFormatException(
                     $"FMARKER 第 {wayMarkIndex + 1} 个标点预设的 {pointName} 点不能为空。",
-                    sectionIndex: index);
+                    sectionIndex: index,
+                    fieldName: $"FMARKER 第 {wayMarkIndex + 1} 个标点预设的 {pointName} 点");
             }
         }
 
@@ -172,7 +178,8 @@ namespace FF14ConfigEditor.UISave
             {
                 throw new UISaveFormatException(
                     "FMARKER 数据不能为空。",
-                    sectionIndex: index);
+                    sectionIndex: index,
+                    fieldName: "FMARKER 数据");
             }
 
             int minimumLength = MarkerHeaderByteLength + MarkerTailByteLength;
@@ -182,7 +189,8 @@ namespace FF14ConfigEditor.UISave
                     $"FMARKER 数据长度不能小于 {minimumLength} 字节。",
                     sectionIndex: index,
                     expectedLength: minimumLength,
-                    remainingLength: data.Length);
+                    remainingLength: data.Length,
+                    fieldName: "FMARKER 数据");
             }
 
             int wayMarkBytesLength = data.Length - minimumLength;
@@ -192,7 +200,8 @@ namespace FF14ConfigEditor.UISave
                     "FMARKER 数据长度不符合已知结构，应为 16 字节头、若干个 104 字节标点预设和 4 字节尾部。",
                     sectionIndex: index,
                     expectedLength: WayMarkByteLength,
-                    remainingLength: wayMarkBytesLength);
+                    remainingLength: wayMarkBytesLength,
+                    fieldName: "FMARKER 数据");
             }
         }
 
@@ -238,10 +247,26 @@ namespace FF14ConfigEditor.UISave
                 Three = ReadRawPoint(reader, sectionIndex),
                 Four = ReadRawPoint(reader, sectionIndex),
 
-                enableFlag = UISaveBinaryReader.ReadByte(reader, "FMARKER 启用标记", sectionIndex),
-                unknown = UISaveBinaryReader.ReadByte(reader, "FMARKER 未知字节", sectionIndex),
-                RegionID = UISaveBinaryReader.ReadUInt16(reader, "FMARKER 区域 ID", sectionIndex),
-                timestamp = UISaveBinaryReader.ReadInt32(reader, "FMARKER 时间戳", sectionIndex)
+                enableFlag = UISaveBinaryReader.ReadByte(
+                    reader,
+                    "FMARKER 启用标记",
+                    sectionIndex,
+                    UISaveOffsetOrigin.FMarkerSectionData),
+                unknown = UISaveBinaryReader.ReadByte(
+                    reader,
+                    "FMARKER 未知字节",
+                    sectionIndex,
+                    UISaveOffsetOrigin.FMarkerSectionData),
+                RegionID = UISaveBinaryReader.ReadUInt16(
+                    reader,
+                    "FMARKER 区域 ID",
+                    sectionIndex,
+                    UISaveOffsetOrigin.FMarkerSectionData),
+                timestamp = UISaveBinaryReader.ReadInt32(
+                    reader,
+                    "FMARKER 时间戳",
+                    sectionIndex,
+                    UISaveOffsetOrigin.FMarkerSectionData)
             };
 
             return wayMark;
@@ -251,9 +276,21 @@ namespace FF14ConfigEditor.UISave
         {
             return new WayMarkPoint
             {
-                X = UISaveBinaryReader.ReadInt32(reader, "FMARKER 坐标 X", sectionIndex),
-                Y = UISaveBinaryReader.ReadInt32(reader, "FMARKER 坐标 Y", sectionIndex),
-                Z = UISaveBinaryReader.ReadInt32(reader, "FMARKER 坐标 Z", sectionIndex)
+                X = UISaveBinaryReader.ReadInt32(
+                    reader,
+                    "FMARKER 坐标 X",
+                    sectionIndex,
+                    UISaveOffsetOrigin.FMarkerSectionData),
+                Y = UISaveBinaryReader.ReadInt32(
+                    reader,
+                    "FMARKER 坐标 Y",
+                    sectionIndex,
+                    UISaveOffsetOrigin.FMarkerSectionData),
+                Z = UISaveBinaryReader.ReadInt32(
+                    reader,
+                    "FMARKER 坐标 Z",
+                    sectionIndex,
+                    UISaveOffsetOrigin.FMarkerSectionData)
             };
         }
     }

@@ -27,6 +27,7 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         Assert.Equal(0, ex.Offset);
         Assert.Equal(8, ex.ExpectedLength);
         Assert.Equal(3, ex.RemainingLength);
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "文件格式版本", "文件");
     }
 
     [Fact]
@@ -39,6 +40,7 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         Assert.Equal(8, ex.Offset);
         Assert.Equal(4, ex.ExpectedLength);
         Assert.Equal(2, ex.RemainingLength);
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "加密数据长度", "文件");
     }
 
     [Fact]
@@ -51,6 +53,7 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         Assert.Equal(12, ex.Offset);
         Assert.Equal(4, ex.ExpectedLength);
         Assert.Equal(2, ex.RemainingLength);
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "文件未知头部", "文件");
     }
 
     [Fact]
@@ -62,6 +65,7 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
 
         Assert.Equal(8, ex.Offset);
         Assert.Equal(0, ex.ExpectedLength);
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "加密数据长度", "文件");
     }
 
     [Fact]
@@ -74,6 +78,7 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         Assert.Equal(16, ex.Offset);
         Assert.Equal(10, ex.ExpectedLength);
         Assert.Equal(3, ex.RemainingLength);
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "加密数据", "文件");
     }
 
     [Fact]
@@ -86,6 +91,7 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
 
         Assert.Equal(1, ex.SectionIndex);
         Assert.Equal(0, ex.ExpectedLength);
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "段长度", "解密数据");
     }
 
     [Fact]
@@ -99,6 +105,7 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         Assert.Equal(1, ex.SectionIndex);
         Assert.Equal(9, ex.ExpectedLength);
         Assert.Equal(3, ex.RemainingLength);
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "段数据和结束标记", "解密数据");
     }
 
     [Fact]
@@ -112,6 +119,7 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         Assert.Equal(1, ex.SectionIndex);
         Assert.Equal(4, ex.ExpectedLength);
         Assert.Equal(0, ex.RemainingLength);
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "段数据和结束标记", "解密数据");
     }
 
     [Fact]
@@ -197,8 +205,9 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         ConfigUISave config = new(path);
         config.Sections[0].length++;
 
-        Assert.Throws<UISaveFormatException>(config.Save);
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(config.Save);
         Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "段长度");
     }
 
     [Fact]
@@ -210,8 +219,9 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         ConfigUISave config = new(path);
         config.Sections.Add(null!);
 
-        Assert.Throws<UISaveFormatException>(config.Save);
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(config.Save);
         Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "段列表第 1 项");
     }
 
     [Fact]
@@ -557,6 +567,7 @@ public class SectionFMarkerTests
         Assert.Equal(17, ex.SectionIndex);
         Assert.Equal(minimumLength, ex.ExpectedLength);
         Assert.Equal(markerData.Length, ex.RemainingLength);
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "FMARKER 数据");
     }
 
     [Fact]
@@ -568,6 +579,7 @@ public class SectionFMarkerTests
             () => UISaveTestData.BuildFMarkerSection(markerData));
 
         Assert.Equal(17, ex.SectionIndex);
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "FMARKER 数据");
     }
 
     [Fact]
@@ -579,6 +591,7 @@ public class SectionFMarkerTests
             () => UISaveTestData.BuildFMarkerSection(markerData));
 
         Assert.Equal(17, ex.SectionIndex);
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "FMARKER 数据");
     }
 
     [Fact]
@@ -646,6 +659,28 @@ public class SectionFMarkerTests
             SectionFMARKER.MarkerHeaderByteLength + SectionFMARKER.WayMarkByteLength * 31 + section.MarkerTailLength,
             section.length);
         Assert.Equal(UISaveTestData.BuildSection(17, section.data), rawBytes);
+    }
+}
+
+internal static class UISaveFormatExceptionAssert
+{
+    public static void HasDiagnostic(
+        UISaveFormatException exception,
+        string fieldName,
+        string? offsetOrigin = null)
+    {
+        Assert.Equal(fieldName, exception.FieldName);
+        Assert.Equal(offsetOrigin, exception.OffsetOrigin);
+        Assert.Contains($"字段={fieldName}", exception.Message);
+
+        if (offsetOrigin is null)
+        {
+            Assert.DoesNotContain("偏移来源=", exception.Message);
+        }
+        else
+        {
+            Assert.Contains($"偏移来源={offsetOrigin}", exception.Message);
+        }
     }
 }
 

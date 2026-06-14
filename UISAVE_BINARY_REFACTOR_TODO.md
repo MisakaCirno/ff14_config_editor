@@ -41,15 +41,15 @@
 
 以下内容已经进入代码库，但仍需结合后续清单复核和补测试，不代表对应阶段已经全部完成。
 
-- `[~]` 新增 `UISaveBinaryReader`，集中做 `ReadExact` 和基础数值读取。
-- `[~]` 新增 `UISaveFormatException`，用于格式错误并携带 offset、section index、expected length、remaining length 等信息。
+- `[x]` 新增 `UISaveBinaryReader`，集中做 `ReadExact` 和基础数值读取。
+- `[x]` 新增 `UISaveFormatException`，用于格式错误并携带字段名、offset 来源、offset、section index、expected length、remaining length 等信息。
 - `[x]` `ConfigUISave.Load()` 已改为先解析到临时结构，成功后再替换对象状态。
 - `[x]` `ParseEncryptedPart()` 已避免中途失败污染当前对象状态。
 - `[x]` section header、section data、endFlag 截断场景已有更明确异常。
 - `[x]` `sectionLength < 0` 和 section data 超出 payload 剩余长度已有拒绝。
 - `[x]` `SectionFMARKER.ParseMarker()` 使用局部结果解析，全部成功后再替换 `_markerHeader`、`_markerTail` 和 `WayMarks`。
 - `[x]` `SectionFMARKER` 构造函数解析后，调用方不再重复调用 `ParseMarker()`。
-- `[~]` `UISaveSection.ValidateForSave()` 已校验 section length、unknown 字段长度和 endFlag 长度。
+- `[x]` `UISaveSection.ValidateForSave()` 已校验 section length、unknown 字段长度和 endFlag 长度。
 
 ## 外部参考结论
 
@@ -81,7 +81,7 @@
 - `[x]` 外层硬校验改为：`encryptLength >= 0` 且 `encryptLength <= fileSize - 16`。
 - `[x]` 不设置文件总大小硬上限。
 - `[x]` 所有长度计算使用 `long` 做边界判断，避免 `int` 加法溢出后绕过检查。
-- `[ ]` 明确区分文件 offset 和 payload offset，异常信息中尽量写清楚来源。
+- `[x]` 明确区分文件 offset 和 payload offset，异常信息中尽量写清楚来源。
 
 ### 阶段一测试
 
@@ -206,9 +206,9 @@
 
 ## 阶段七：异常与 UI 文案
 
-- `[~]` 二进制层已有 `UISaveFormatException`。
-- `[ ]` 所有格式异常信息统一为中文。
-- `[ ]` 格式异常尽量带字段名、offset、section index、expected length、remaining length。
+- `[x]` 二进制层已有 `UISaveFormatException`。
+- `[x]` 所有格式异常信息统一为中文。
+- `[x]` 格式异常尽量带字段名、offset 来源、offset、section index、expected length、remaining length。
 - `[x]` UI 捕获 `UISaveFormatException` 时显示友好错误，并避免吞掉底层细节。
 - `[x]` 非格式错误继续按一般异常处理，例如权限、文件占用、IO 错误。
 - `[x]` 日志里区分“格式错误”“未知但保留”“警告”。
@@ -241,7 +241,7 @@
 7. `[x]` section 名称映射补充：新增已知 section 名称，但不影响未知 section 保留。
 8. `[x]` 事务式解析状态复核：确认加载失败不会污染 `ConfigUISave` 已有状态，并补齐对应测试。
 9. `[x]` FMARKER 生命周期和幂等测试收口：确认不重复解析、不残留旧 tail，并补齐 round-trip 测试状态。
-10. `[~]` UI 友好错误和日志分级：日志系统和 UI 捕获已落地，格式异常中文文案和 offset 来源细分仍需继续。
+10. `[x]` UI 友好错误和日志分级：日志系统、UI 捕获、格式异常中文文案和 offset 来源细分均已落地。
 11. `[ ]` 测试和验证规范收尾：确认测试只使用合成数据或临时目录，真实文件观察只读。
 
 ## 每轮修复后的记录格式
@@ -313,3 +313,9 @@
 - 改动文件：`FF14ConfigEditor/AppLogger.cs`、`FF14ConfigEditor/DebugHelper.cs`、`FF14ConfigEditor/ConfigUISave.cs`、`FF14ConfigEditor/UISave/SectionFMARKER.cs`、`UIMarkerEditor/AppDataStore.cs`、`UIMarkerEditor/MainWindow.xaml.cs`、`FF14ConfigEditor.Tests/AppLoggerTests.cs`、`UISAVE_BINARY_REFACTOR_TODO.md`
 - 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
 - 剩余风险：格式异常字段名、offset 来源和异常信息中文统一仍需继续收口。
+
+- 日期：2026-06-14
+- 阶段：阶段七，格式异常诊断字段和 offset 来源收口
+- 改动文件：`FF14ConfigEditor/UISave/UISaveFormatException.cs`、`FF14ConfigEditor/UISave/UISaveBinaryReader.cs`、`FF14ConfigEditor/UISave/UISaveOffsetOrigin.cs`、`FF14ConfigEditor/ConfigUISave.cs`、`FF14ConfigEditor/UISave/UISaveSection.cs`、`FF14ConfigEditor/UISave/SectionFMARKER.cs`、`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`、`UISAVE_BINARY_REFACTOR_TODO.md`
+- 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
+- 剩余风险：阶段七暂无已知遗留；下一项进入阶段八测试和验证规范收尾。

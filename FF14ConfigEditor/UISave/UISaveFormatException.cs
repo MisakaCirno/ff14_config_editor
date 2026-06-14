@@ -8,6 +8,8 @@ namespace FF14ConfigEditor.UISave
     /// </summary>
     public sealed class UISaveFormatException : Exception
     {
+        public string? FieldName { get; }
+        public string? OffsetOrigin { get; }
         public long? Offset { get; }
         public int? SectionIndex { get; }
         public long? ExpectedLength { get; }
@@ -19,9 +21,13 @@ namespace FF14ConfigEditor.UISave
             int? sectionIndex = null,
             long? expectedLength = null,
             long? remainingLength = null,
+            string? fieldName = null,
+            string? offsetOrigin = null,
             Exception? innerException = null)
-            : base(BuildMessage(message, offset, sectionIndex, expectedLength, remainingLength), innerException)
+            : base(BuildMessage(message, fieldName, offsetOrigin, offset, sectionIndex, expectedLength, remainingLength), innerException)
         {
+            FieldName = NormalizeDetail(fieldName);
+            OffsetOrigin = NormalizeDetail(offsetOrigin);
             Offset = offset;
             SectionIndex = sectionIndex;
             ExpectedLength = expectedLength;
@@ -30,12 +36,18 @@ namespace FF14ConfigEditor.UISave
 
         private static string BuildMessage(
             string message,
+            string? fieldName,
+            string? offsetOrigin,
             long? offset,
             int? sectionIndex,
             long? expectedLength,
             long? remainingLength)
         {
             List<string> details = [];
+            string? normalizedFieldName = NormalizeDetail(fieldName);
+            string? normalizedOffsetOrigin = NormalizeDetail(offsetOrigin);
+            if (normalizedFieldName is not null) details.Add($"字段={normalizedFieldName}");
+            if (normalizedOffsetOrigin is not null) details.Add($"偏移来源={normalizedOffsetOrigin}");
             if (offset.HasValue) details.Add($"偏移={offset.Value}");
             if (sectionIndex.HasValue) details.Add($"段={sectionIndex.Value}");
             if (expectedLength.HasValue) details.Add($"期望长度={expectedLength.Value}");
@@ -44,6 +56,11 @@ namespace FF14ConfigEditor.UISave
             return details.Count == 0
                 ? message
                 : $"{message} ({string.Join(", ", details)})";
+        }
+
+        private static string? NormalizeDetail(string? detail)
+        {
+            return string.IsNullOrWhiteSpace(detail) ? null : detail;
         }
     }
 }

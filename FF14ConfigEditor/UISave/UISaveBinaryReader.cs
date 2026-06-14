@@ -9,7 +9,8 @@ namespace FF14ConfigEditor.UISave
             BinaryReader reader,
             int byteCount,
             string fieldName,
-            int? sectionIndex = null)
+            int? sectionIndex = null,
+            string? offsetOrigin = null)
         {
             if (byteCount < 0)
             {
@@ -17,7 +18,9 @@ namespace FF14ConfigEditor.UISave
                     $"{fieldName} 的读取长度不能为负数。",
                     offset: GetOffset(reader),
                     sectionIndex: sectionIndex,
-                    expectedLength: byteCount);
+                    expectedLength: byteCount,
+                    fieldName: fieldName,
+                    offsetOrigin: offsetOrigin);
             }
 
             long offset = GetOffset(reader);
@@ -29,7 +32,9 @@ namespace FF14ConfigEditor.UISave
                     offset: offset,
                     sectionIndex: sectionIndex,
                     expectedLength: byteCount,
-                    remainingLength: remaining.Value);
+                    remainingLength: remaining.Value,
+                    fieldName: fieldName,
+                    offsetOrigin: offsetOrigin);
             }
 
             byte[] bytes = reader.ReadBytes(byteCount);
@@ -40,7 +45,9 @@ namespace FF14ConfigEditor.UISave
                     offset: offset,
                     sectionIndex: sectionIndex,
                     expectedLength: byteCount,
-                    remainingLength: bytes.Length);
+                    remainingLength: bytes.Length,
+                    fieldName: fieldName,
+                    offsetOrigin: offsetOrigin);
             }
 
             return bytes;
@@ -50,7 +57,8 @@ namespace FF14ConfigEditor.UISave
             BinaryReader reader,
             long byteCount,
             string fieldName,
-            int? sectionIndex = null)
+            int? sectionIndex = null,
+            string? offsetOrigin = null)
         {
             if (byteCount < 0)
             {
@@ -58,7 +66,9 @@ namespace FF14ConfigEditor.UISave
                     $"{fieldName} 的长度不能为负数。",
                     offset: GetOffset(reader),
                     sectionIndex: sectionIndex,
-                    expectedLength: byteCount);
+                    expectedLength: byteCount,
+                    fieldName: fieldName,
+                    offsetOrigin: offsetOrigin);
             }
 
             long? remaining = GetRemaining(reader);
@@ -69,28 +79,30 @@ namespace FF14ConfigEditor.UISave
                     offset: GetOffset(reader),
                     sectionIndex: sectionIndex,
                     expectedLength: byteCount,
-                    remainingLength: remaining.Value);
+                    remainingLength: remaining.Value,
+                    fieldName: fieldName,
+                    offsetOrigin: offsetOrigin);
             }
         }
 
-        public static byte ReadByte(BinaryReader reader, string fieldName, int? sectionIndex = null)
+        public static byte ReadByte(BinaryReader reader, string fieldName, int? sectionIndex = null, string? offsetOrigin = null)
         {
-            return ReadExact(reader, sizeof(byte), fieldName, sectionIndex)[0];
+            return ReadExact(reader, sizeof(byte), fieldName, sectionIndex, offsetOrigin)[0];
         }
 
-        public static short ReadInt16(BinaryReader reader, string fieldName, int? sectionIndex = null)
+        public static short ReadInt16(BinaryReader reader, string fieldName, int? sectionIndex = null, string? offsetOrigin = null)
         {
-            return BitConverter.ToInt16(ReadExact(reader, sizeof(short), fieldName, sectionIndex), 0);
+            return BitConverter.ToInt16(ReadExact(reader, sizeof(short), fieldName, sectionIndex, offsetOrigin), 0);
         }
 
-        public static ushort ReadUInt16(BinaryReader reader, string fieldName, int? sectionIndex = null)
+        public static ushort ReadUInt16(BinaryReader reader, string fieldName, int? sectionIndex = null, string? offsetOrigin = null)
         {
-            return BitConverter.ToUInt16(ReadExact(reader, sizeof(ushort), fieldName, sectionIndex), 0);
+            return BitConverter.ToUInt16(ReadExact(reader, sizeof(ushort), fieldName, sectionIndex, offsetOrigin), 0);
         }
 
-        public static int ReadInt32(BinaryReader reader, string fieldName, int? sectionIndex = null)
+        public static int ReadInt32(BinaryReader reader, string fieldName, int? sectionIndex = null, string? offsetOrigin = null)
         {
-            return BitConverter.ToInt32(ReadExact(reader, sizeof(int), fieldName, sectionIndex), 0);
+            return BitConverter.ToInt32(ReadExact(reader, sizeof(int), fieldName, sectionIndex, offsetOrigin), 0);
         }
 
         public static long GetOffset(BinaryReader reader)
