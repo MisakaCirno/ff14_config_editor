@@ -45,27 +45,33 @@ namespace UIMarkerEditor.Controls
                     return;
                 }
 
-                // Update currentMark
-                currentMark.RegionID = (ushort)markerShare.MapID;
+                if (!TryCreateValidatedImport(markerShare, out ImportedMarker importedMarker, out string validationError))
+                {
+                    MessageBox.Show(validationError, "导入数据无效", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Update currentMark only after all imported data has been validated.
+                currentMark.RegionID = importedMarker.RegionID;
                 RefreshRegionOptions(GetLoadedRegionIds());
                 SetRegionSearchText(currentMark.RegionID);
 
-                static void UpdatePoint(WayMarkPoint point, MarkerSharePoint sharePoint, Action<bool> setEnabled)
+                static void UpdatePoint(WayMarkPoint point, ImportedMarkerPoint importedPoint, Action<bool> setEnabled)
                 {
-                    point.FloatX = (float)sharePoint.X;
-                    point.FloatY = (float)sharePoint.Y;
-                    point.FloatZ = (float)sharePoint.Z;
-                    setEnabled(sharePoint.Active);
+                    point.X = importedPoint.RawX;
+                    point.Y = importedPoint.RawY;
+                    point.Z = importedPoint.RawZ;
+                    setEnabled(importedPoint.Active);
                 }
 
-                UpdatePoint(currentMark.A, markerShare.A, val => currentMark.AEnabled = val);
-                UpdatePoint(currentMark.B, markerShare.B, val => currentMark.BEnabled = val);
-                UpdatePoint(currentMark.C, markerShare.C, val => currentMark.CEnabled = val);
-                UpdatePoint(currentMark.D, markerShare.D, val => currentMark.DEnabled = val);
-                UpdatePoint(currentMark.One, markerShare.One, val => currentMark.OneEnabled = val);
-                UpdatePoint(currentMark.Two, markerShare.Two, val => currentMark.TwoEnabled = val);
-                UpdatePoint(currentMark.Three, markerShare.Three, val => currentMark.ThreeEnabled = val);
-                UpdatePoint(currentMark.Four, markerShare.Four, val => currentMark.FourEnabled = val);
+                UpdatePoint(currentMark.A, importedMarker.A, val => currentMark.AEnabled = val);
+                UpdatePoint(currentMark.B, importedMarker.B, val => currentMark.BEnabled = val);
+                UpdatePoint(currentMark.C, importedMarker.C, val => currentMark.CEnabled = val);
+                UpdatePoint(currentMark.D, importedMarker.D, val => currentMark.DEnabled = val);
+                UpdatePoint(currentMark.One, importedMarker.One, val => currentMark.OneEnabled = val);
+                UpdatePoint(currentMark.Two, importedMarker.Two, val => currentMark.TwoEnabled = val);
+                UpdatePoint(currentMark.Three, importedMarker.Three, val => currentMark.ThreeEnabled = val);
+                UpdatePoint(currentMark.Four, importedMarker.Four, val => currentMark.FourEnabled = val);
 
                 // Update timestamp
                 currentMark.timestamp = (int)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
@@ -80,6 +86,124 @@ namespace UIMarkerEditor.Controls
                 MessageBox.Show($"导入失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
+        private static bool TryCreateValidatedImport(MarkerShare markerShare, out ImportedMarker importedMarker, out string errorMessage)
+        {
+            importedMarker = default;
+            errorMessage = string.Empty;
+
+            if (!markerShare.MapID.HasValue)
+            {
+                errorMessage = "缺少地图 ID。";
+                return false;
+            }
+
+            int mapID = markerShare.MapID.Value;
+            if (mapID < ushort.MinValue || mapID > ushort.MaxValue)
+            {
+                errorMessage = $"地图 ID 超出可保存范围：{mapID}。";
+                return false;
+            }
+
+            if (!TryCreateImportedPoint("A", markerShare.A, out ImportedMarkerPoint a, out errorMessage) ||
+                !TryCreateImportedPoint("B", markerShare.B, out ImportedMarkerPoint b, out errorMessage) ||
+                !TryCreateImportedPoint("C", markerShare.C, out ImportedMarkerPoint c, out errorMessage) ||
+                !TryCreateImportedPoint("D", markerShare.D, out ImportedMarkerPoint d, out errorMessage) ||
+                !TryCreateImportedPoint("1", markerShare.One, out ImportedMarkerPoint one, out errorMessage) ||
+                !TryCreateImportedPoint("2", markerShare.Two, out ImportedMarkerPoint two, out errorMessage) ||
+                !TryCreateImportedPoint("3", markerShare.Three, out ImportedMarkerPoint three, out errorMessage) ||
+                !TryCreateImportedPoint("4", markerShare.Four, out ImportedMarkerPoint four, out errorMessage))
+            {
+                return false;
+            }
+
+            importedMarker = new ImportedMarker(
+                (ushort)mapID,
+                a,
+                b,
+                c,
+                d,
+                one,
+                two,
+                three,
+                four);
+            return true;
+        }
+
+        private static bool TryCreateImportedPoint(
+            string pointName,
+            MarkerSharePoint? sharePoint,
+            out ImportedMarkerPoint importedPoint,
+            out string errorMessage)
+        {
+            importedPoint = default;
+            errorMessage = string.Empty;
+            if (sharePoint == null)
+            {
+                errorMessage = $"缺少 {pointName} 点数据。";
+                return false;
+            }
+
+            if (!TryConvertImportedCoordinate(pointName, "X", sharePoint.X, out int rawX, out errorMessage) ||
+                !TryConvertImportedCoordinate(pointName, "Y", sharePoint.Y, out int rawY, out errorMessage) ||
+                !TryConvertImportedCoordinate(pointName, "Z", sharePoint.Z, out int rawZ, out errorMessage))
+            {
+                return false;
+            }
+
+            importedPoint = new ImportedMarkerPoint(rawX, rawY, rawZ, sharePoint.Active);
+            return true;
+        }
+
+        private static bool TryConvertImportedCoordinate(
+            string pointName,
+            string axisName,
+            double value,
+            out int rawCoordinate,
+            out string errorMessage)
+        {
+            rawCoordinate = 0;
+            errorMessage = string.Empty;
+            if (!double.IsFinite(value))
+            {
+                errorMessage = $"{pointName} 点 {axisName} 坐标不是有效数字。";
+                return false;
+            }
+
+            decimal decimalValue;
+            try
+            {
+                decimalValue = (decimal)value;
+            }
+            catch (OverflowException)
+            {
+                errorMessage = $"{pointName} 点 {axisName} 坐标超出可保存范围：{value}。";
+                return false;
+            }
+
+            decimal rawValue = decimalValue * CoordinateScale;
+            if (rawValue < MinRawCoordinate || rawValue > MaxRawCoordinate)
+            {
+                errorMessage = $"{pointName} 点 {axisName} 坐标超出可保存范围：{value}。";
+                return false;
+            }
+
+            rawCoordinate = (int)rawValue;
+            return true;
+        }
+
+        private readonly record struct ImportedMarker(
+            ushort RegionID,
+            ImportedMarkerPoint A,
+            ImportedMarkerPoint B,
+            ImportedMarkerPoint C,
+            ImportedMarkerPoint D,
+            ImportedMarkerPoint One,
+            ImportedMarkerPoint Two,
+            ImportedMarkerPoint Three,
+            ImportedMarkerPoint Four);
+
+        private readonly record struct ImportedMarkerPoint(int RawX, int RawY, int RawZ, bool Active);
 
         private void Export_Button_Click(object sender, RoutedEventArgs e)
         {
