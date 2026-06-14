@@ -502,6 +502,18 @@ public class SectionFMarkerTests
     }
 
     [Fact]
+    public void ParseMarker_ReparseSameData_DoesNotDuplicateWayMarks()
+    {
+        byte[] markerData = UISaveTestData.BuildMarkerData(2, UISaveTestData.MarkerTail());
+        SectionFMARKER section = UISaveTestData.BuildFMarkerSection(markerData);
+
+        section.ParseMarker();
+
+        Assert.Equal(2, section.WayMarks.Count);
+        Assert.Equal(UISaveTestData.BuildSection(17, markerData), section.ToRawBytes());
+    }
+
+    [Fact]
     public void ParseMarker_ReparseReplacesPreviousTail()
     {
         byte[] firstMarkerData = UISaveTestData.BuildMarkerData(1, UISaveTestData.MarkerTail());

@@ -48,7 +48,7 @@
 - `[x]` section header、section data、endFlag 截断场景已有更明确异常。
 - `[x]` `sectionLength < 0` 和 section data 超出 payload 剩余长度已有拒绝。
 - `[x]` `SectionFMARKER.ParseMarker()` 使用局部结果解析，全部成功后再替换 `_markerHeader`、`_markerTail` 和 `WayMarks`。
-- `[~]` `SectionFMARKER` 构造函数解析后，调用方不应再重复调用 `ParseMarker()`。
+- `[x]` `SectionFMARKER` 构造函数解析后，调用方不再重复调用 `ParseMarker()`。
 - `[~]` `UISaveSection.ValidateForSave()` 已校验 section length、unknown 字段长度和 endFlag 长度。
 
 ## 外部参考结论
@@ -132,7 +132,7 @@
 ## 阶段四：FMARKER 结构规则
 
 - `[x]` `ParseMarker()` 使用局部结果解析，全部成功后再替换 `WayMarks`、`_markerHeader` 和 `_markerTail`。
-- `[~]` 已移除或计划移除重复解析职责，构造函数解析后调用方不再手动 `ParseMarker()`。
+- `[x]` 已移除重复解析职责，构造函数解析后调用方不再手动 `ParseMarker()`。
 - `[x]` 移除 `MaxWayMarkSlots = 30` 作为格式硬上限。
 - `[x]` 改用当前 section data 推导槽位数量：从 16 字节头之后连续读取完整 104 字节 WayMark，剩余交给 tail 规则处理。
 - `[x]` `data.Length < 20` 时抛出明确格式异常。
@@ -145,10 +145,10 @@
 
 ### 阶段四测试
 
-- `[~]` FMARKER round-trip 测试。
-- `[~]` `ParseMarker()` 重复调用不重复插入。
-- `[~]` 重新解析时不残留旧 tail。
-- `[~]` data 不足 16 字节时报错。
+- `[x]` FMARKER round-trip 测试。
+- `[x]` `ParseMarker()` 重复调用不重复插入。
+- `[x]` 重新解析时不残留旧 tail。
+- `[x]` data 不足最小 FMARKER 结构长度 20 字节时报错，已覆盖不足 16 字节场景。
 - `[x]` data 长度不足 20 字节时报错。
 - `[x]` FMARKER 长度为 `16 + 104 * 30 + 4` 时通过。
 - `[x]` FMARKER 长度为 `16 + 104 * 5 + 4` 时通过，但测试名称不要写成旧版兼容。
@@ -238,7 +238,7 @@
 6. `[x]` 剪贴板导入导出收紧：`MapID`、坐标精度、culture 稳定性。
 7. `[x]` section 名称映射补充：新增已知 section 名称，但不影响未知 section 保留。
 8. `[x]` 事务式解析状态复核：确认加载失败不会污染 `ConfigUISave` 已有状态，并补齐对应测试。
-9. `[ ]` FMARKER 生命周期和幂等测试收口：确认不重复解析、不残留旧 tail，并补齐 round-trip 测试状态。
+9. `[x]` FMARKER 生命周期和幂等测试收口：确认不重复解析、不残留旧 tail，并补齐 round-trip 测试状态。
 10. `[ ]` UI 友好错误和日志分级：统一格式异常中文文案、offset 信息和 UI 捕获行为。
 11. `[ ]` 测试和验证规范收尾：确认测试只使用合成数据或临时目录，真实文件观察只读。
 
@@ -299,3 +299,9 @@
 - 改动文件：`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`、`UISAVE_BINARY_REFACTOR_TODO.md`
 - 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
 - 剩余风险：异常 offset 来源细分和 UI 友好文案仍留到异常/UI 文案阶段处理。
+
+- 日期：2026-06-14
+- 阶段：阶段四，FMARKER 生命周期和幂等测试收口
+- 改动文件：`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`、`UISAVE_BINARY_REFACTOR_TODO.md`
+- 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
+- 剩余风险：异常/UI 文案阶段仍需统一格式错误展示和日志分级。
