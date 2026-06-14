@@ -76,7 +76,7 @@ namespace UIMarkerEditor
                 appDataStore,
                 this,
                 () => currentFilePath,
-                LoadConfigFile,
+                filePath => LoadConfigFile(filePath),
                 ConfirmSaveOrDiscardCharacterChanges,
                 RefreshCharacterList);
             ToolSettings_Control.Initialize(
@@ -116,8 +116,7 @@ namespace UIMarkerEditor
                     return;
                 }
 
-                currentFilePath = filePath;
-                LoadConfigFile(currentFilePath);
+                LoadConfigFile(filePath);
             }
         }
 
@@ -158,8 +157,7 @@ namespace UIMarkerEditor
                 return;
             }
 
-            currentFilePath = filePath;
-            LoadConfigFile(currentFilePath);
+            LoadConfigFile(filePath);
         }
 
         private void ClearRecentFiles_MenuItem_Click(object sender, RoutedEventArgs e)
@@ -212,7 +210,15 @@ namespace UIMarkerEditor
                 }
 
                 // 在这里将修改后的数据写回UISAVE.DAT文件
-                configUISave.Save();
+                try
+                {
+                    configUISave.Save();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, $"保存 UISAVE.DAT 失败，原文件未确认写入完成。\n\n文件：{configUISave.FilePath}\n\n原因：{ex.Message}", "保存失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
                 MessageBox.Show("文件已保存。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             else
@@ -221,23 +227,36 @@ namespace UIMarkerEditor
             }
         }
 
-        private void LoadConfigFile(string filePath)
+        private bool LoadConfigFile(string filePath)
         {
             // 使用 ConfigUISave 类加载文件
-            configUISave = new(filePath);
-
-            if (configUISave != null && configUISave.Marks != null)
+            ConfigUISave loadedConfig;
+            try
             {
-                RegisterLoadedCharacter(configUISave, filePath);
+                loadedConfig = new(filePath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"无法加载 UISAVE.DAT 文件。\n\n文件：{filePath}\n\n原因：{ex.Message}", "加载失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                CommandManager.InvalidateRequerySuggested();
+                return false;
+            }
+
+            SectionFMARKER? markerSection = loadedConfig.Marks;
+            if (markerSection != null)
+            {
+                currentFilePath = filePath;
+                configUISave = loadedConfig;
+                RegisterLoadedCharacter(loadedConfig, filePath);
                 UpdateCurrentFileStatus(filePath);
                 appDataStore.AddRecentFile(filePath);
                 RefreshRecentFileMenu();
-                List<WayMark> markerSection = configUISave.Marks.WayMarks;
+                List<WayMark> wayMarks = markerSection.WayMarks;
 
-                WayMarkEditor_Control.SetWayMarks(markerSection);
+                WayMarkEditor_Control.SetWayMarks(wayMarks);
 
                 // 输出所有的enableFlag和regionID以供调试
-                foreach (WayMark mark in markerSection)
+                foreach (WayMark mark in wayMarks)
                 {
                     // enableFlag 再用二进制显示
                     Debug.WriteLine($"RegionID: {mark.RegionID} -> EnableFlag: {mark.enableFlag} ({Convert.ToString(mark.enableFlag, 2).PadLeft(8, '0')})");
@@ -245,16 +264,13 @@ namespace UIMarkerEditor
             }
             else
             {
-                MessageBox.Show("无法加载UISAVE.DAT文件。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                currentFilePath = string.Empty;
-                configUISave = null;
-                ResetCurrentFileStatus();
-                WayMarkEditor_Control.ClearWayMarks();
+                MessageBox.Show(this, "无法在这个 UISAVE.DAT 中找到可编辑的 FMARKER 标点数据，当前已加载文件保持不变。", "加载失败", MessageBoxButton.OK, MessageBoxImage.Error);
                 CommandManager.InvalidateRequerySuggested();
-                return;
+                return false;
             }
 
             CommandManager.InvalidateRequerySuggested();
+            return true;
         }
 
         private void UpdateCurrentFileStatus(string filePath)
