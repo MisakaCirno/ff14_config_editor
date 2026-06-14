@@ -2,20 +2,30 @@ namespace UIMarkerEditor;
 
 public class MapData
 {
+    public const ushort EmptyRegionId = 0;
+    public const string EmptyRegionName = "空";
+    private const string UnknownRegionName = "未知地点";
     private static Dictionary<ushort, string> indexToName = [];
 
     public static string GetName(ushort index)
     {
+        if (index == EmptyRegionId) return EmptyRegionName;
+
         return indexToName.TryGetValue(index, out string? name) && !string.IsNullOrWhiteSpace(name)
             ? name
-            : "未知地点";
+            : UnknownRegionName;
     }
 
     public static Dictionary<ushort, MapData> GetMapDataDisplayDict()
     {
-        Dictionary<ushort, MapData> result = [];
+        Dictionary<ushort, MapData> result = new()
+        {
+            [EmptyRegionId] = new MapData(EmptyRegionId, EmptyRegionName)
+        };
         foreach (KeyValuePair<ushort, string> kvp in indexToName)
         {
+            if (kvp.Key == EmptyRegionId) continue;
+
             result[kvp.Key] = new MapData(kvp.Key, kvp.Value);
         }
 
@@ -46,7 +56,9 @@ public class MapData
     public MapData(ushort index, string name)
     {
         Index = index;
-        Name = string.IsNullOrWhiteSpace(name) ? "未知地点" : name;
+        Name = index == EmptyRegionId
+            ? EmptyRegionName
+            : string.IsNullOrWhiteSpace(name) ? UnknownRegionName : name;
         DisplayName = $"{Name}({index})";
     }
 

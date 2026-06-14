@@ -117,7 +117,7 @@ namespace UIMarkerEditor.Controls
             if (isSelectingRegionFromPopup) return;
             if (IsFocusInRegionOptions(e.NewFocus as DependencyObject)) return;
 
-            CommitRegionSearchText();
+            RestoreRegionSearchText();
             SetRegionClearButtonVisible(false);
         }
 
@@ -125,7 +125,7 @@ namespace UIMarkerEditor.Controls
         {
             if (e.Key == Key.Enter)
             {
-                CommitRegionSearchText();
+                RestoreRegionSearchText();
                 RegionSearch_Popup.IsOpen = false;
                 e.Handled = true;
                 return;
@@ -250,7 +250,7 @@ namespace UIMarkerEditor.Controls
                 return;
             }
 
-            CommitRegionSearchText();
+            RestoreRegionSearchText();
         }
 
         private void CloseRegionSearchIfClickedOutside(DependencyObject? clickedElement)
@@ -262,7 +262,7 @@ namespace UIMarkerEditor.Controls
                 return;
             }
 
-            CommitRegionSearchText();
+            RestoreRegionSearchText();
             RegionSearch_Popup.IsOpen = false;
             SetRegionClearButtonVisible(false);
             Keyboard.ClearFocus();
@@ -314,42 +314,13 @@ namespace UIMarkerEditor.Controls
             isSelectingRegionFromPopup = false;
         }
 
-        private void CommitRegionSearchText()
+        private void RestoreRegionSearchText()
         {
             if (currentWayMark == null) return;
 
-            ushort regionId = ResolveRegionIdFromText(RegionSearch_TextBox.Text);
-            EnsureRegionOption(regionId);
-
-            currentWayMark.RegionID = regionId;
             regionFilterText = string.Empty;
             regionOptionsView?.Refresh();
-            SetRegionSearchText(regionId);
-        }
-
-        private ushort ResolveRegionIdFromText(string text)
-        {
-            string trimmedText = text.Trim();
-            if (string.IsNullOrEmpty(trimmedText)) return 0;
-
-            MapData? exactMatch = regionOptions.FirstOrDefault(option =>
-                string.Equals(option.DisplayName, trimmedText, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(option.Name, trimmedText, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(option.Index.ToString(CultureInfo.InvariantCulture), trimmedText, StringComparison.OrdinalIgnoreCase));
-            if (exactMatch != null)
-            {
-                return exactMatch.Index;
-            }
-
-            int leftParen = trimmedText.LastIndexOf('(');
-            int rightParen = trimmedText.LastIndexOf(')');
-            if (leftParen >= 0 && rightParen > leftParen &&
-                ushort.TryParse(trimmedText[(leftParen + 1)..rightParen], out ushort parsedFromDisplayText))
-            {
-                return parsedFromDisplayText;
-            }
-
-            return ushort.TryParse(trimmedText, out ushort parsedRegionId) ? parsedRegionId : (ushort)0;
+            SetRegionSearchText(currentWayMark.RegionID);
         }
 
         private void EnsureRegionOption(ushort regionId)
