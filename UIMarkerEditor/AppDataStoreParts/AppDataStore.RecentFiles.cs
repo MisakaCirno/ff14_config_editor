@@ -17,8 +17,9 @@ public sealed partial class AppDataStore
             .Take(MaxRecentFileCount)
             .ToList();
 
-        Settings.RecentFiles = recentFiles;
-        TrySaveSettings(Settings);
+        AppSettings settings = CloneSettings(Settings);
+        settings.RecentFiles = recentFiles;
+        TrySaveSettings(settings);
     }
 
     public List<string> GetRecentFiles()
@@ -32,8 +33,9 @@ public sealed partial class AppDataStore
     {
         if (Settings.RecentFiles.Count == 0) return;
 
-        Settings.RecentFiles.Clear();
-        TrySaveSettings(Settings);
+        AppSettings settings = CloneSettings(Settings);
+        settings.RecentFiles.Clear();
+        TrySaveSettings(settings);
     }
 
     private bool TrySaveSettings(AppSettings settings)

@@ -103,6 +103,82 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public void SaveSettings_WhenDataDirectoryCannotBePrepared_DoesNotReplaceCurrentSettings()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        store.SaveSettings(new AppSettings
+        {
+            MaxBackupCount = 37,
+            RecentFiles = [Path.Combine(testDirectory, "old.dat")]
+        });
+        Directory.Delete(store.BackupsDirectory, recursive: true);
+        File.WriteAllText(store.BackupsDirectory, "不是目录");
+
+        Assert.Throws<AppDataStoreException>(() =>
+            store.SaveSettings(new AppSettings
+            {
+                MaxBackupCount = 7,
+                RecentFiles = [Path.Combine(testDirectory, "new.dat")]
+            }));
+
+        Assert.Equal(37, store.Settings.MaxBackupCount);
+        Assert.Single(store.Settings.RecentFiles);
+        Assert.EndsWith("old.dat", store.Settings.RecentFiles[0]);
+    }
+
+    [Fact]
+    public void AddRecentFile_WhenSettingsSaveFails_DoesNotMutateRecentFilesInMemory()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string oldPath = Path.Combine(testDirectory, "old.dat");
+        store.AddRecentFile(oldPath);
+        Directory.Delete(store.BackupsDirectory, recursive: true);
+        File.WriteAllText(store.BackupsDirectory, "不是目录");
+
+        store.AddRecentFile(Path.Combine(testDirectory, "new.dat"));
+
+        List<string> recentFiles = store.GetRecentFiles();
+        Assert.Single(recentFiles);
+        Assert.Equal(Path.GetFullPath(oldPath), recentFiles[0]);
+    }
+
+    [Fact]
+    public void ChangeDataDirectory_WhenBootstrapWriteFails_RestoresPreviousState()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        store.SaveSettings(new AppSettings
+        {
+            MaxBackupCount = 37,
+            RecentFiles = [Path.Combine(testDirectory, "old.dat")]
+        });
+        CharacterProfile profile = store.GetOrCreateCharacter("abc");
+        profile.CharacterName = "旧角色";
+        store.SaveCharacters();
+        string oldDataDirectory = store.DataDirectory;
+        string oldSettingsFilePath = store.SettingsFilePath;
+        string targetDirectory = Path.Combine(testDirectory, "NewData");
+        Directory.CreateDirectory(targetDirectory);
+        File.WriteAllText(Path.Combine(targetDirectory, "config.json"), "{ 损坏的 JSON");
+        File.Delete(store.BootstrapFilePath);
+        Directory.CreateDirectory(store.BootstrapFilePath);
+
+        Assert.Throws<AppDataStoreException>(() =>
+            store.ChangeDataDirectory(targetDirectory, migrateExistingData: false));
+
+        Assert.Equal(oldDataDirectory, store.DataDirectory);
+        Assert.Equal(oldSettingsFilePath, store.SettingsFilePath);
+        Assert.Equal(37, store.Settings.MaxBackupCount);
+        Assert.Single(store.Settings.RecentFiles);
+        Assert.EndsWith("old.dat", store.Settings.RecentFiles[0]);
+        Assert.Contains(store.Characters, character =>
+            character.UserID == "ABC" && character.CharacterName == "旧角色");
+        Assert.DoesNotContain(store.ConsumeDataLoadWarnings(), warning => warning.Contains("工具设置无法读取"));
+    }
+
+    [Fact]
     public void GetOrCreateCharacter_DoesNotWriteCharactersFileUntilSaveCharacters()
     {
         AppDataStore store = CreateStore();

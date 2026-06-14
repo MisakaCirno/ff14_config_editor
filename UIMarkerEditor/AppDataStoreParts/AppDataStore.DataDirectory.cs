@@ -16,6 +16,7 @@ public sealed partial class AppDataStore
 
         string oldDataDirectory = DataDirectory;
         string targetDirectory = Path.GetFullPath(newDataDirectory);
+        AppDataStateSnapshot previousState = CreateAppDataStateSnapshot();
         Directory.CreateDirectory(targetDirectory);
         VerifyDirectoryWritable(targetDirectory);
 
@@ -32,20 +33,28 @@ public sealed partial class AppDataStore
             CopyDirectory(oldDataDirectory, targetDirectory);
         }
 
-        if (!migrateExistingData)
+        try
         {
-            Settings = new AppSettings();
-            Characters.Clear();
-            ServerList = new ServerListCache();
-        }
+            DataDirectory = targetDirectory;
+            if (!migrateExistingData)
+            {
+                Settings = new AppSettings();
+                Characters.Clear();
+                ServerList = new ServerListCache();
+            }
 
-        DataDirectory = targetDirectory;
-        EnsureDataDirectory();
-        ConfigureLogger();
-        SaveBootstrap(allowOverwriteInvalid: true);
-        LoadSettings();
-        LoadCharacters();
-        LoadServerList();
+            EnsureDataDirectory();
+            LoadSettings();
+            LoadCharacters();
+            LoadServerList();
+            SaveBootstrap(allowOverwriteInvalid: true);
+            ConfigureLogger();
+        }
+        catch
+        {
+            RestoreAppDataState(previousState);
+            throw;
+        }
     }
 
     private void EnsureDataDirectory()
@@ -118,5 +127,106 @@ public sealed partial class AppDataStore
             SafeFileWriter.Copy(file, targetFile);
         }
     }
+
+    private AppDataStateSnapshot CreateAppDataStateSnapshot()
+    {
+        return new AppDataStateSnapshot(
+            DataDirectory,
+            CloneSettings(Settings),
+            CloneCharacterProfiles(Characters),
+            CloneServerList(ServerList),
+            bootstrapFileInvalid,
+            settingsFileInvalid,
+            charactersFileInvalid,
+            [.. dataLoadWarnings],
+            new HashSet<string>(dataLoadWarningKeys),
+            AppLogger.LogFilePath);
+    }
+
+    private void RestoreAppDataState(AppDataStateSnapshot snapshot)
+    {
+        DataDirectory = snapshot.DataDirectory;
+        Settings = CloneSettings(snapshot.Settings);
+        Characters.Clear();
+        foreach (CharacterProfile profile in snapshot.Characters)
+        {
+            Characters.Add(CloneCharacterProfile(profile));
+        }
+
+        ServerList = CloneServerList(snapshot.ServerList);
+        bootstrapFileInvalid = snapshot.BootstrapFileInvalid;
+        settingsFileInvalid = snapshot.SettingsFileInvalid;
+        charactersFileInvalid = snapshot.CharactersFileInvalid;
+        dataLoadWarnings.Clear();
+        dataLoadWarnings.AddRange(snapshot.DataLoadWarnings);
+        dataLoadWarningKeys.Clear();
+        foreach (string warningKey in snapshot.DataLoadWarningKeys)
+        {
+            dataLoadWarningKeys.Add(warningKey);
+        }
+
+        AppLogger.SetLogFilePath(snapshot.LogFilePath);
+    }
+
+    private static List<CharacterProfile> CloneCharacterProfiles(IEnumerable<CharacterProfile> profiles)
+    {
+        List<CharacterProfile> result = [];
+        foreach (CharacterProfile profile in profiles)
+        {
+            result.Add(CloneCharacterProfile(profile));
+        }
+
+        return result;
+    }
+
+    private static CharacterProfile CloneCharacterProfile(CharacterProfile profile)
+    {
+        return new CharacterProfile
+        {
+            UserID = profile.UserID,
+            CharacterName = profile.CharacterName,
+            DataCenter = profile.DataCenter,
+            World = profile.World,
+            Note = profile.Note,
+            UpdatedAt = profile.UpdatedAt
+        };
+    }
+
+    private static ServerListCache CloneServerList(ServerListCache serverList)
+    {
+        ServerListCache result = new()
+        {
+            SourceUrl = serverList.SourceUrl,
+            LastUpdated = serverList.LastUpdated,
+            LastSyncAttempt = serverList.LastSyncAttempt,
+            Groups = []
+        };
+
+        if (serverList.Groups != null)
+        {
+            foreach (ServerGroup group in serverList.Groups)
+            {
+                result.Groups.Add(new ServerGroup
+                {
+                    DataCenter = group.DataCenter,
+                    Worlds = group.Worlds == null ? [] : [.. group.Worlds]
+                });
+            }
+        }
+
+        return result;
+    }
+
+    private sealed record AppDataStateSnapshot(
+        string DataDirectory,
+        AppSettings Settings,
+        List<CharacterProfile> Characters,
+        ServerListCache ServerList,
+        bool BootstrapFileInvalid,
+        bool SettingsFileInvalid,
+        bool CharactersFileInvalid,
+        List<string> DataLoadWarnings,
+        HashSet<string> DataLoadWarningKeys,
+        string? LogFilePath);
 
 }

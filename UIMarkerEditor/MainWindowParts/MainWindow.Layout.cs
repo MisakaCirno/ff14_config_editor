@@ -23,7 +23,8 @@ namespace UIMarkerEditor
 
         private void SaveLayoutSettings()
         {
-            WindowLayoutSettings layout = appDataStore.Settings.WindowLayout ?? new WindowLayoutSettings();
+            AppSettings settings = appDataStore.CreateSettingsSnapshot();
+            WindowLayoutSettings layout = settings.WindowLayout ?? new WindowLayoutSettings();
             Rect bounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
 
             if (IsFinitePositive(bounds.Width) && IsFinitePositive(bounds.Height))
@@ -42,10 +43,10 @@ namespace UIMarkerEditor
             BackupRestore_Control.CaptureLayoutSettings(layout);
             CharacterProfiles_Control.CaptureLayoutSettings(layout);
 
-            appDataStore.Settings.WindowLayout = layout;
+            settings.WindowLayout = layout;
             try
             {
-                appDataStore.SaveSettings(appDataStore.Settings);
+                appDataStore.SaveSettings(settings);
             }
             catch (InvalidOperationException ex)
             {

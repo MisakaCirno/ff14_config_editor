@@ -6,15 +6,23 @@ public sealed partial class AppDataStore
 {
     public void SaveSettings(AppSettings settings)
     {
+        ArgumentNullException.ThrowIfNull(settings);
+
         if (settingsFileInvalid)
         {
             throw new InvalidOperationException("config.json 本次启动读取失败。为避免覆盖损坏文件，请先备份、删除或修复该文件后重启工具。");
         }
 
-        NormalizeSettings(settings);
-        Settings = settings;
+        AppSettings nextSettings = CloneSettings(settings);
+        NormalizeSettings(nextSettings);
         EnsureDataDirectory();
-        WriteJson(SettingsFilePath, Settings);
+        WriteJson(SettingsFilePath, nextSettings);
+        Settings = nextSettings;
+    }
+
+    public AppSettings CreateSettingsSnapshot()
+    {
+        return CloneSettings(Settings);
     }
 
     private void LoadSettings()
@@ -45,5 +53,42 @@ public sealed partial class AppDataStore
     {
         settings.WindowLayout ??= new WindowLayoutSettings();
         settings.RecentFiles ??= [];
+    }
+
+    private static AppSettings CloneSettings(AppSettings settings)
+    {
+        return new AppSettings
+        {
+            MaxBackupCount = settings.MaxBackupCount,
+            MaxBackupDays = settings.MaxBackupDays,
+            LimitBackupCount = settings.LimitBackupCount,
+            LimitBackupDays = settings.LimitBackupDays,
+            AutoBackupBeforeSave = settings.AutoBackupBeforeSave,
+            LastMapDataManualRefreshAttempt = settings.LastMapDataManualRefreshAttempt,
+            WindowLayout = CloneWindowLayout(settings.WindowLayout),
+            RecentFiles = settings.RecentFiles == null ? [] : [.. settings.RecentFiles]
+        };
+    }
+
+    private static WindowLayoutSettings CloneWindowLayout(WindowLayoutSettings? layout)
+    {
+        if (layout == null)
+        {
+            return new WindowLayoutSettings();
+        }
+
+        return new WindowLayoutSettings
+        {
+            Left = layout.Left,
+            Top = layout.Top,
+            Width = layout.Width,
+            Height = layout.Height,
+            WindowState = layout.WindowState,
+            WayMarkListRatio = layout.WayMarkListRatio,
+            WayMarkEditorRatio = layout.WayMarkEditorRatio,
+            WayMarkPreviewRatio = layout.WayMarkPreviewRatio,
+            BackupListRatio = layout.BackupListRatio,
+            CharacterListRatio = layout.CharacterListRatio
+        };
     }
 }
