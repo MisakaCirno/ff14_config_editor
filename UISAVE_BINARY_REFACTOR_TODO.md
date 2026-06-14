@@ -37,9 +37,9 @@
 - `[x]` 打开/重载/保存 `UISAVE.DAT` 已增加 UI 异常边界。
 - `[x]` 已新增 `FF14ConfigEditor.Tests` 测试项目，已有基础测试。
 
-## 当前工作区已有的二进制层改动
+## 已提交但仍需复核收口的二进制层改动
 
-以下内容已经在当前工作区出现，但仍需结合后续清单复核，不代表最终完成。
+以下内容已经进入代码库，但仍需结合后续清单复核和补测试，不代表对应阶段已经全部完成。
 
 - `[~]` 新增 `UISaveBinaryReader`，集中做 `ReadExact` 和基础数值读取。
 - `[~]` 新增 `UISaveFormatException`，用于格式错误并携带 offset、section index、expected length、remaining length 等信息。
@@ -114,6 +114,8 @@
 - `[x]` section endFlag 非零时能原样保留，除非后续确认它必须为零。
 
 ## 阶段三：事务式解析状态
+
+目标是让 `ConfigUISave` 的加载行为接近 all-or-nothing：解析完整成功后才替换对象状态；如果文件格式错误或 payload 中途失败，当前对象应保持加载前状态，不能留下半解析字段。
 
 - `[~]` `Load()` 已先解析临时结构，成功后再替换对象状态。
 - `[~]` `ParseEncryptedPart()` 已改为解析临时 payload 后再提交。
@@ -235,7 +237,10 @@
 5. `[x]` 保存前校验补齐：确保保存失败不写目标文件。
 6. `[x]` 剪贴板导入导出收紧：`MapID`、坐标精度、culture 稳定性。
 7. `[x]` section 名称映射补充：新增已知 section 名称，但不影响未知 section 保留。
-8. `[ ]` UI 友好错误和日志分级。
+8. `[ ]` 事务式解析状态复核：确认加载失败不会污染 `ConfigUISave` 已有状态，并补齐对应测试。
+9. `[ ]` FMARKER 生命周期和幂等测试收口：确认不重复解析、不残留旧 tail，并补齐 round-trip 测试状态。
+10. `[ ]` UI 友好错误和日志分级：统一格式异常中文文案、offset 信息和 UI 捕获行为。
+11. `[ ]` 测试和验证规范收尾：确认测试只使用合成数据或临时目录，真实文件观察只读。
 
 ## 每轮修复后的记录格式
 
@@ -281,4 +286,10 @@
 - 阶段：阶段二，section 名称映射补充
 - 改动文件：`FF14ConfigEditor/ConfigUISave.cs`、`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`、`UISAVE_BINARY_REFACTOR_TODO.md`
 - 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
-- 剩余风险：section 名称来源仍依赖社区逆向资料，未来游戏更新新增 index 时应继续按“未知但保留”策略处理。
+- 剩余风险：section 名称来源于 `FFXIVClientStructs`，未来游戏更新新增 index 时应继续按“未知但保留”策略处理。
+
+- 日期：2026-06-14
+- 阶段：待办文档同步，明确后续推进顺序
+- 改动文件：`UISAVE_BINARY_REFACTOR_TODO.md`
+- 验证命令：未运行项目测试；本次仅同步文档中的阶段说明和推荐顺序。
+- 剩余风险：下一轮仍需按协作修复流程先复核阶段三现状，再讨论方案并实施。
