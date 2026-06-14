@@ -50,18 +50,28 @@ public sealed partial class AppDataStore
 
     private void EnsureDataDirectory()
     {
-        Directory.CreateDirectory(DataDirectory);
-        Directory.CreateDirectory(BackupsDirectory);
-        if (!File.Exists(SettingsFilePath))
+        try
         {
-            WriteJson(SettingsFilePath, Settings);
-        }
+            Directory.CreateDirectory(DataDirectory);
+            Directory.CreateDirectory(BackupsDirectory);
+            if (!File.Exists(SettingsFilePath))
+            {
+                WriteJson(SettingsFilePath, Settings);
+            }
 
-        if (!File.Exists(CharactersFilePath))
+            if (!File.Exists(CharactersFilePath))
+            {
+                WriteJson(CharactersFilePath, new List<CharacterProfile>());
+            }
+        }
+        catch (AppDataStoreException)
         {
-            WriteJson(CharactersFilePath, new List<CharacterProfile>());
+            throw;
         }
-
+        catch (Exception ex)
+        {
+            throw new AppDataStoreException("准备本地数据目录", DataDirectory, ex);
+        }
     }
 
     private void ConfigureLogger()

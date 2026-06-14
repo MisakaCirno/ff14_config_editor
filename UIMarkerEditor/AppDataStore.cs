@@ -57,16 +57,33 @@ public sealed partial class AppDataStore
     public string MapDataVersion { get; private set; } = string.Empty;
 
     public AppDataStore()
-    {
-        BootstrapDirectory = Path.Combine(
+        : this(Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            AppFolderName);
+            AppFolderName))
+    {
+    }
+
+    internal AppDataStore(string bootstrapDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(bootstrapDirectory))
+        {
+            throw new ArgumentException("启动配置目录不能为空。", nameof(bootstrapDirectory));
+        }
+
+        BootstrapDirectory = Path.GetFullPath(bootstrapDirectory);
         DataDirectory = DefaultDataDirectory;
     }
 
     public void Initialize()
     {
-        Directory.CreateDirectory(BootstrapDirectory);
+        try
+        {
+            Directory.CreateDirectory(BootstrapDirectory);
+        }
+        catch (Exception ex)
+        {
+            throw new AppDataStoreException("准备本地启动配置目录", BootstrapDirectory, ex);
+        }
 
         JsonFileReadResult<BootstrapSettings> bootstrapResult = ReadJsonFile<BootstrapSettings>(BootstrapFilePath);
         BootstrapSettings? bootstrap = null;

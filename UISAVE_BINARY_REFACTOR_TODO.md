@@ -253,14 +253,15 @@
 - `[x]` 应用启动流程已增加顶层异常边界；本地数据初始化失败时显示友好错误并退出。
 - `[x]` 最近文件、窗口布局、角色备注、备份备注和服务器同步尝试时间等辅助保存点已补充本地数据异常处理和日志。
 - `[x]` `GetOrCreateCharacter()` 不再隐式写入文件，调用方按自身场景显式保存并处理失败。
-- `[ ]` `AppDataStore` / UI 编排层仍缺少直接测试。下一项应先复核当前结构是否已经支持测试用临时数据目录，再决定是否补测试入口。
+- `[x]` `AppDataStore` / UI 编排层已补第一批直接测试。新增 `UIMarkerEditor.Tests`，通过测试用临时启动目录覆盖本地数据层行为。
 
 ### 阶段十后续测试方向
 
 - `[x]` 坐标转换边界已有单元测试覆盖。
-- `[~]` 区域选择写入行为已通过构建和现有测试验证，但尚缺少直接 UI/数据层回归测试。
-- `[ ]` `AppDataStore` 损坏 JSON 不覆盖、写入失败异常类型、最近文件保存失败返回值、角色档案读写、服务器缓存降级等场景需要补直接测试。
-- `[ ]` 如果 WPF UI 自动化成本过高，优先给 `AppDataStore` 增加测试用数据目录入口，用临时目录覆盖数据层行为。
+- `[~]` 区域选择写入行为已通过构建和现有测试验证，但尚缺少直接 UI 回归测试。
+- `[x]` `AppDataStore` 损坏 JSON 不覆盖、写入失败异常类型、最近文件保存失败返回值、角色档案读写、有效服务器缓存加载等场景已有第一批直接测试。
+- `[x]` 已给 `AppDataStore` 增加测试用启动目录入口，测试只使用临时目录，不触碰真实用户数据目录。
+- `[ ]` 服务器列表和地图数据的真实网络失败降级尚未做可注入网络层测试；后续如果继续收紧，应先抽出可替换的下载入口，避免测试依赖外网。
 
 ## 暂不做的事情
 
@@ -289,7 +290,7 @@
 13. `[x]` 形状生成坐标边界：统一 raw 坐标转换，拒绝非有限数和超范围坐标。
 14. `[x]` 区域选择写入行为：`0` 统一为 `空(0)`，未识别文本不再静默写入。
 15. `[x]` 本地数据写入异常边界：统一 `AppDataStoreException`，启动和辅助保存点补充异常处理。
-16. `[ ]` AppDataStore / UI 编排层测试补强：下一项按协作流程复核、讨论并实施。
+16. `[x]` AppDataStore / UI 编排层测试补强：新增 `UIMarkerEditor.Tests`，覆盖本地数据层第一批关键行为。
 
 ## 每轮修复后的记录格式
 
@@ -426,3 +427,9 @@
 - 改动文件：`UIMarkerEditor/App.xaml.cs`、`UIMarkerEditor/AppDataStoreParts/AppDataStoreException.cs`、`UIMarkerEditor/AppDataStoreParts/AppDataStore.Json.cs`、`UIMarkerEditor/AppDataStoreParts/AppDataStore.Characters.cs`、`UIMarkerEditor/AppDataStoreParts/AppDataStore.RecentFiles.cs`、`UIMarkerEditor/AppDataStoreParts/AppDataStore.Servers.cs`、`UIMarkerEditor/MainWindowParts/MainWindow.FileStatus.cs`、`UIMarkerEditor/MainWindowParts/MainWindow.Layout.cs`、`UIMarkerEditor/Controls/ToolSettingsControl.xaml.cs`、`UIMarkerEditor/Controls/CharacterProfilesControl.xaml.cs`、`UIMarkerEditor/Controls/BackupRestoreControl.xaml.cs`
 - 验证命令：`dotnet build FFXIVConfigEditor.sln`；`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`git diff --cached --check`
 - 剩余风险：`AppDataStore` / UI 编排层仍缺少直接测试；下一项应围绕临时目录、损坏 JSON、写入失败和缓存降级补覆盖。
+
+- 日期：2026-06-14
+- 阶段：阶段十，AppDataStore / UI 编排层测试补强
+- 改动文件：`UIMarkerEditor.Tests/UIMarkerEditor.Tests.csproj`、`UIMarkerEditor.Tests/AppDataStoreTests.cs`、`FFXIVConfigEditor.sln`、`UIMarkerEditor/AppDataStore.cs`、`UIMarkerEditor/AppDataStoreParts/AppDataStore.DataDirectory.cs`、`UIMarkerEditor/AssemblyInfo.cs`、`UIMarkerEditor/Models/AppDataModels.cs`、`UISAVE_BINARY_REFACTOR_TODO.md`
+- 验证命令：`dotnet test UIMarkerEditor.Tests\UIMarkerEditor.Tests.csproj --no-restore`；`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
+- 剩余风险：服务器列表和地图数据的网络失败降级仍未做可注入网络层测试；本次只覆盖有效缓存加载，避免测试依赖外网。构建和新增测试出现 `NU1900`，原因是 NuGet 漏洞数据源访问失败。

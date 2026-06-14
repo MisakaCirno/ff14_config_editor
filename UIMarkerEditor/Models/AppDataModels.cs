@@ -34,10 +34,10 @@ public sealed class AppSettings
 
 public sealed class WindowLayoutSettings
 {
-    public double Left { get; set; } = double.NaN;
-    public double Top { get; set; } = double.NaN;
-    public double Width { get; set; } = double.NaN;
-    public double Height { get; set; } = double.NaN;
+    public double Left { get; set; }
+    public double Top { get; set; }
+    public double Width { get; set; }
+    public double Height { get; set; }
     public string WindowState { get; set; } = nameof(System.Windows.WindowState.Normal);
     public double WayMarkListRatio { get; set; } = 1d / 3d;
     public double WayMarkEditorRatio { get; set; } = 1d / 3d;
