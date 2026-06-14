@@ -61,9 +61,14 @@ namespace FF14ConfigEditor.UISave
 
         protected void ValidateStructure()
         {
-            ValidateByteArray(unknown1, Unknown1ByteLength, "段 unknown1", index);
-            ValidateByteArray(unknown2, Unknown2ByteLength, "段 unknown2", index);
-            ValidateByteArray(endFlag, EndFlagByteLength, "段结束标记", index);
+            ValidateSectionFields();
+
+            if (data is null)
+            {
+                throw new UISaveFormatException(
+                    "段数据不能为空。",
+                    sectionIndex: index);
+            }
 
             if (length < 0)
             {
@@ -83,12 +88,28 @@ namespace FF14ConfigEditor.UISave
             }
         }
 
+        protected void ValidateSectionFields()
+        {
+            ValidateByteArray(unknown1, Unknown1ByteLength, "段 unknown1", index);
+            ValidateByteArray(unknown2, Unknown2ByteLength, "段 unknown2", index);
+            ValidateByteArray(endFlag, EndFlagByteLength, "段结束标记", index);
+        }
+
         protected static void ValidateByteArray(
-            byte[] value,
+            byte[]? value,
             int expectedLength,
             string fieldName,
             int? sectionIndex = null)
         {
+            if (value is null)
+            {
+                throw new UISaveFormatException(
+                    $"{fieldName} 不能为空。",
+                    sectionIndex: sectionIndex,
+                    expectedLength: expectedLength,
+                    remainingLength: 0);
+            }
+
             if (value.Length != expectedLength)
             {
                 throw new UISaveFormatException(

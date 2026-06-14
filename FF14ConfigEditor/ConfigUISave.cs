@@ -307,8 +307,27 @@ namespace FF14ConfigEditor
         {
             ValidateRawLength(fileFormatVersionRaw, FileFormatVersionByteLength, "文件格式版本");
             ValidateRawLength(fileUnknownRaw, FileUnknownByteLength, "文件未知头部");
+            ValidateRawNotNull(fileTailRaw, "文件尾部填充");
             ValidateRawLength(payloadUnknownRaw, PayloadUnknownByteLength, "加密部分未知头");
             ValidateRawLength(userIDRaw, UserIdByteLength, "加密部分用户 ID");
+            ValidateRawNotNull(payloadTailRaw, "加密部分尾部填充");
+            ValidateSectionsForSave();
+        }
+
+        private void ValidateSectionsForSave()
+        {
+            if (Sections is null)
+            {
+                throw new UISaveFormatException("段列表不能为空。");
+            }
+
+            for (int i = 0; i < Sections.Count; i++)
+            {
+                if (Sections[i] is null)
+                {
+                    throw new UISaveFormatException($"段列表第 {i} 项不能为空。");
+                }
+            }
         }
 
         private static byte[] ReadRemainingFileTail(BinaryReader reader)
@@ -333,14 +352,30 @@ namespace FF14ConfigEditor
             return fileTail;
         }
 
-        private static void ValidateRawLength(byte[] value, int expectedLength, string fieldName)
+        private static void ValidateRawLength(byte[]? value, int expectedLength, string fieldName)
         {
+            if (value is null)
+            {
+                throw new UISaveFormatException(
+                    $"{fieldName} 不能为空。",
+                    expectedLength: expectedLength,
+                    remainingLength: 0);
+            }
+
             if (value.Length != expectedLength)
             {
                 throw new UISaveFormatException(
                     $"{fieldName} 必须正好是 {expectedLength} 字节。",
                     expectedLength: expectedLength,
                     remainingLength: value.Length);
+            }
+        }
+
+        private static void ValidateRawNotNull(byte[]? value, string fieldName)
+        {
+            if (value is null)
+            {
+                throw new UISaveFormatException($"{fieldName} 不能为空。");
             }
         }
 

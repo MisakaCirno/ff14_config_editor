@@ -151,6 +151,58 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
     }
 
     [Fact]
+    public void Save_NullSection_ThrowsAndLeavesFileUnchanged()
+    {
+        string path = WritePayloadFile(UISaveTestData.BuildPayload(
+            UISaveTestData.BuildSection(1, [0xAA, 0xBB])));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+        config.Sections.Add(null!);
+
+        Assert.Throws<UISaveFormatException>(config.Save);
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void Save_NullSectionData_ThrowsAndLeavesFileUnchanged()
+    {
+        string path = WritePayloadFile(UISaveTestData.BuildPayload(
+            UISaveTestData.BuildSection(1, [0xAA, 0xBB])));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+        config.Sections[0].data = null!;
+
+        Assert.Throws<UISaveFormatException>(config.Save);
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void Save_NullFileTail_ThrowsAndLeavesFileUnchanged()
+    {
+        string path = WritePayloadFile(UISaveTestData.BuildPayload(
+            UISaveTestData.BuildSection(1, [0xAA, 0xBB])));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+        UISaveTestData.SetConfigByteArrayField(config, "fileTailRaw", null);
+
+        Assert.Throws<UISaveFormatException>(config.Save);
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void Save_NullPayloadTail_ThrowsAndLeavesFileUnchanged()
+    {
+        string path = WritePayloadFile(UISaveTestData.BuildPayload(
+            UISaveTestData.BuildSection(1, [0xAA, 0xBB])));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+        UISaveTestData.SetConfigByteArrayField(config, "payloadTailRaw", null);
+
+        Assert.Throws<UISaveFormatException>(config.Save);
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
     public void Save_PayloadTail_RoundTripsTailBytes()
     {
         string path = WritePayloadFile(UISaveTestData.BuildPayloadWithTail(
@@ -206,6 +258,76 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
 
         Assert.Throws<UISaveFormatException>(config.Save);
         Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void Save_InvalidFMarkerHeaderLength_ThrowsAndLeavesFileUnchanged()
+    {
+        byte[] markerData = UISaveTestData.BuildMarkerData(1, UISaveTestData.MarkerTail());
+        string path = WritePayloadFile(UISaveTestData.BuildPayload(
+            UISaveTestData.BuildSection(17, markerData)));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+        SectionFMARKER section = Assert.IsType<SectionFMARKER>(config.Sections[0]);
+        UISaveTestData.SetMarkerHeader(section, [0xAA]);
+
+        Assert.Throws<UISaveFormatException>(config.Save);
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void Save_NullFMarkerWayMark_ThrowsAndLeavesFileUnchanged()
+    {
+        byte[] markerData = UISaveTestData.BuildMarkerData(1, UISaveTestData.MarkerTail());
+        string path = WritePayloadFile(UISaveTestData.BuildPayload(
+            UISaveTestData.BuildSection(17, markerData)));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+        SectionFMARKER section = Assert.IsType<SectionFMARKER>(config.Sections[0]);
+        section.WayMarks.Add(null!);
+
+        Assert.Throws<UISaveFormatException>(config.Save);
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void Save_NullFMarkerPoint_ThrowsAndLeavesFileUnchanged()
+    {
+        byte[] markerData = UISaveTestData.BuildMarkerData(1, UISaveTestData.MarkerTail());
+        string path = WritePayloadFile(UISaveTestData.BuildPayload(
+            UISaveTestData.BuildSection(17, markerData)));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+        SectionFMARKER section = Assert.IsType<SectionFMARKER>(config.Sections[0]);
+        section.WayMarks[0].A = null!;
+
+        Assert.Throws<UISaveFormatException>(config.Save);
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void Save_FMarkerWayMarkChange_RegeneratesSectionLength()
+    {
+        byte[] markerData = UISaveTestData.BuildMarkerData(1, UISaveTestData.MarkerTail());
+        string path = WritePayloadFile(UISaveTestData.BuildPayload(
+            UISaveTestData.BuildSection(17, markerData)));
+        ConfigUISave config = new(path);
+        SectionFMARKER section = Assert.IsType<SectionFMARKER>(config.Sections[0]);
+        section.WayMarks.Add(new WayMark());
+        section.data = [0xAA];
+        section.length = section.data.Length;
+
+        config.Save();
+
+        int expectedMarkerLength = SectionFMARKER.MarkerHeaderByteLength
+            + SectionFMARKER.WayMarkByteLength * 2
+            + SectionFMARKER.MarkerTailByteLength;
+        Assert.Equal(expectedMarkerLength, section.length);
+        Assert.Equal(expectedMarkerLength, section.data.Length);
+
+        ConfigUISave reloaded = new(path);
+        SectionFMARKER reloadedSection = Assert.IsType<SectionFMARKER>(reloaded.Sections[0]);
+        Assert.Equal(2, reloadedSection.WayMarks.Count);
     }
 
     [Fact]
@@ -430,15 +552,30 @@ internal static class UISaveTestData
 
     public static void SetMarkerTail(SectionFMARKER section, byte[] markerTail)
     {
-        System.Reflection.FieldInfo? field = typeof(SectionFMARKER).GetField(
-            "_markerTail",
+        SetPrivateField(section, "_markerTail", markerTail);
+    }
+
+    public static void SetMarkerHeader(SectionFMARKER section, byte[] markerHeader)
+    {
+        SetPrivateField(section, "_markerHeader", markerHeader);
+    }
+
+    public static void SetConfigByteArrayField(ConfigUISave config, string fieldName, byte[]? value)
+    {
+        SetPrivateField(config, fieldName, value);
+    }
+
+    private static void SetPrivateField(object target, string fieldName, object? value)
+    {
+        System.Reflection.FieldInfo? field = target.GetType().GetField(
+            fieldName,
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
         if (field == null)
         {
-            throw new InvalidOperationException("无法找到 FMARKER 尾部字段。");
+            throw new InvalidOperationException($"无法找到字段 {fieldName}。");
         }
 
-        field.SetValue(section, markerTail);
+        field.SetValue(target, value);
     }
 
     public static byte[] BuildFile(byte[] decryptedPayload, byte[]? fileTail = null)

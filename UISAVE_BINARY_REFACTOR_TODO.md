@@ -156,22 +156,22 @@
 
 ## 阶段五：保存前结构一致性校验
 
-- `[~]` `UISaveSection.ValidateForSave()` 已校验 `unknown1`、`unknown2`、`endFlag` 长度和 `length == data.Length`。
+- `[x]` `UISaveSection.ValidateForSave()` 已校验 `unknown1`、`unknown2`、`endFlag` 长度、空数据和 `length == data.Length`。
 - `[x]` `SectionFMARKER.ValidateForSave()` 已校验 marker header 长度。
 - `[x]` `SectionFMARKER.ValidateForSave()` 改为校验 tail 长度为 4。
 - `[x]` `SectionFMARKER.ValidateForSave()` 不再因为 WayMark 数量超过 30 而失败。
-- `[ ]` 每个 `WayMark` 写出必须稳定为 104 字节。
-- `[ ]` 保存前重新生成 FMARKER data 后，`section.length` 必须与 data 实际长度一致。
-- `[ ]` `ConfigUISave.ValidateEnvelopeForSave()` 加入 `fileTailRaw` 基础校验。
-- `[ ]` 保存失败时不应写出目标文件；继续依赖 `SafeFileWriter` 原子写。
+- `[x]` 每个 `WayMark` 写出必须稳定为 104 字节。
+- `[x]` 保存前重新生成 FMARKER data 后，`section.length` 必须与 data 实际长度一致。
+- `[x]` `ConfigUISave.ValidateEnvelopeForSave()` 加入 `fileTailRaw` 基础校验。
+- `[x]` 保存失败时不应写出目标文件；继续依赖 `SafeFileWriter` 原子写。
 
 ### 阶段五测试
 
-- `[~]` 保存前结构校验失败时不写文件。
-- `[ ]` FMARKER header 长度错误时保存失败。
+- `[x]` 保存前结构校验失败时不写文件。
+- `[x]` FMARKER header 长度错误时保存失败。
 - `[x]` FMARKER tail 长度错误时保存失败。
 - `[x]` WayMark 数量超过 30 但结构合法时保存成功。
-- `[ ]` 普通 section 的 `length != data.Length` 时保存失败。
+- `[x]` 普通 section 的 `length != data.Length` 时保存失败。
 
 ## 阶段六：剪贴板导入导出模型
 
@@ -232,7 +232,7 @@
 2. `[x]` FMARKER 动态槽位：移除 30 槽硬上限，按当前 FMARKER section 中的完整 WayMark 结构推导槽位数量。
 3. `[x]` FMARKER tail 固定长度：长度必须 4，内容先保留。
 4. `[x]` payload 和 section 长度复核：统一 `long` 边界计算和异常信息。
-5. `[ ]` 保存前校验补齐：确保保存失败不写目标文件。
+5. `[x]` 保存前校验补齐：确保保存失败不写目标文件。
 6. `[ ]` 剪贴板导入导出收紧：`MapID`、坐标精度、culture 稳定性。
 7. `[ ]` section 名称映射补充：新增已知 section 名称，但不影响未知 section 保留。
 8. `[ ]` UI 友好错误和日志分级。
