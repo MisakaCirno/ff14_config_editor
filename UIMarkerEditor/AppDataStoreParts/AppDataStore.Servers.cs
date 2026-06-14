@@ -14,6 +14,18 @@ namespace UIMarkerEditor;
 public sealed partial class AppDataStore
 {
     private static readonly TimeSpan ServerListAutoSyncInterval = TimeSpan.FromDays(7);
+    private static readonly TimeSpan ServerListRequestTimeout = TimeSpan.FromSeconds(8);
+    private static readonly IReadOnlyDictionary<string, string> ServerStatusRequestHeaders =
+        new Dictionary<string, string>
+        {
+            ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) FFXIVConfigEditor",
+            ["Accept"] = "application/json, text/plain, */*",
+            ["Accept-Language"] = "zh-CN,zh;q=0.9",
+            ["X-Requested-With"] = "XMLHttpRequest",
+            ["Referer"] = "https://ff.web.sdo.com/",
+            ["Pragma"] = "no-cache",
+            ["Cache-Control"] = "no-cache"
+        };
 
     public async Task<ServerListLoadResult> EnsureServerListAvailableAsync()
     {
@@ -44,26 +56,24 @@ public sealed partial class AppDataStore
         DateTime syncAttemptTime = DateTime.Now;
         try
         {
-            using HttpClient httpClient = new()
-            {
-                Timeout = TimeSpan.FromSeconds(8)
-            };
-            string apiJson = await GetServerStatusApiJsonAsync(httpClient);
+            string apiJson = await GetServerStatusApiJsonAsync();
             List<ServerGroup> groups = ParseServerGroups(apiJson);
 
             if (groups.Count == 0)
             {
-                string html = await httpClient.GetStringAsync(ServerListSourceUrl);
+                string html = await networkClient.GetStringAsync(ServerListSourceUrl, ServerListRequestTimeout);
                 string combinedPageText = html;
                 foreach (Uri resourceUri in ExtractServerPageResourceUris(html, new Uri(ServerListSourceUrl)))
                 {
                     try
                     {
-                        combinedPageText += "\n" + await httpClient.GetStringAsync(resourceUri);
+                        combinedPageText += "\n" + await networkClient.GetStringAsync(
+                            resourceUri.ToString(),
+                            ServerListRequestTimeout);
                     }
                     catch
                     {
-                        // Some CDN assets can be optional or region-blocked; keep parsing the resources we did fetch.
+                        // 部分 CDN 资源可能缺失或被网络拦截，继续解析已经取得的内容。
                     }
                 }
 
@@ -184,20 +194,12 @@ public sealed partial class AppDataStore
         return resourceUris;
     }
 
-    private static async Task<string> GetServerStatusApiJsonAsync(HttpClient httpClient)
+    private async Task<string> GetServerStatusApiJsonAsync()
     {
-        using HttpRequestMessage request = new(HttpMethod.Get, ServerStatusApiUrl);
-        request.Headers.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) FFXIVConfigEditor");
-        request.Headers.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
-        request.Headers.TryAddWithoutValidation("Accept-Language", "zh-CN,zh;q=0.9");
-        request.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
-        request.Headers.TryAddWithoutValidation("Referer", "https://ff.web.sdo.com/");
-        request.Headers.TryAddWithoutValidation("Pragma", "no-cache");
-        request.Headers.TryAddWithoutValidation("Cache-Control", "no-cache");
-
-        using HttpResponseMessage response = await httpClient.SendAsync(request);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
+        return await networkClient.GetStringAsync(
+            ServerStatusApiUrl,
+            ServerListRequestTimeout,
+            ServerStatusRequestHeaders);
     }
 
     private static List<ServerGroup> ParseServerGroups(string html)

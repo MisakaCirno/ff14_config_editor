@@ -13,6 +13,8 @@ namespace UIMarkerEditor;
 
 public sealed partial class AppDataStore
 {
+    private static readonly TimeSpan MapDataRequestTimeout = TimeSpan.FromSeconds(10);
+
     public async Task<MapDataLoadResult> EnsureMapDataAvailableAsync()
     {
         return await LoadMapDataAsync(forceRefresh: false, allowCacheFallback: true);
@@ -27,12 +29,7 @@ public sealed partial class AppDataStore
     {
         try
         {
-            using HttpClient httpClient = new()
-            {
-                Timeout = TimeSpan.FromSeconds(10)
-            };
-
-            string remoteVersionContent = await GetUtf8StringAsync(httpClient, MapDataVersionUrl);
+            string remoteVersionContent = await networkClient.GetStringAsync(MapDataVersionUrl, MapDataRequestTimeout);
             string remoteVersion = ParseMapDataVersion(remoteVersionContent);
             string localVersion = ReadMapDataVersion();
             if (!forceRefresh &&
@@ -49,7 +46,7 @@ public sealed partial class AppDataStore
                 return new MapDataLoadResult(true, false, remoteVersion, CacheAvailable: true);
             }
 
-            string instanceJson = await GetUtf8StringAsync(httpClient, MapDataInstanceUrl);
+            string instanceJson = await networkClient.GetStringAsync(MapDataInstanceUrl, MapDataRequestTimeout);
             Dictionary<ushort, string> mapNames = ParseMapNamesFromInstanceJson(instanceJson);
             if (mapNames.Count == 0)
             {
@@ -108,12 +105,6 @@ public sealed partial class AppDataStore
     {
         string? versionContent = ReadText(MapDataVersionFilePath);
         return string.IsNullOrWhiteSpace(versionContent) ? string.Empty : ParseMapDataVersion(versionContent);
-    }
-
-    private static async Task<string> GetUtf8StringAsync(HttpClient httpClient, string url)
-    {
-        byte[] bytes = await httpClient.GetByteArrayAsync(url);
-        return Encoding.UTF8.GetString(bytes);
     }
 
     private static string ParseMapDataVersion(string versionContent)

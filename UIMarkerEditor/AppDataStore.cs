@@ -33,6 +33,7 @@ public sealed partial class AppDataStore
         WriteIndented = true,
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
+    private readonly IAppDataNetworkClient networkClient;
     private readonly List<string> dataLoadWarnings = [];
     private readonly HashSet<string> dataLoadWarningKeys = [];
     private bool bootstrapFileInvalid;
@@ -64,12 +65,18 @@ public sealed partial class AppDataStore
     }
 
     internal AppDataStore(string bootstrapDirectory)
+        : this(bootstrapDirectory, new HttpAppDataNetworkClient())
+    {
+    }
+
+    internal AppDataStore(string bootstrapDirectory, IAppDataNetworkClient networkClient)
     {
         if (string.IsNullOrWhiteSpace(bootstrapDirectory))
         {
             throw new ArgumentException("启动配置目录不能为空。", nameof(bootstrapDirectory));
         }
 
+        this.networkClient = networkClient ?? throw new ArgumentNullException(nameof(networkClient));
         BootstrapDirectory = Path.GetFullPath(bootstrapDirectory);
         DataDirectory = DefaultDataDirectory;
     }

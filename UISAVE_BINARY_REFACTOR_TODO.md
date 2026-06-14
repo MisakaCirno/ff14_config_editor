@@ -258,10 +258,10 @@
 ### 阶段十后续测试方向
 
 - `[x]` 坐标转换边界已有单元测试覆盖。
-- `[~]` 区域选择写入行为已通过构建和现有测试验证，但尚缺少直接 UI 回归测试。
+- `[x]` 区域选择写入行为已通过构建和现有测试验证；按当前决策暂不补 UI 自动化回归测试。
 - `[x]` `AppDataStore` 损坏 JSON 不覆盖、写入失败异常类型、最近文件保存失败返回值、角色档案读写、有效服务器缓存加载等场景已有第一批直接测试。
 - `[x]` 已给 `AppDataStore` 增加测试用启动目录入口，测试只使用临时目录，不触碰真实用户数据目录。
-- `[ ]` 服务器列表和地图数据的真实网络失败降级尚未做可注入网络层测试；后续如果继续收紧，应先抽出可替换的下载入口，避免测试依赖外网。
+- `[x]` 服务器列表和地图数据的真实网络失败降级已抽出可替换网络入口并补测试，测试不依赖外网。
 
 ## 暂不做的事情
 
@@ -271,7 +271,7 @@
 - `[x]` 暂不根据地图实际范围硬编码坐标合理性。
 - `[x]` 暂不因为未知 section 或未知尾部内容拒绝加载。
 - `[x]` 暂不让区域搜索文本自由写入未知 `RegionID`；当前只允许通过列表选择写入。
-- `[x]` 暂不优先引入 WPF UI 自动化测试；下一步先评估并补数据层直接测试。
+- `[x]` 暂不引入 WPF UI 自动化测试；当前阶段只补数据层和网络路径测试。
 
 ## 推荐修复顺序
 
@@ -291,6 +291,7 @@
 14. `[x]` 区域选择写入行为：`0` 统一为 `空(0)`，未识别文本不再静默写入。
 15. `[x]` 本地数据写入异常边界：统一 `AppDataStoreException`，启动和辅助保存点补充异常处理。
 16. `[x]` AppDataStore / UI 编排层测试补强：新增 `UIMarkerEditor.Tests`，覆盖本地数据层第一批关键行为。
+17. `[x]` 地图数据和服务器列表网络路径测试补强：抽出可替换网络入口，覆盖成功、失败和缓存降级。
 
 ## 每轮修复后的记录格式
 
@@ -433,3 +434,9 @@
 - 改动文件：`UIMarkerEditor.Tests/UIMarkerEditor.Tests.csproj`、`UIMarkerEditor.Tests/AppDataStoreTests.cs`、`FFXIVConfigEditor.sln`、`UIMarkerEditor/AppDataStore.cs`、`UIMarkerEditor/AppDataStoreParts/AppDataStore.DataDirectory.cs`、`UIMarkerEditor/AssemblyInfo.cs`、`UIMarkerEditor/Models/AppDataModels.cs`、`UISAVE_BINARY_REFACTOR_TODO.md`
 - 验证命令：`dotnet test UIMarkerEditor.Tests\UIMarkerEditor.Tests.csproj --no-restore`；`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
 - 剩余风险：服务器列表和地图数据的网络失败降级仍未做可注入网络层测试；本次只覆盖有效缓存加载，避免测试依赖外网。构建和新增测试出现 `NU1900`，原因是 NuGet 漏洞数据源访问失败。
+
+- 日期：2026-06-14
+- 阶段：阶段十，地图数据和服务器列表网络路径测试补强
+- 改动文件：`UIMarkerEditor/AppDataStoreParts/AppDataNetworkClient.cs`、`UIMarkerEditor/AppDataStore.cs`、`UIMarkerEditor/AppDataStoreParts/AppDataStore.MapData.cs`、`UIMarkerEditor/AppDataStoreParts/AppDataStore.Servers.cs`、`UIMarkerEditor.Tests/AppDataStoreTests.cs`、`UISAVE_BINARY_REFACTOR_TODO.md`
+- 验证命令：`dotnet test UIMarkerEditor.Tests\UIMarkerEditor.Tests.csproj`；`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`；`git diff --check`；`git diff --cached --check`
+- 剩余风险：当前按决策不补 WPF UI 自动化测试。构建和新增测试出现 `NU1900`，原因是 NuGet 漏洞数据源访问失败。
