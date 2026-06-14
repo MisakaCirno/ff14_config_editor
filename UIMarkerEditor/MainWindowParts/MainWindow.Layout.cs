@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using FF14ConfigEditor;
 
 namespace UIMarkerEditor
 {
@@ -46,9 +47,14 @@ namespace UIMarkerEditor
             {
                 appDataStore.SaveSettings(appDataStore.Settings);
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                // Keep the corrupted settings file untouched; the startup warning explains the repair path.
+                // 保留损坏的设置文件不覆盖，启动提示会说明修复方式。
+                AppLogger.Warning(AppLogCategory.IO, "保存窗口布局设置失败", ex);
+            }
+            catch (AppDataStoreException ex)
+            {
+                AppLogger.Warning(AppLogCategory.IO, "保存窗口布局设置失败", ex);
             }
         }
 

@@ -126,7 +126,14 @@ public sealed partial class AppDataStore
         if (saveFailureAttempt && cacheAvailable)
         {
             ServerList.LastSyncAttempt = syncAttemptTime;
-            SaveServerList();
+            try
+            {
+                SaveServerList();
+            }
+            catch (AppDataStoreException ex)
+            {
+                AppLogger.Warning(AppLogCategory.IO, "保存服务器列表同步尝试时间失败", ex);
+            }
         }
 
         return new ServerListLoadResult(false, false, CacheAvailable: cacheAvailable);

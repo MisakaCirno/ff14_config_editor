@@ -55,25 +55,39 @@ public sealed partial class AppDataStore
 
     private void WriteJson<T>(string path, T value)
     {
-        string? directory = Path.GetDirectoryName(path);
-        if (!string.IsNullOrWhiteSpace(directory))
+        try
         {
-            Directory.CreateDirectory(directory);
-        }
+            string? directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
 
-        string json = JsonSerializer.Serialize(value, jsonOptions);
-        SafeFileWriter.WriteAllText(path, json);
+            string json = JsonSerializer.Serialize(value, jsonOptions);
+            SafeFileWriter.WriteAllText(path, json);
+        }
+        catch (Exception ex)
+        {
+            throw new AppDataStoreException("写入本地 JSON 文件", path, ex);
+        }
     }
 
     private static void WriteText(string path, string value)
     {
-        string? directory = Path.GetDirectoryName(path);
-        if (!string.IsNullOrWhiteSpace(directory))
+        try
         {
-            Directory.CreateDirectory(directory);
-        }
+            string? directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
 
-        SafeFileWriter.WriteAllText(path, value);
+            SafeFileWriter.WriteAllText(path, value);
+        }
+        catch (Exception ex)
+        {
+            throw new AppDataStoreException("写入本地文本文件", path, ex);
+        }
     }
 
     private void AddJsonReadWarning(string path, string message, Exception? error)

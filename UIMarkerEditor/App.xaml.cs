@@ -1,4 +1,5 @@
 using System.Windows;
+using FF14ConfigEditor;
 
 namespace UIMarkerEditor;
 
@@ -11,6 +12,24 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        try
+        {
+            await StartApplicationAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(AppLogCategory.IO, "工具启动失败", ex);
+            MessageBox.Show(
+                BuildStartupFailureMessage(ex),
+                "启动失败",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            Shutdown();
+        }
+    }
+
+    private async Task StartApplicationAsync()
+    {
         AppDataStore appDataStore = new();
         appDataStore.Initialize();
 
@@ -53,6 +72,16 @@ public partial class App : Application
         MainWindow mainWindow = new(appDataStore);
         MainWindow = mainWindow;
         mainWindow.Show();
+    }
+
+    private static string BuildStartupFailureMessage(Exception exception)
+    {
+        if (exception is AppDataStoreException)
+        {
+            return $"工具本地数据初始化失败，无法继续启动。{Environment.NewLine}{Environment.NewLine}{exception.Message}";
+        }
+
+        return $"工具启动失败，无法继续运行。{Environment.NewLine}{Environment.NewLine}原因：{exception.Message}";
     }
 
     private static string BuildRequiredOnlineDataFailureMessage(

@@ -1,4 +1,5 @@
 using System.IO;
+using FF14ConfigEditor;
 
 namespace UIMarkerEditor;
 
@@ -42,8 +43,14 @@ public sealed partial class AppDataStore
             SaveSettings(settings);
             return true;
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
+            AppLogger.Warning(AppLogCategory.IO, "保存最近文件列表失败", ex);
+            return false;
+        }
+        catch (AppDataStoreException ex)
+        {
+            AppLogger.Warning(AppLogCategory.IO, "保存最近文件列表失败", ex);
             return false;
         }
     }

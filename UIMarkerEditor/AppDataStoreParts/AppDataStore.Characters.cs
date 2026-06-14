@@ -30,10 +30,6 @@ public sealed partial class AppDataStore
             UpdatedAt = DateTime.Now
         };
         Characters.Add(profile);
-        if (!charactersFileInvalid)
-        {
-            SaveCharacters();
-        }
 
         return profile;
     }

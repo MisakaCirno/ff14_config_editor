@@ -60,7 +60,21 @@ namespace UIMarkerEditor
                 : AppDataStore.GetUserIDFromCharacterFolder(filePath) ?? string.Empty;
             if (string.IsNullOrWhiteSpace(userID)) return;
 
+            bool isNewProfile = !appDataStore.Characters.Any(character =>
+                string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase));
             appDataStore.GetOrCreateCharacter(userID);
+            if (isNewProfile)
+            {
+                try
+                {
+                    appDataStore.SaveCharacters();
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
+                {
+                    AppLogger.Warning(AppLogCategory.IO, $"自动保存角色备注失败：{userID}", ex);
+                }
+            }
+
             RefreshCharacterList();
         }
 

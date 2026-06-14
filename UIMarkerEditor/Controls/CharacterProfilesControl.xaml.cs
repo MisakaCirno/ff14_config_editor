@@ -287,7 +287,7 @@ public partial class CharacterProfilesControl : UserControl
         {
             appDataStore.SaveCharacters();
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
         {
             if (isNewProfile)
             {
@@ -383,7 +383,7 @@ public partial class CharacterProfilesControl : UserControl
         {
             appDataStore.SaveCharacters();
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
         {
             if (removedIndex >= 0)
             {

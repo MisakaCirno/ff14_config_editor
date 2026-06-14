@@ -297,6 +297,10 @@ public partial class ToolSettingsControl : UserControl
         {
             MessageBox.Show(ownerWindow, $"无法保存刷新记录：{ex.Message}", "设置保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+        catch (AppDataStoreException ex)
+        {
+            MessageBox.Show(ownerWindow, $"无法保存刷新记录：{ex.Message}", "设置保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private static string FormatOptionalTime(DateTime value)

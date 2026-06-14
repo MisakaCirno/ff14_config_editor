@@ -182,7 +182,7 @@ public partial class BackupRestoreControl : UserControl
         {
             appDataStore.SaveCharacters();
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
         {
             if (isNewProfile)
             {
