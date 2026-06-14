@@ -93,8 +93,10 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
     [Fact]
     public void Load_WhenReloadFails_DoesNotReplaceExistingState()
     {
-        string path = WritePayloadFile(UISaveTestData.BuildPayload(
-            UISaveTestData.BuildSection(1, [0xAA, 0xBB])));
+        string path = WriteFile(UISaveTestData.BuildFile(
+            UISaveTestData.BuildPayload(UISaveTestData.BuildSection(1, [0xAA, 0xBB])),
+            [0xF1, 0xF2, 0xF3]));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
         ConfigUISave config = new(path);
         string originalUserId = config.UserIDHex;
         int originalSectionCount = config.Sections.Count;
@@ -106,6 +108,9 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         Assert.Equal(originalUserId, config.UserIDHex);
         Assert.Equal(originalSectionCount, config.Sections.Count);
         Assert.Equal(originalSectionData, config.Sections[0].data);
+
+        config.Save();
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
     }
 
     [Fact]
@@ -118,6 +123,33 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         config.Sections[0].length++;
 
         Assert.Throws<UISaveFormatException>(config.Save);
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void Save_FileTail_RoundTripsTailBytes()
+    {
+        string path = WriteFile(UISaveTestData.BuildFile(
+            UISaveTestData.BuildPayload(UISaveTestData.BuildSection(1, [0xAA, 0xBB])),
+            [0x00, 0x00, 0xAA, 0x55, 0x10]));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+
+        config.Save();
+
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void Save_FileWithoutTail_DoesNotAppendTailBytes()
+    {
+        string path = WritePayloadFile(UISaveTestData.BuildPayload(
+            UISaveTestData.BuildSection(1, [0xAA, 0xBB])));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+
+        config.Save();
+
         Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
     }
 
@@ -232,7 +264,7 @@ internal static class UISaveTestData
         return [0xE1, 0xE2, 0xE3, 0xE4];
     }
 
-    public static byte[] BuildFile(byte[] decryptedPayload)
+    public static byte[] BuildFile(byte[] decryptedPayload, byte[]? fileTail = null)
     {
         byte[] encryptedPayload = Utils.EncryptData(decryptedPayload);
         using MemoryStream ms = new();
@@ -242,6 +274,10 @@ internal static class UISaveTestData
         writer.Write(encryptedPayload.Length);
         writer.Write(FileUnknown);
         writer.Write(encryptedPayload);
+        if (fileTail is { Length: > 0 })
+        {
+            writer.Write(fileTail);
+        }
 
         return ms.ToArray();
     }

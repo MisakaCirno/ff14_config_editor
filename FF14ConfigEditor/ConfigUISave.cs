@@ -28,6 +28,7 @@ namespace FF14ConfigEditor
         // 没加密的部分
         private byte[] fileFormatVersionRaw = [];
         private byte[] fileUnknownRaw = [];
+        private byte[] fileTailRaw = []; // 保存加密数据之后的文件尾部
         // 加密了的部分
         private byte[] payloadUnknownRaw = [];
         private byte[] userIDRaw = [];
@@ -103,6 +104,10 @@ namespace FF14ConfigEditor
                     writer.Write(encryptedData.Length);
                     writer.Write(fileUnknownRaw);
                     writer.Write(encryptedData);
+                    if (fileTailRaw.Length > 0)
+                    {
+                        writer.Write(fileTailRaw);
+                    }
                 }
 
                 fileBytes = ms.ToArray();
@@ -121,6 +126,7 @@ namespace FF14ConfigEditor
             ApplyParsedFile(new ParsedUISaveFile(
                 fileFormatVersionRaw,
                 fileUnknownRaw,
+                fileTailRaw,
                 parsedPayload.PayloadUnknownRaw,
                 parsedPayload.UserIDRaw,
                 parsedPayload.Sections,
@@ -159,12 +165,14 @@ namespace FF14ConfigEditor
                 reader,
                 encryptLength,
                 "加密数据");
+            byte[] fileTailRaw = ReadRemainingFileTail(reader);
             byte[] decryptedData = Utils.DecryptData(encryptedData);
 
             ParsedEncryptedPayload parsedPayload = ParseEncryptedPayload(decryptedData);
             return new ParsedUISaveFile(
                 fileFormatVersionRaw,
                 fileUnknownRaw,
+                fileTailRaw,
                 parsedPayload.PayloadUnknownRaw,
                 parsedPayload.UserIDRaw,
                 parsedPayload.Sections,
@@ -274,6 +282,7 @@ namespace FF14ConfigEditor
         {
             fileFormatVersionRaw = parsedFile.FileFormatVersionRaw;
             fileUnknownRaw = parsedFile.FileUnknownRaw;
+            fileTailRaw = parsedFile.FileTailRaw;
             payloadUnknownRaw = parsedFile.PayloadUnknownRaw;
             userIDRaw = parsedFile.UserIDRaw;
             Sections = parsedFile.Sections;
@@ -299,6 +308,28 @@ namespace FF14ConfigEditor
             ValidateRawLength(fileUnknownRaw, FileUnknownByteLength, "文件未知头部");
             ValidateRawLength(payloadUnknownRaw, PayloadUnknownByteLength, "加密部分未知头");
             ValidateRawLength(userIDRaw, UserIdByteLength, "加密部分用户 ID");
+        }
+
+        private static byte[] ReadRemainingFileTail(BinaryReader reader)
+        {
+            long? remaining = UISaveBinaryReader.GetRemaining(reader);
+            if (!remaining.HasValue || remaining.Value == 0)
+            {
+                return [];
+            }
+
+            if (remaining.Value > int.MaxValue)
+            {
+                throw new UISaveFormatException(
+                    "文件尾部过大，无法一次读取。",
+                    offset: UISaveBinaryReader.GetOffset(reader),
+                    expectedLength: int.MaxValue,
+                    remainingLength: remaining.Value);
+            }
+
+            byte[] fileTail = UISaveBinaryReader.ReadExact(reader, (int)remaining.Value, "文件尾部填充");
+            DebugHelper.Log($"文件尾部填充: {fileTail.Length} bytes");
+            return fileTail;
         }
 
         private static void ValidateRawLength(byte[] value, int expectedLength, string fieldName)
@@ -374,6 +405,7 @@ namespace FF14ConfigEditor
         private sealed record ParsedUISaveFile(
             byte[] FileFormatVersionRaw,
             byte[] FileUnknownRaw,
+            byte[] FileTailRaw,
             byte[] PayloadUnknownRaw,
             byte[] UserIDRaw,
             List<UISaveSection> Sections,

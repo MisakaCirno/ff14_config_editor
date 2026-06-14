@@ -64,10 +64,10 @@
 
 ## 阶段一：文件外层 envelope 和 round-trip
 
-- `[ ]` 新增 `fileTailRaw`，保存 `encryptLength` 之后的文件级尾部数据。
-- `[ ]` `Load()` 读取加密 payload 后，把剩余文件字节读入 `fileTailRaw`。
-- `[ ]` `Save()` 写回时在 encrypted data 后追加 `fileTailRaw`。
-- `[ ]` 不要求文件级 tail 必须全零；如需提示，可记录日志，但不要破坏未来兼容性。
+- `[x]` 新增 `fileTailRaw`，保存 `encryptLength` 之后的文件级尾部数据。
+- `[x]` `Load()` 读取加密 payload 后，把剩余文件字节读入 `fileTailRaw`。
+- `[x]` `Save()` 写回时在 encrypted data 后追加 `fileTailRaw`。
+- `[x]` 不要求文件级 tail 必须全零；如需提示，可记录日志，但不要破坏未来兼容性。
 - `[ ]` 外层硬校验改为：`encryptLength >= 0` 且 `encryptLength <= fileSize - 16`。
 - `[ ]` 不设置文件总大小硬上限。
 - `[ ]` 所有长度计算使用 `long` 做边界判断，避免 `int` 加法溢出后绕过检查。
@@ -79,8 +79,8 @@
 - `[ ]` 外层不足 16 字节时错误信息明确。
 - `[ ]` `encryptLength < 0` 时抛出明确格式异常。
 - `[ ]` `encryptLength > fileSize - 16` 时抛出明确格式异常。
-- `[ ]` 文件级 tail 能在 load/save 后原样保留。
-- `[ ]` 没有文件级 tail 的文件仍能 round-trip。
+- `[x]` 文件级 tail 能在 load/save 后原样保留。
+- `[x]` 没有文件级 tail 的文件仍能 round-trip。
 
 ## 阶段二：payload 和 section 解析边界
 
@@ -107,14 +107,14 @@
 
 - `[~]` `Load()` 已先解析临时结构，成功后再替换对象状态。
 - `[~]` `ParseEncryptedPart()` 已改为解析临时 payload 后再提交。
-- `[ ]` 复核 `ApplyParsedFile()` 是否包含外层新增的 `fileTailRaw`。
+- `[x]` 复核 `ApplyParsedFile()` 是否包含外层新增的 `fileTailRaw`。
 - `[ ]` 复核解析失败后 `fileFormatVersionRaw`、`fileUnknownRaw`、`payloadUnknownRaw`、`userIDRaw`、`Sections`、`payloadTailRaw`、`fileTailRaw` 都不被污染。
 - `[ ]` UI 层继续使用临时 `ConfigUISave` 打开/重载文件，成功后再替换当前对象。
 
 ### 阶段三测试
 
 - `[~]` 加载失败不替换已有 `Sections`。
-- `[ ]` 加载失败不替换 `fileTailRaw`。
+- `[x]` 加载失败不替换 `fileTailRaw`。
 - `[ ]` `ParseEncryptedPart()` 失败不替换 payload 相关状态。
 
 ## 阶段四：FMARKER 结构规则
@@ -218,7 +218,7 @@
 
 ## 推荐修复顺序
 
-1. `[ ]` 文件级 tail 保留：新增 `fileTailRaw`，确保真实文件 round-trip 不丢尾部。
+1. `[x]` 文件级 tail 保留：新增 `fileTailRaw`，确保真实文件 round-trip 不丢尾部。
 2. `[ ]` FMARKER 动态槽位：移除 30 槽硬上限，改成 `16 + 104 * N + 4`。
 3. `[ ]` FMARKER tail 固定长度：长度必须 4，内容先保留。
 4. `[ ]` payload 和 section 长度复核：统一 `long` 边界计算和异常信息。
@@ -236,3 +236,9 @@
 - 改动文件：
 - 验证命令：
 - 剩余风险：
+
+- 日期：2026-06-14
+- 阶段：阶段一，文件级 tail 保留
+- 改动文件：`FF14ConfigEditor/ConfigUISave.cs`、`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`
+- 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
+- 剩余风险：阶段一中 offset 文案细化和超大文件尾的策略仍需后续复核。
