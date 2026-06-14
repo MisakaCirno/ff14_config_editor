@@ -1,6 +1,8 @@
 # UISAVE.DAT 二进制读写重构待办
 
-本文档用于记录本轮围绕 `UISAVE.DAT`、`FMARKER` 和剪贴板标点导入导出的讨论结论。后续修复按本文档分阶段推进，每完成一项就更新状态。
+本文档用于记录本轮围绕 `UISAVE.DAT`、`FMARKER`、剪贴板标点导入导出，以及后续项目 Review 派生问题的讨论结论。后续修复按本文档分阶段推进，每完成一项就更新状态。
+
+`UISAVE.DAT` 二进制读写主线已经完成一轮收口；本文档继续作为后续 UI 输入边界、本地数据层异常边界、项目结构整理和测试补强的跟踪入口，避免后续讨论时丢失上下文。
 
 ## 状态标记
 
@@ -17,6 +19,8 @@
 3. 用户确认后开始修复。修复完成后运行对应测试或构建验证，验证通过后创建详细中文 commit。
 
 如果某一项只是文档变更，没有可运行的项目测试，需要在最终说明和提交信息中写明未运行测试的原因。
+
+从项目 Review 派生出的 UI 输入、本地数据层、测试覆盖和项目结构整理任务，也继续遵守上述流程。也就是说：先复核问题是否仍存在，再讨论方案，确认后修复、验证并创建中文 commit。
 
 ## 基本原则
 
@@ -225,6 +229,39 @@
 - `[x]` 自动化测试不读取真实游戏目录，不把真实文件复制进仓库。
 - `[x]` 涉及真实文件观察时，只运行只读扫描，并在结果中注明不修改真实文件。
 
+## 阶段九：项目结构整理与文件职责拆分
+
+本阶段来自二进制主线完成后的项目整理。目标不是改变行为，而是降低后续修复时的单文件阅读和冲突成本。
+
+- `[x]` `WayMark` 和 `WayMarkPoint` 已从 `SectionFMARKER.cs` 拆出，`SectionFMARKER.cs` 聚焦 FMARKER 段解析、校验和写回。
+- `[x]` `MarkerSharePoint`、`MarkerShareConverter`、`ValidatedMarkerShare` 已从 `MarkerShare.cs` 拆出，分享 DTO 和转换校验职责更清楚。
+- `[x]` `UISaveBinaryTests.cs` 已拆出 FMARKER 测试、格式异常断言、状态快照和测试数据。
+- `[x]` `UIMarkerEditor` 根目录辅助文件已移动到 `Dialogs`、`Converters`、`Data`、`WayMarks` 等目录。
+- `[x]` `AppDataStore.cs` 已拆分为 `AppDataStoreParts` 下的设置、角色、数据目录、JSON、地图数据、服务器、备份、最近文件等 partial 文件。
+- `[x]` `MainWindow.xaml.cs` 已拆分为 `MainWindowParts` 下的文件操作、最近文件、当前文件状态、布局、设置、备份、角色档案和窗口命令等 partial 文件。
+- `[x]` 拆分过程保留原命名空间和公开行为，不主动引入功能变更。
+
+## 阶段十：Review 派生的 UI 输入与本地数据层加固
+
+本阶段来自完整项目 Review 后确认的后续问题。它们不属于 `UISAVE.DAT` 二进制核心高风险，但会影响用户输入边界、辅助数据保存和后续可测试性。
+
+- `[x]` 形状生成器坐标输入已收紧：新增共享 `WayMarkCoordinateConverter`，形状生成和手工坐标编辑复用有限数、范围和 raw 坐标转换规则。
+- `[x]` 形状生成器在写入标点前先完成全部点位坐标转换；遇到 `NaN`、`Infinity` 或超范围坐标时提示并中止，避免半套标点写入。
+- `[x]` 区域选择写入行为已收紧：`RegionID = 0` 统一显示为 `空(0)`，生成地图显示列表时固定提供该项。
+- `[x]` 区域搜索框不再把未识别文本静默解析为 `RegionID = 0`；只有用户从列表明确选择 `空(0)` 时，才会把区域设为未设定。
+- `[x]` 本地数据写入异常边界已统一：新增 `AppDataStoreException`，包装本地 JSON 和文本写入失败。
+- `[x]` 应用启动流程已增加顶层异常边界；本地数据初始化失败时显示友好错误并退出。
+- `[x]` 最近文件、窗口布局、角色备注、备份备注和服务器同步尝试时间等辅助保存点已补充本地数据异常处理和日志。
+- `[x]` `GetOrCreateCharacter()` 不再隐式写入文件，调用方按自身场景显式保存并处理失败。
+- `[ ]` `AppDataStore` / UI 编排层仍缺少直接测试。下一项应先复核当前结构是否已经支持测试用临时数据目录，再决定是否补测试入口。
+
+### 阶段十后续测试方向
+
+- `[x]` 坐标转换边界已有单元测试覆盖。
+- `[~]` 区域选择写入行为已通过构建和现有测试验证，但尚缺少直接 UI/数据层回归测试。
+- `[ ]` `AppDataStore` 损坏 JSON 不覆盖、写入失败异常类型、最近文件保存失败返回值、角色档案读写、服务器缓存降级等场景需要补直接测试。
+- `[ ]` 如果 WPF UI 自动化成本过高，优先给 `AppDataStore` 增加测试用数据目录入口，用临时目录覆盖数据层行为。
+
 ## 暂不做的事情
 
 - `[x]` 暂不设置 `UISAVE.DAT` 文件总大小上限。
@@ -232,6 +269,8 @@
 - `[x]` 暂不把卫月插件 JSON 当成本工具唯一共享格式。
 - `[x]` 暂不根据地图实际范围硬编码坐标合理性。
 - `[x]` 暂不因为未知 section 或未知尾部内容拒绝加载。
+- `[x]` 暂不让区域搜索文本自由写入未知 `RegionID`；当前只允许通过列表选择写入。
+- `[x]` 暂不优先引入 WPF UI 自动化测试；下一步先评估并补数据层直接测试。
 
 ## 推荐修复顺序
 
@@ -246,6 +285,11 @@
 9. `[x]` FMARKER 生命周期和幂等测试收口：确认不重复解析、不残留旧 tail，并补齐 round-trip 测试状态。
 10. `[x]` UI 友好错误和日志分级：日志系统、UI 捕获、格式异常中文文案和 offset 来源细分均已落地。
 11. `[x]` 测试和验证规范收尾：确认测试只使用合成数据或临时目录，真实文件观察只读。
+12. `[x]` 项目结构整理：拆分核心模型、测试文件、`AppDataStore` 和 `MainWindow` partial 文件。
+13. `[x]` 形状生成坐标边界：统一 raw 坐标转换，拒绝非有限数和超范围坐标。
+14. `[x]` 区域选择写入行为：`0` 统一为 `空(0)`，未识别文本不再静默写入。
+15. `[x]` 本地数据写入异常边界：统一 `AppDataStoreException`，启动和辅助保存点补充异常处理。
+16. `[ ]` AppDataStore / UI 编排层测试补强：下一项按协作流程复核、讨论并实施。
 
 ## 每轮修复后的记录格式
 
@@ -328,3 +372,57 @@
 - 改动文件：`UISAVE_BINARY_REFACTOR_TODO.md`
 - 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`；`git diff --check`；`git diff --cached --check`
 - 剩余风险：UISAVE 二进制重构清单暂无未完成项；后续如果新增真实文件观察，仍需继续遵守只读和不入仓库规则。
+
+- 日期：2026-06-14
+- 阶段：阶段九，拆分 FMARKER 标点模型文件
+- 改动文件：`FF14ConfigEditor/UISave/SectionFMARKER.cs`、`FF14ConfigEditor/UISave/WayMark.cs`、`FF14ConfigEditor/UISave/WayMarkPoint.cs`
+- 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`git diff --cached --check`
+- 剩余风险：本次为职责拆分，行为应保持不变；后续改 FMARKER 时继续关注模型和 section 写回边界。
+
+- 日期：2026-06-14
+- 阶段：阶段九，拆分标点分享模型和转换器
+- 改动文件：`FF14ConfigEditor/UISave/MarkerShare.cs`、`FF14ConfigEditor/UISave/MarkerSharePoint.cs`、`FF14ConfigEditor/UISave/MarkerShareConverter.cs`、`FF14ConfigEditor/UISave/ValidatedMarkerShare.cs`
+- 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`git diff --cached --check`
+- 剩余风险：分享格式仍按当前工具 JSON 模型维护，不把卫月插件 JSON 当作唯一格式。
+
+- 日期：2026-06-14
+- 阶段：阶段九，拆分 UISAVE 二进制测试文件
+- 改动文件：`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`、`FF14ConfigEditor.Tests/SectionFMarkerTests.cs`、`FF14ConfigEditor.Tests/UISaveFormatExceptionAssert.cs`、`FF14ConfigEditor.Tests/ConfigStateSnapshot.cs`、`FF14ConfigEditor.Tests/SectionStateSnapshot.cs`、`FF14ConfigEditor.Tests/UISaveTestData.cs`
+- 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`git diff --cached --check`
+- 剩余风险：后续补测试时应继续按职责放入对应测试文件，避免重新堆回单一大文件。
+
+- 日期：2026-06-14
+- 阶段：阶段九，整理 UIMarkerEditor 根目录辅助文件
+- 改动文件：`UIMarkerEditor/Dialogs`、`UIMarkerEditor/Converters`、`UIMarkerEditor/Data`、`UIMarkerEditor/WayMarks`
+- 验证命令：`dotnet build FFXIVConfigEditor.sln`；`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`git diff --cached --check`
+- 剩余风险：XAML 绑定和命名空间保持不变；后续移动文件仍需跑 solution build 验证。
+
+- 日期：2026-06-14
+- 阶段：阶段九，拆分 AppDataStore 根文件
+- 改动文件：`UIMarkerEditor/AppDataStore.cs`、`UIMarkerEditor/AppDataStoreParts/*.cs`
+- 验证命令：`dotnet build FFXIVConfigEditor.sln`；`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`git diff --cached --check`
+- 剩余风险：`AppDataStore` 仍缺少直接测试，下一阶段需要补临时目录测试入口和关键场景覆盖。
+
+- 日期：2026-06-14
+- 阶段：阶段九，拆分 MainWindow 主窗口逻辑
+- 改动文件：`UIMarkerEditor/MainWindow.xaml.cs`、`UIMarkerEditor/MainWindowParts/*.cs`
+- 验证命令：`dotnet build FFXIVConfigEditor.sln`；`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`git diff --cached --check`
+- 剩余风险：主窗口仍是 UI 编排层，后续行为测试优先覆盖可抽出的数据层和核心转换逻辑。
+
+- 日期：2026-06-14
+- 阶段：阶段十，收紧形状生成坐标边界
+- 改动文件：`FF14ConfigEditor/UISave/WayMarkCoordinateConverter.cs`、`UIMarkerEditor/Controls/WayMarkEditorParts/WayMarkEditorControl.ShapePosition.cs`、`UIMarkerEditor/Controls/WayMarkEditorParts/WayMarkEditorControl.Coordinates.cs`、`FF14ConfigEditor.Tests/WayMarkCoordinateConverterTests.cs`
+- 验证命令：`dotnet build FFXIVConfigEditor.sln`；`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`git diff --cached --check`
+- 剩余风险：UI 输入提示仍靠手工触发路径验证；核心坐标转换边界已有测试。
+
+- 日期：2026-06-14
+- 阶段：阶段十，收紧区域选择写入行为
+- 改动文件：`UIMarkerEditor/Data/MapData.cs`、`UIMarkerEditor/Controls/WayMarkEditorParts/WayMarkEditorControl.RegionSelector.cs`
+- 验证命令：`dotnet build FFXIVConfigEditor.sln`；`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`git diff --cached --check`
+- 剩余风险：区域选择 UI 行为尚缺直接自动化测试；下一阶段测试补强时可评估是否抽出可测逻辑。
+
+- 日期：2026-06-14
+- 阶段：阶段十，统一本地数据写入异常边界
+- 改动文件：`UIMarkerEditor/App.xaml.cs`、`UIMarkerEditor/AppDataStoreParts/AppDataStoreException.cs`、`UIMarkerEditor/AppDataStoreParts/AppDataStore.Json.cs`、`UIMarkerEditor/AppDataStoreParts/AppDataStore.Characters.cs`、`UIMarkerEditor/AppDataStoreParts/AppDataStore.RecentFiles.cs`、`UIMarkerEditor/AppDataStoreParts/AppDataStore.Servers.cs`、`UIMarkerEditor/MainWindowParts/MainWindow.FileStatus.cs`、`UIMarkerEditor/MainWindowParts/MainWindow.Layout.cs`、`UIMarkerEditor/Controls/ToolSettingsControl.xaml.cs`、`UIMarkerEditor/Controls/CharacterProfilesControl.xaml.cs`、`UIMarkerEditor/Controls/BackupRestoreControl.xaml.cs`
+- 验证命令：`dotnet build FFXIVConfigEditor.sln`；`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`git diff --cached --check`
+- 剩余风险：`AppDataStore` / UI 编排层仍缺少直接测试；下一项应围绕临时目录、损坏 JSON、写入失败和缓存降级补覆盖。
