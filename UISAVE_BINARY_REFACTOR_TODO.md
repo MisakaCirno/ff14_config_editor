@@ -23,9 +23,9 @@
 - `[x]` 真实游戏目录只能读取，不能写入、覆盖、复制回写或自动修复真实文件。
 - `[x]` 代码注释优先使用中文；如果中途为了效率临时写英文，最终提交前统一改回中文。
 - `[x]` 不为了旧版网游文件做专门兼容分支。旧文件只作为观察样本，帮助判断结构规律。
-- `[ ]` 二进制解析层只做结构安全校验，避免把当前版本观察值当作未来永远不变的格式上限。
+- `[x]` 二进制解析层只做结构安全校验，避免把当前版本观察值当作未来永远不变的格式上限。
 - `[x]` 未知字段、未知 section、尾部填充应尽量原样保留，保证 round-trip。
-- `[ ]` 导入导出层可以做更严格的业务校验，例如地图 ID、坐标精度、剪贴板 JSON 完整性。
+- `[x]` 导入导出层可以做更严格的业务校验，例如地图 ID、坐标精度、剪贴板 JSON 完整性。
 
 ## 已完成的前置加固
 
@@ -70,7 +70,7 @@
 - `[x]` 部分旧样本 `FMARKER` 长度为 `540 = 16 + 104 * 5 + 4`。
 - `[x]` 已观察样本中 `FMARKER` 最后 4 字节为零。
 - `[x]` 已观察样本中 section endFlag 为 4 字节零。
-- `[ ]` 后续测试只使用合成二进制数据，不读取或写入真实游戏目录。
+- `[x]` 后续测试只使用合成二进制数据，不读取或写入真实游戏目录。
 
 ## 阶段一：文件外层 envelope 和 round-trip
 
@@ -217,17 +217,20 @@
 
 ## 阶段八：测试和验证命令
 
-- `[ ]` 每阶段至少运行 `dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`。
-- `[ ]` 涉及 UI 项目或 solution 结构时运行 `dotnet build FFXIVConfigEditor.sln`。
-- `[ ]` 测试数据使用合成字节流和临时目录，不依赖真实游戏文件。
-- `[ ]` 涉及真实文件观察时，只运行只读扫描，并在结果中注明不修改真实文件。
+- `[x]` 每阶段至少运行 `dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`。
+- `[x]` 涉及 UI 项目、solution 结构、项目引用、窗口/交互逻辑时运行 `dotnet build FFXIVConfigEditor.sln`。
+- `[x]` 提交前运行 `git diff --check`；暂存后运行 `git diff --cached --check`。
+- `[x]` `dotnet test` 和 `dotnet build` 顺序执行，避免并行构建/测试抢占同一个输出 DLL。
+- `[x]` 测试数据使用合成字节流、临时目录和内存对象，不依赖真实游戏文件。
+- `[x]` 自动化测试不读取真实游戏目录，不把真实文件复制进仓库。
+- `[x]` 涉及真实文件观察时，只运行只读扫描，并在结果中注明不修改真实文件。
 
 ## 暂不做的事情
 
 - `[x]` 暂不设置 `UISAVE.DAT` 文件总大小上限。
-- `[ ]` 暂不实现旧版游戏文件专用兼容。
-- `[ ]` 暂不把卫月插件 JSON 当成本工具唯一共享格式。
-- `[ ]` 暂不根据地图实际范围硬编码坐标合理性。
+- `[x]` 暂不实现旧版游戏文件专用兼容。
+- `[x]` 暂不把卫月插件 JSON 当成本工具唯一共享格式。
+- `[x]` 暂不根据地图实际范围硬编码坐标合理性。
 - `[x]` 暂不因为未知 section 或未知尾部内容拒绝加载。
 
 ## 推荐修复顺序
@@ -242,7 +245,7 @@
 8. `[x]` 事务式解析状态复核：确认加载失败不会污染 `ConfigUISave` 已有状态，并补齐对应测试。
 9. `[x]` FMARKER 生命周期和幂等测试收口：确认不重复解析、不残留旧 tail，并补齐 round-trip 测试状态。
 10. `[x]` UI 友好错误和日志分级：日志系统、UI 捕获、格式异常中文文案和 offset 来源细分均已落地。
-11. `[ ]` 测试和验证规范收尾：确认测试只使用合成数据或临时目录，真实文件观察只读。
+11. `[x]` 测试和验证规范收尾：确认测试只使用合成数据或临时目录，真实文件观察只读。
 
 ## 每轮修复后的记录格式
 
@@ -319,3 +322,9 @@
 - 改动文件：`FF14ConfigEditor/UISave/UISaveFormatException.cs`、`FF14ConfigEditor/UISave/UISaveBinaryReader.cs`、`FF14ConfigEditor/UISave/UISaveOffsetOrigin.cs`、`FF14ConfigEditor/ConfigUISave.cs`、`FF14ConfigEditor/UISave/UISaveSection.cs`、`FF14ConfigEditor/UISave/SectionFMARKER.cs`、`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`、`UISAVE_BINARY_REFACTOR_TODO.md`
 - 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
 - 剩余风险：阶段七暂无已知遗留；下一项进入阶段八测试和验证规范收尾。
+
+- 日期：2026-06-14
+- 阶段：阶段八，测试和验证规范收尾
+- 改动文件：`UISAVE_BINARY_REFACTOR_TODO.md`
+- 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`；`git diff --check`；`git diff --cached --check`
+- 剩余风险：UISAVE 二进制重构清单暂无未完成项；后续如果新增真实文件观察，仍需继续遵守只读和不入仓库规则。
