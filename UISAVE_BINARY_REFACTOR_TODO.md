@@ -43,8 +43,8 @@
 
 - `[~]` 新增 `UISaveBinaryReader`，集中做 `ReadExact` 和基础数值读取。
 - `[~]` 新增 `UISaveFormatException`，用于格式错误并携带 offset、section index、expected length、remaining length 等信息。
-- `[~]` `ConfigUISave.Load()` 已改为先解析到临时结构，成功后再替换对象状态。
-- `[~]` `ParseEncryptedPart()` 已避免中途失败污染当前对象状态。
+- `[x]` `ConfigUISave.Load()` 已改为先解析到临时结构，成功后再替换对象状态。
+- `[x]` `ParseEncryptedPart()` 已避免中途失败污染当前对象状态。
 - `[x]` section header、section data、endFlag 截断场景已有更明确异常。
 - `[x]` `sectionLength < 0` 和 section data 超出 payload 剩余长度已有拒绝。
 - `[x]` `SectionFMARKER.ParseMarker()` 使用局部结果解析，全部成功后再替换 `_markerHeader`、`_markerTail` 和 `WayMarks`。
@@ -117,17 +117,17 @@
 
 目标是让 `ConfigUISave` 的加载行为接近 all-or-nothing：解析完整成功后才替换对象状态；如果文件格式错误或 payload 中途失败，当前对象应保持加载前状态，不能留下半解析字段。
 
-- `[~]` `Load()` 已先解析临时结构，成功后再替换对象状态。
-- `[~]` `ParseEncryptedPart()` 已改为解析临时 payload 后再提交。
+- `[x]` `Load()` 已先解析临时结构，成功后再替换对象状态。
+- `[x]` `ParseEncryptedPart()` 已改为解析临时 payload 后再提交。
 - `[x]` 复核 `ApplyParsedFile()` 是否包含外层新增的 `fileTailRaw`。
-- `[ ]` 复核解析失败后 `fileFormatVersionRaw`、`fileUnknownRaw`、`payloadUnknownRaw`、`userIDRaw`、`Sections`、`payloadTailRaw`、`fileTailRaw` 都不被污染。
-- `[ ]` UI 层继续使用临时 `ConfigUISave` 打开/重载文件，成功后再替换当前对象。
+- `[x]` 复核解析失败后 `fileFormatVersionRaw`、`fileUnknownRaw`、`payloadUnknownRaw`、`userIDRaw`、`Sections`、`payloadTailRaw`、`fileTailRaw` 都不被污染。
+- `[x]` UI 层继续使用临时 `ConfigUISave` 打开/重载文件，成功后再替换当前对象。
 
 ### 阶段三测试
 
-- `[~]` 加载失败不替换已有 `Sections`。
+- `[x]` 加载失败不替换已有 `Sections`。
 - `[x]` 加载失败不替换 `fileTailRaw`。
-- `[ ]` `ParseEncryptedPart()` 失败不替换 payload 相关状态。
+- `[x]` `ParseEncryptedPart()` 失败不替换 payload 相关状态。
 
 ## 阶段四：FMARKER 结构规则
 
@@ -237,7 +237,7 @@
 5. `[x]` 保存前校验补齐：确保保存失败不写目标文件。
 6. `[x]` 剪贴板导入导出收紧：`MapID`、坐标精度、culture 稳定性。
 7. `[x]` section 名称映射补充：新增已知 section 名称，但不影响未知 section 保留。
-8. `[ ]` 事务式解析状态复核：确认加载失败不会污染 `ConfigUISave` 已有状态，并补齐对应测试。
+8. `[x]` 事务式解析状态复核：确认加载失败不会污染 `ConfigUISave` 已有状态，并补齐对应测试。
 9. `[ ]` FMARKER 生命周期和幂等测试收口：确认不重复解析、不残留旧 tail，并补齐 round-trip 测试状态。
 10. `[ ]` UI 友好错误和日志分级：统一格式异常中文文案、offset 信息和 UI 捕获行为。
 11. `[ ]` 测试和验证规范收尾：确认测试只使用合成数据或临时目录，真实文件观察只读。
@@ -293,3 +293,9 @@
 - 改动文件：`UISAVE_BINARY_REFACTOR_TODO.md`
 - 验证命令：未运行项目测试；本次仅同步文档中的阶段说明和推荐顺序。
 - 剩余风险：下一轮仍需按协作修复流程先复核阶段三现状，再讨论方案并实施。
+
+- 日期：2026-06-14
+- 阶段：阶段三，事务式解析状态复核
+- 改动文件：`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`、`UISAVE_BINARY_REFACTOR_TODO.md`
+- 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
+- 剩余风险：异常 offset 来源细分和 UI 友好文案仍留到异常/UI 文案阶段处理。

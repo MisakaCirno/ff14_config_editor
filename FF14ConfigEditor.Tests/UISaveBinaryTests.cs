@@ -138,6 +138,57 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
     }
 
     [Fact]
+    public void Load_WhenPayloadParsingFails_DoesNotReplaceExistingState()
+    {
+        byte[] originalPayload = UISaveTestData.BuildPayloadWithTail(
+            [0xEF],
+            UISaveTestData.BuildSection(1, [0xAA, 0xBB]),
+            UISaveTestData.BuildSection(2, [0xCC, 0xDD]));
+        string path = WriteFile(UISaveTestData.BuildFile(originalPayload, [0xF1, 0xF2, 0xF3]));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+        ConfigStateSnapshot originalState = ConfigStateSnapshot.Capture(config);
+
+        byte[] brokenPayload = UISaveTestData.BuildPayload(
+            [0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10],
+            [0x10, 0x32, 0x54, 0x76, 0x98, 0xBA, 0xDC, 0xFE],
+            UISaveTestData.BuildSectionWithDeclaredLength(3, 8, [0x11, 0x22]));
+        File.WriteAllBytes(path, UISaveTestData.BuildFile(
+            brokenPayload,
+            [0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x02, 0x00],
+            [0x51, 0x52, 0x53, 0x54],
+            [0x61, 0x62]));
+
+        Assert.Throws<UISaveFormatException>(config.Load);
+        originalState.AssertMatches(config);
+
+        config.Save();
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void ParseEncryptedPart_WhenPayloadParsingFails_DoesNotReplacePayloadState()
+    {
+        byte[] originalPayload = UISaveTestData.BuildPayloadWithTail(
+            [0xEF],
+            UISaveTestData.BuildSection(1, [0xAA, 0xBB]));
+        string path = WriteFile(UISaveTestData.BuildFile(originalPayload, [0xF1, 0xF2]));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+        ConfigStateSnapshot originalState = ConfigStateSnapshot.Capture(config);
+        byte[] brokenPayload = UISaveTestData.BuildPayload(
+            [0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10],
+            [0x10, 0x32, 0x54, 0x76, 0x98, 0xBA, 0xDC, 0xFE],
+            UISaveTestData.BuildSectionWithDeclaredLength(3, 8, [0x11, 0x22]));
+
+        Assert.Throws<UISaveFormatException>(() => config.ParseEncryptedPart(brokenPayload));
+        originalState.AssertMatches(config);
+
+        config.Save();
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
     public void Save_InvalidSectionLength_ThrowsAndLeavesFileUnchanged()
     {
         string path = WritePayloadFile(UISaveTestData.BuildPayload(
@@ -586,6 +637,83 @@ public class SectionFMarkerTests
     }
 }
 
+internal sealed record ConfigStateSnapshot(
+    string UserIDHex,
+    string UserIDRawBytesHex,
+    byte[] FileFormatVersionRaw,
+    byte[] FileUnknownRaw,
+    byte[] FileTailRaw,
+    byte[] PayloadUnknownRaw,
+    byte[] UserIDRaw,
+    byte[] PayloadTailRaw,
+    SectionStateSnapshot[] Sections)
+{
+    public static ConfigStateSnapshot Capture(ConfigUISave config)
+    {
+        return new ConfigStateSnapshot(
+            config.UserIDHex,
+            config.UserIDRawBytesHex,
+            UISaveTestData.GetConfigByteArrayField(config, "fileFormatVersionRaw"),
+            UISaveTestData.GetConfigByteArrayField(config, "fileUnknownRaw"),
+            UISaveTestData.GetConfigByteArrayField(config, "fileTailRaw"),
+            UISaveTestData.GetConfigByteArrayField(config, "payloadUnknownRaw"),
+            UISaveTestData.GetConfigByteArrayField(config, "userIDRaw"),
+            UISaveTestData.GetConfigByteArrayField(config, "payloadTailRaw"),
+            config.Sections.Select(SectionStateSnapshot.Capture).ToArray());
+    }
+
+    public void AssertMatches(ConfigUISave config)
+    {
+        ConfigStateSnapshot actual = Capture(config);
+        Assert.Equal(UserIDHex, actual.UserIDHex);
+        Assert.Equal(UserIDRawBytesHex, actual.UserIDRawBytesHex);
+        Assert.Equal(FileFormatVersionRaw, actual.FileFormatVersionRaw);
+        Assert.Equal(FileUnknownRaw, actual.FileUnknownRaw);
+        Assert.Equal(FileTailRaw, actual.FileTailRaw);
+        Assert.Equal(PayloadUnknownRaw, actual.PayloadUnknownRaw);
+        Assert.Equal(UserIDRaw, actual.UserIDRaw);
+        Assert.Equal(PayloadTailRaw, actual.PayloadTailRaw);
+        Assert.Equal(Sections.Length, actual.Sections.Length);
+        for (int i = 0; i < Sections.Length; i++)
+        {
+            Sections[i].AssertMatches(actual.Sections[i]);
+        }
+    }
+}
+
+internal sealed record SectionStateSnapshot(
+    Type SectionType,
+    short Index,
+    byte[] Unknown1,
+    int Length,
+    byte[] Unknown2,
+    byte[] Data,
+    byte[] EndFlag)
+{
+    public static SectionStateSnapshot Capture(UISaveSection section)
+    {
+        return new SectionStateSnapshot(
+            section.GetType(),
+            section.index,
+            section.unknown1.ToArray(),
+            section.length,
+            section.unknown2.ToArray(),
+            section.data.ToArray(),
+            section.endFlag.ToArray());
+    }
+
+    public void AssertMatches(SectionStateSnapshot actual)
+    {
+        Assert.Equal(SectionType, actual.SectionType);
+        Assert.Equal(Index, actual.Index);
+        Assert.Equal(Unknown1, actual.Unknown1);
+        Assert.Equal(Length, actual.Length);
+        Assert.Equal(Unknown2, actual.Unknown2);
+        Assert.Equal(Data, actual.Data);
+        Assert.Equal(EndFlag, actual.EndFlag);
+    }
+}
+
 internal static class UISaveTestData
 {
     private static readonly byte[] FileFormatVersion = [0x55, 0x49, 0x53, 0x41, 0x56, 0x45, 0x01, 0x00];
@@ -628,7 +756,27 @@ internal static class UISaveTestData
         SetPrivateField(config, fieldName, value);
     }
 
+    public static byte[] GetConfigByteArrayField(ConfigUISave config, string fieldName)
+    {
+        if (GetPrivateField(config, fieldName) is not byte[] value)
+        {
+            throw new InvalidOperationException($"字段 {fieldName} 不是 byte[]。");
+        }
+
+        return value.ToArray();
+    }
+
+    private static object? GetPrivateField(object target, string fieldName)
+    {
+        return GetPrivateFieldInfo(target, fieldName).GetValue(target);
+    }
+
     private static void SetPrivateField(object target, string fieldName, object? value)
+    {
+        GetPrivateFieldInfo(target, fieldName).SetValue(target, value);
+    }
+
+    private static System.Reflection.FieldInfo GetPrivateFieldInfo(object target, string fieldName)
     {
         System.Reflection.FieldInfo? field = target.GetType().GetField(
             fieldName,
@@ -638,7 +786,7 @@ internal static class UISaveTestData
             throw new InvalidOperationException($"无法找到字段 {fieldName}。");
         }
 
-        field.SetValue(target, value);
+        return field;
     }
 
     public static byte[] BuildFile(byte[] decryptedPayload, byte[]? fileTail = null)
@@ -650,6 +798,28 @@ internal static class UISaveTestData
         writer.Write(FileFormatVersion);
         writer.Write(encryptedPayload.Length);
         writer.Write(FileUnknown);
+        writer.Write(encryptedPayload);
+        if (fileTail is { Length: > 0 })
+        {
+            writer.Write(fileTail);
+        }
+
+        return ms.ToArray();
+    }
+
+    public static byte[] BuildFile(
+        byte[] decryptedPayload,
+        byte[] fileFormatVersion,
+        byte[] fileUnknown,
+        byte[]? fileTail = null)
+    {
+        byte[] encryptedPayload = Utils.EncryptData(decryptedPayload);
+        using MemoryStream ms = new();
+        using BinaryWriter writer = new(ms);
+
+        writer.Write(fileFormatVersion);
+        writer.Write(encryptedPayload.Length);
+        writer.Write(fileUnknown);
         writer.Write(encryptedPayload);
         if (fileTail is { Length: > 0 })
         {
@@ -707,6 +877,21 @@ internal static class UISaveTestData
 
         writer.Write(PayloadUnknown);
         writer.Write(UserId);
+        foreach (byte[] section in sections)
+        {
+            writer.Write(section);
+        }
+
+        return ms.ToArray();
+    }
+
+    public static byte[] BuildPayload(byte[] payloadUnknown, byte[] userId, params byte[][] sections)
+    {
+        using MemoryStream ms = new();
+        using BinaryWriter writer = new(ms);
+
+        writer.Write(payloadUnknown);
+        writer.Write(userId);
         foreach (byte[] section in sections)
         {
             writer.Write(section);
