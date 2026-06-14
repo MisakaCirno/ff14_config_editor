@@ -47,8 +47,19 @@ public sealed partial class AppDataStore
         List<BackupMetadata> backups = [];
         foreach (string metadataPath in Directory.EnumerateFiles(BackupsDirectory, MetadataFileName, SearchOption.AllDirectories))
         {
-            BackupMetadata? metadata = ReadJson<BackupMetadata>(metadataPath);
+            JsonFileReadResult<BackupMetadata> metadataResult = ReadJsonFile<BackupMetadata>(metadataPath);
+            if (metadataResult.Status == JsonFileReadStatus.Invalid)
+            {
+                AddJsonReadWarning(
+                    metadataPath,
+                    "备份元数据无法读取，已跳过这条备份记录。",
+                    metadataResult.Error);
+                continue;
+            }
+
+            BackupMetadata? metadata = metadataResult.Value;
             if (metadata == null) continue;
+            metadata.MarkerSnapshots ??= [];
 
             metadata.BackupDirectory = Path.GetDirectoryName(metadataPath) ?? string.Empty;
             metadata.BackupFilePath = Path.Combine(metadata.BackupDirectory, BackupDataFileName);

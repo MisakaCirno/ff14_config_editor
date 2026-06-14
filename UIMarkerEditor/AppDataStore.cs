@@ -13,6 +13,18 @@ namespace UIMarkerEditor;
 
 public sealed partial class AppDataStore
 {
+    private enum JsonFileReadStatus
+    {
+        Missing,
+        Success,
+        Invalid
+    }
+
+    private sealed record JsonFileReadResult<T>(
+        JsonFileReadStatus Status,
+        T? Value = default,
+        Exception? Error = null);
+
     private const string AppFolderName = "FFXIVConfigEditor";
     private const string BootstrapFileName = "bootstrap.json";
     private const string SettingsFileName = "config.json";
@@ -32,6 +44,11 @@ public sealed partial class AppDataStore
         WriteIndented = true,
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
+    private readonly List<string> dataLoadWarnings = [];
+    private readonly HashSet<string> dataLoadWarningKeys = [];
+    private bool bootstrapFileInvalid;
+    private bool settingsFileInvalid;
+    private bool charactersFileInvalid;
 
     public string BootstrapDirectory { get; }
     public string BootstrapFilePath => Path.Combine(BootstrapDirectory, BootstrapFileName);
@@ -61,7 +78,22 @@ public sealed partial class AppDataStore
     {
         Directory.CreateDirectory(BootstrapDirectory);
 
-        BootstrapSettings? bootstrap = ReadJson<BootstrapSettings>(BootstrapFilePath);
+        JsonFileReadResult<BootstrapSettings> bootstrapResult = ReadJsonFile<BootstrapSettings>(BootstrapFilePath);
+        BootstrapSettings? bootstrap = null;
+        bootstrapFileInvalid = false;
+        if (bootstrapResult.Status == JsonFileReadStatus.Success)
+        {
+            bootstrap = bootstrapResult.Value;
+        }
+        else if (bootstrapResult.Status == JsonFileReadStatus.Invalid)
+        {
+            bootstrapFileInvalid = true;
+            AddJsonReadWarning(
+                BootstrapFilePath,
+                "启动配置无法读取，已改用默认数据目录。原文件已保留，请手动修复或删除后重启工具。",
+                bootstrapResult.Error);
+        }
+
         DataDirectory = !string.IsNullOrWhiteSpace(bootstrap?.DataDirectory)
             ? bootstrap.DataDirectory
             : DefaultDataDirectory;
@@ -82,8 +114,22 @@ public sealed partial class AppDataStore
         LoadServerList();
     }
 
+    public List<string> ConsumeDataLoadWarnings()
+    {
+        List<string> warnings = [.. dataLoadWarnings];
+        dataLoadWarnings.Clear();
+        dataLoadWarningKeys.Clear();
+        return warnings;
+    }
+
     public void SaveSettings(AppSettings settings)
     {
+        if (settingsFileInvalid)
+        {
+            throw new InvalidOperationException("config.json 本次启动读取失败。为避免覆盖损坏文件，请先备份、删除或修复该文件后重启工具。");
+        }
+
+        NormalizeSettings(settings);
         Settings = settings;
         EnsureDataDirectory();
         WriteJson(SettingsFilePath, Settings);
@@ -91,6 +137,11 @@ public sealed partial class AppDataStore
 
     public void SaveCharacters()
     {
+        if (charactersFileInvalid)
+        {
+            throw new InvalidOperationException("characters.json 本次启动读取失败。为避免覆盖损坏文件，请先备份、删除或修复该文件后重启工具。");
+        }
+
         EnsureDataDirectory();
         WriteJson(CharactersFilePath, Characters.OrderBy(c => c.UserID, StringComparer.OrdinalIgnoreCase).ToList());
     }
@@ -129,7 +180,7 @@ public sealed partial class AppDataStore
 
         DataDirectory = targetDirectory;
         EnsureDataDirectory();
-        SaveBootstrap();
+        SaveBootstrap(allowOverwriteInvalid: true);
         LoadSettings();
         LoadCharacters();
         LoadServerList();
@@ -148,7 +199,11 @@ public sealed partial class AppDataStore
             UpdatedAt = DateTime.Now
         };
         Characters.Add(profile);
-        SaveCharacters();
+        if (!charactersFileInvalid)
+        {
+            SaveCharacters();
+        }
+
         return profile;
     }
 
@@ -179,36 +234,80 @@ public sealed partial class AppDataStore
 
     private void LoadSettings()
     {
-        Settings = ReadJson<AppSettings>(SettingsFilePath) ?? new AppSettings();
-        Settings.WindowLayout ??= new WindowLayoutSettings();
+        settingsFileInvalid = false;
+        JsonFileReadResult<AppSettings> settingsResult = ReadJsonFile<AppSettings>(SettingsFilePath);
+        if (settingsResult.Status == JsonFileReadStatus.Success && settingsResult.Value != null)
+        {
+            Settings = settingsResult.Value;
+        }
+        else
+        {
+            Settings = new AppSettings();
+            if (settingsResult.Status == JsonFileReadStatus.Invalid)
+            {
+                settingsFileInvalid = true;
+                AddJsonReadWarning(
+                    SettingsFilePath,
+                    "工具设置无法读取，已使用默认设置。为避免覆盖损坏文件，本次运行会阻止保存设置。",
+                    settingsResult.Error);
+            }
+        }
+
+        NormalizeSettings(Settings);
     }
 
     private void LoadCharacters()
     {
         Characters.Clear();
-        foreach (CharacterProfile profile in ReadJson<List<CharacterProfile>>(CharactersFilePath) ?? [])
+        charactersFileInvalid = false;
+        JsonFileReadResult<List<CharacterProfile>> charactersResult = ReadJsonFile<List<CharacterProfile>>(CharactersFilePath);
+        if (charactersResult.Status == JsonFileReadStatus.Invalid)
         {
-            Characters.Add(profile);
+            charactersFileInvalid = true;
+            AddJsonReadWarning(
+                CharactersFilePath,
+                "角色备注无法读取，列表已留空。为避免覆盖损坏文件，本次运行会阻止保存角色备注。",
+                charactersResult.Error);
+            return;
+        }
+
+        foreach (CharacterProfile? profile in charactersResult.Value ?? [])
+        {
+            if (profile != null)
+            {
+                Characters.Add(profile);
+            }
         }
     }
 
-    private void SaveBootstrap()
+    private void SaveBootstrap(bool allowOverwriteInvalid = false)
     {
+        if (bootstrapFileInvalid && !allowOverwriteInvalid)
+        {
+            return;
+        }
+
         WriteJson(BootstrapFilePath, new BootstrapSettings { DataDirectory = DataDirectory });
+        bootstrapFileInvalid = false;
     }
 
-    private T? ReadJson<T>(string path)
+    private JsonFileReadResult<T> ReadJsonFile<T>(string path)
     {
-        if (!File.Exists(path)) return default;
+        if (!File.Exists(path)) return new JsonFileReadResult<T>(JsonFileReadStatus.Missing);
 
         try
         {
             string json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<T>(json, jsonOptions);
+            T? value = JsonSerializer.Deserialize<T>(json, jsonOptions);
+            return value == null
+                ? new JsonFileReadResult<T>(
+                    JsonFileReadStatus.Invalid,
+                    Error: new JsonException("JSON 内容为空或类型不匹配。"))
+                : new JsonFileReadResult<T>(JsonFileReadStatus.Success, value);
         }
-        catch
+        catch (Exception ex)
         {
-            return default;
+            return new JsonFileReadResult<T>(JsonFileReadStatus.Invalid, Error: ex);
         }
     }
 
@@ -247,6 +346,21 @@ public sealed partial class AppDataStore
         }
 
         SafeFileWriter.WriteAllText(path, value);
+    }
+
+    private void AddJsonReadWarning(string path, string message, Exception? error)
+    {
+        string warningKey = $"json:{Path.GetFullPath(path)}";
+        if (!dataLoadWarningKeys.Add(warningKey)) return;
+
+        string detail = error == null ? string.Empty : $"{Environment.NewLine}原因：{error.Message}";
+        dataLoadWarnings.Add($"{message}{Environment.NewLine}文件：{path}{detail}");
+    }
+
+    private static void NormalizeSettings(AppSettings settings)
+    {
+        settings.WindowLayout ??= new WindowLayoutSettings();
+        settings.RecentFiles ??= [];
     }
 
     private static void VerifyDirectoryWritable(string directory)

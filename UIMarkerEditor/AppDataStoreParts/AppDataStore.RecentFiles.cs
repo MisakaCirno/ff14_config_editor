@@ -17,7 +17,7 @@ public sealed partial class AppDataStore
             .ToList();
 
         Settings.RecentFiles = recentFiles;
-        SaveSettings(Settings);
+        TrySaveSettings(Settings);
     }
 
     public List<string> GetRecentFiles()
@@ -32,7 +32,20 @@ public sealed partial class AppDataStore
         if (Settings.RecentFiles.Count == 0) return;
 
         Settings.RecentFiles.Clear();
-        SaveSettings(Settings);
+        TrySaveSettings(Settings);
+    }
+
+    private bool TrySaveSettings(AppSettings settings)
+    {
+        try
+        {
+            SaveSettings(settings);
+            return true;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     private static IEnumerable<string> NormalizeRecentFiles(IEnumerable<string> filePaths)

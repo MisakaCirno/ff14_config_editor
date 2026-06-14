@@ -93,9 +93,25 @@ public sealed partial class AppDataStore
 
     private void LoadServerList()
     {
-        ServerListCache? cachedServerList = ReadJson<ServerListCache>(ServersFilePath);
-        ServerList = cachedServerList != null && IsValidServerListCache(cachedServerList)
-            ? cachedServerList
+        JsonFileReadResult<ServerListCache> serverListResult = ReadJsonFile<ServerListCache>(ServersFilePath);
+        if (serverListResult.Status == JsonFileReadStatus.Invalid)
+        {
+            AddJsonReadWarning(
+                ServersFilePath,
+                "服务器列表缓存无法读取，已按无缓存处理。",
+                serverListResult.Error);
+        }
+
+        ServerListCache? cachedServerList = serverListResult.Status == JsonFileReadStatus.Success
+            ? serverListResult.Value
+            : null;
+        if (cachedServerList != null)
+        {
+            cachedServerList.Groups ??= [];
+        }
+
+        ServerList = IsValidServerListCache(cachedServerList)
+            ? cachedServerList!
             : new ServerListCache();
     }
 
@@ -132,7 +148,7 @@ public sealed partial class AppDataStore
 
     private static bool IsValidServerListCache(ServerListCache? serverList)
     {
-        return serverList?.Groups.Count > 0 && serverList.LastUpdated > DateTime.MinValue;
+        return serverList?.Groups?.Count > 0 && serverList.LastUpdated > DateTime.MinValue;
     }
 
     private static List<Uri> ExtractServerPageResourceUris(string html, Uri baseUri)

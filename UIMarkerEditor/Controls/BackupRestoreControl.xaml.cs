@@ -164,13 +164,42 @@ public partial class BackupRestoreControl : UserControl
 
         if (dialog.ShowDialog() != true) return;
 
+        bool isNewProfile = !appDataStore.Characters.Any(character =>
+            string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase));
         CharacterProfile profile = appDataStore.GetOrCreateCharacter(userID);
+        string previousCharacterName = profile.CharacterName;
+        string previousDataCenter = profile.DataCenter;
+        string previousWorld = profile.World;
+        string previousNote = profile.Note;
+        DateTime previousUpdatedAt = profile.UpdatedAt;
+
         profile.CharacterName = dialog.CharacterName;
         profile.DataCenter = dialog.DataCenter;
         profile.World = dialog.World;
         profile.Note = dialog.Note;
         profile.UpdatedAt = DateTime.Now;
-        appDataStore.SaveCharacters();
+        try
+        {
+            appDataStore.SaveCharacters();
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (isNewProfile)
+            {
+                appDataStore.Characters.Remove(profile);
+            }
+            else
+            {
+                profile.CharacterName = previousCharacterName;
+                profile.DataCenter = previousDataCenter;
+                profile.World = previousWorld;
+                profile.Note = previousNote;
+                profile.UpdatedAt = previousUpdatedAt;
+            }
+
+            MessageBox.Show(ownerWindow, $"保存角色备注失败：{ex.Message}", "角色备注保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
 
         string selectedBackupId = backup.Id;
         refreshCharacterList();

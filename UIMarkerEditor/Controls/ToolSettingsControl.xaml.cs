@@ -289,7 +289,14 @@ public partial class ToolSettingsControl : UserControl
             RecentFiles = [.. appDataStore.Settings.RecentFiles]
         };
         updateSettings(settings);
-        appDataStore.SaveSettings(settings);
+        try
+        {
+            appDataStore.SaveSettings(settings);
+        }
+        catch (InvalidOperationException ex)
+        {
+            MessageBox.Show(ownerWindow, $"无法保存刷新记录：{ex.Message}", "设置保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private static string FormatOptionalTime(DateTime value)

@@ -89,6 +89,7 @@ namespace UIMarkerEditor
             LoadSettingsIntoUi();
             RefreshBackupList();
             RefreshCharacterList();
+            ShowDataLoadWarnings();
         }
 
         private void OpenWayMarkFile()

@@ -31,6 +31,19 @@ namespace UIMarkerEditor
             return string.IsNullOrWhiteSpace(text) ? "无" : text;
         }
 
+        private void ShowDataLoadWarnings()
+        {
+            List<string> warnings = appDataStore.ConsumeDataLoadWarnings();
+            if (warnings.Count == 0) return;
+
+            MessageBox.Show(
+                this,
+                string.Join($"{Environment.NewLine}{Environment.NewLine}", warnings),
+                "本地数据读取提示",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+
         private static bool IsValidUserID(string userID)
         {
             return userID.Length == 16 && userID.All(Uri.IsHexDigit);

@@ -42,7 +42,14 @@ namespace UIMarkerEditor
             CharacterProfiles_Control.CaptureLayoutSettings(layout);
 
             appDataStore.Settings.WindowLayout = layout;
-            appDataStore.SaveSettings(appDataStore.Settings);
+            try
+            {
+                appDataStore.SaveSettings(appDataStore.Settings);
+            }
+            catch (InvalidOperationException)
+            {
+                // Keep the corrupted settings file untouched; the startup warning explains the repair path.
+            }
         }
 
         private void ApplyWindowBounds(WindowLayoutSettings layout)
