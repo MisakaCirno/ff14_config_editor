@@ -127,6 +127,21 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
     }
 
     [Fact]
+    public void Save_InvalidFMarkerTailLength_ThrowsAndLeavesFileUnchanged()
+    {
+        byte[] markerData = UISaveTestData.BuildMarkerData(1, UISaveTestData.MarkerTail());
+        string path = WritePayloadFile(UISaveTestData.BuildPayload(
+            UISaveTestData.BuildSection(17, markerData)));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+        SectionFMARKER section = Assert.IsType<SectionFMARKER>(config.Sections[0]);
+        UISaveTestData.SetMarkerTail(section, [0xAA]);
+
+        Assert.Throws<UISaveFormatException>(config.Save);
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
     public void Save_FileTail_RoundTripsTailBytes()
     {
         string path = WriteFile(UISaveTestData.BuildFile(
@@ -184,32 +199,95 @@ public class SectionFMarkerTests
     }
 
     [Fact]
-    public void ParseMarker_ReparseClearsPreviousTail()
+    public void ParseMarker_ReparseReplacesPreviousTail()
     {
         byte[] firstMarkerData = UISaveTestData.BuildMarkerData(1, UISaveTestData.MarkerTail());
         SectionFMARKER section = UISaveTestData.BuildFMarkerSection(firstMarkerData);
         Assert.Equal(4, section.MarkerTailLength);
 
-        byte[] secondMarkerData = UISaveTestData.BuildMarkerData(1);
+        byte[] secondMarkerData = UISaveTestData.BuildMarkerData(1, [0xDE, 0xAD, 0xBE, 0xEF]);
         section.data = secondMarkerData;
         section.length = secondMarkerData.Length;
         section.ParseMarker();
 
-        Assert.Equal(0, section.MarkerTailLength);
+        Assert.Equal(4, section.MarkerTailLength);
         Assert.Single(section.WayMarks);
+        Assert.Equal(UISaveTestData.BuildSection(17, secondMarkerData), section.ToRawBytes());
     }
 
     [Fact]
-    public void Constructor_DataShorterThanMarkerHeader_ThrowsFormatException()
+    public void ParseMarker_WhenReparseFails_DoesNotReplaceExistingMarkerState()
     {
-        byte[] markerData = new byte[SectionFMARKER.MarkerHeaderByteLength - 1];
+        byte[] firstMarkerData = UISaveTestData.BuildMarkerData(1, UISaveTestData.MarkerTail());
+        SectionFMARKER section = UISaveTestData.BuildFMarkerSection(firstMarkerData);
+        section.data = UISaveTestData.BuildMarkerData(1);
+        section.length = section.data.Length;
+
+        Assert.Throws<UISaveFormatException>(section.ParseMarker);
+
+        Assert.Equal(4, section.MarkerTailLength);
+        Assert.Single(section.WayMarks);
+        Assert.Equal(UISaveTestData.BuildSection(17, firstMarkerData), section.ToRawBytes());
+    }
+
+    [Fact]
+    public void Constructor_DataShorterThanMinimumMarkerData_ThrowsFormatException()
+    {
+        int minimumLength = SectionFMARKER.MarkerHeaderByteLength + SectionFMARKER.MarkerTailByteLength;
+        byte[] markerData = new byte[minimumLength - 1];
 
         UISaveFormatException ex = Assert.Throws<UISaveFormatException>(
             () => UISaveTestData.BuildFMarkerSection(markerData));
 
         Assert.Equal(17, ex.SectionIndex);
-        Assert.Equal(SectionFMARKER.MarkerHeaderByteLength, ex.ExpectedLength);
+        Assert.Equal(minimumLength, ex.ExpectedLength);
         Assert.Equal(markerData.Length, ex.RemainingLength);
+    }
+
+    [Fact]
+    public void Constructor_DataWithoutMarkerTail_ThrowsFormatException()
+    {
+        byte[] markerData = UISaveTestData.BuildMarkerData(1);
+
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(
+            () => UISaveTestData.BuildFMarkerSection(markerData));
+
+        Assert.Equal(17, ex.SectionIndex);
+    }
+
+    [Fact]
+    public void Constructor_MarkerTailLengthIsNotFour_ThrowsFormatException()
+    {
+        byte[] markerData = UISaveTestData.BuildMarkerData(1, [0xEE]);
+
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(
+            () => UISaveTestData.BuildFMarkerSection(markerData));
+
+        Assert.Equal(17, ex.SectionIndex);
+    }
+
+    [Fact]
+    public void Constructor_NonZeroMarkerTail_RoundTripsMarkerData()
+    {
+        byte[] markerData = UISaveTestData.BuildMarkerData(1, [0x01, 0x02, 0x03, 0x04]);
+        SectionFMARKER section = UISaveTestData.BuildFMarkerSection(markerData);
+
+        byte[] rawBytes = section.ToRawBytes();
+
+        Assert.Equal(4, section.MarkerTailLength);
+        Assert.Equal(UISaveTestData.BuildSection(17, markerData), rawBytes);
+    }
+
+    [Fact]
+    public void Constructor_FiveWayMarks_RoundTripsMarkerData()
+    {
+        byte[] markerData = UISaveTestData.BuildMarkerData(5, UISaveTestData.MarkerTail());
+        SectionFMARKER section = UISaveTestData.BuildFMarkerSection(markerData);
+
+        byte[] rawBytes = section.ToRawBytes();
+
+        Assert.Equal(5, section.WayMarks.Count);
+        Assert.Equal(UISaveTestData.BuildSection(17, markerData), rawBytes);
     }
 
     [Fact]
@@ -281,6 +359,19 @@ internal static class UISaveTestData
     public static byte[] MarkerTail()
     {
         return [0x00, 0x00, 0x00, 0x00];
+    }
+
+    public static void SetMarkerTail(SectionFMARKER section, byte[] markerTail)
+    {
+        System.Reflection.FieldInfo? field = typeof(SectionFMARKER).GetField(
+            "_markerTail",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (field == null)
+        {
+            throw new InvalidOperationException("无法找到 FMARKER 尾部字段。");
+        }
+
+        field.SetValue(section, markerTail);
     }
 
     public static byte[] BuildFile(byte[] decryptedPayload, byte[]? fileTail = null)

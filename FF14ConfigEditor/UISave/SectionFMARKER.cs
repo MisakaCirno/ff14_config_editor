@@ -14,6 +14,7 @@ namespace FF14ConfigEditor.UISave
     {
         public const int MarkerHeaderByteLength = 16;
         public const int WayMarkByteLength = 104;
+        public const int MarkerTailByteLength = 4;
 
         public List<WayMark> WayMarks { get; private set; } = [];
         private byte[] _markerHeader = [];
@@ -34,9 +35,7 @@ namespace FF14ConfigEditor.UISave
 
         public void ParseMarker()
         {
-            WayMarks.Clear();
-            _markerHeader = [];
-            _markerTail = [];
+            ValidateMarkerDataLength();
 
             using MemoryStream ms = new(data);
             using BinaryReader reader = new(ms);
@@ -48,29 +47,25 @@ namespace FF14ConfigEditor.UISave
                 index);
             DebugHelper.Log($"Marker 标记头: {BitConverter.ToString(markerHeader)}");
 
-            int count = 0;
             List<WayMark> parsedWayMarks = [];
-            while (ms.Length - ms.Position >= WayMarkByteLength)
+            int wayMarkCount = GetWayMarkCount(data.Length);
+            for (int count = 0; count < wayMarkCount; count++)
             {
                 long startPos = ms.Position;
                 WayMark wayMark = ParseWayMark(reader, index);
                 parsedWayMarks.Add(wayMark);
 
-                DebugHelper.Log($"WayMark Parsed #{++count} at offset {startPos}");
+                DebugHelper.Log($"WayMark Parsed #{count + 1} at offset {startPos}");
                 DebugHelper.Log($"= = = = =");
                 wayMark.DebugPrintInfo();
             }
 
-            byte[] markerTail = [];
-            if (ms.Position < ms.Length)
-            {
-                markerTail = UISaveBinaryReader.ReadExact(
-                    reader,
-                    checked((int)(ms.Length - ms.Position)),
-                    "FMARKER 标记尾部",
-                    index);
-                DebugHelper.Log($"Marker 尾部: {markerTail.Length} bytes");
-            }
+            byte[] markerTail = UISaveBinaryReader.ReadExact(
+                reader,
+                MarkerTailByteLength,
+                "FMARKER 标记尾部",
+                index);
+            DebugHelper.Log($"Marker 尾部: {markerTail.Length} bytes");
 
             _markerHeader = markerHeader;
             WayMarks = parsedWayMarks;
@@ -111,6 +106,35 @@ namespace FF14ConfigEditor.UISave
         private void ValidateMarkerForSave()
         {
             ValidateByteArray(_markerHeader, MarkerHeaderByteLength, "FMARKER 标记头", index);
+            ValidateByteArray(_markerTail, MarkerTailByteLength, "FMARKER 标记尾部", index);
+        }
+
+        private void ValidateMarkerDataLength()
+        {
+            int minimumLength = MarkerHeaderByteLength + MarkerTailByteLength;
+            if (data.Length < minimumLength)
+            {
+                throw new UISaveFormatException(
+                    $"FMARKER 数据长度不能小于 {minimumLength} 字节。",
+                    sectionIndex: index,
+                    expectedLength: minimumLength,
+                    remainingLength: data.Length);
+            }
+
+            int wayMarkBytesLength = data.Length - minimumLength;
+            if (wayMarkBytesLength % WayMarkByteLength != 0)
+            {
+                throw new UISaveFormatException(
+                    "FMARKER 数据长度不符合已知结构，应为 16 字节头、若干个 104 字节标点预设和 4 字节尾部。",
+                    sectionIndex: index,
+                    expectedLength: WayMarkByteLength,
+                    remainingLength: wayMarkBytesLength);
+            }
+        }
+
+        private static int GetWayMarkCount(int markerDataLength)
+        {
+            return (markerDataLength - MarkerHeaderByteLength - MarkerTailByteLength) / WayMarkByteLength;
         }
 
         private static void WriteWayMark(BinaryWriter writer, WayMark wayMark)
