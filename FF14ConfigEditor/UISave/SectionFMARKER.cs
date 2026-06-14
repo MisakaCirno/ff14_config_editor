@@ -1,23 +1,27 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.IO;
 
 namespace FF14ConfigEditor.UISave
 {
-    // regionID: https://raw.githubusercontent.com/thewakingsands/ffxiv-datamining-cn/master/ContentFinderCondition.csv
+    // RegionID 数据来源: https://raw.githubusercontent.com/thewakingsands/ffxiv-datamining-cn/master/ContentFinderCondition.csv
 
     /// <summary>
-    /// `UISAVE.DAT`文件中存储的Section的数据结构中，场景标点部分的详细数据结构。
+    /// `UISAVE.DAT`文件中 FMARKER 段的标点预设数据。
     /// </summary>
     public class SectionFMARKER : UISaveSection
     {
-        // 游戏里最多设置30个
+        public const int MarkerHeaderByteLength = 16;
+        public const int WayMarkByteLength = 104;
+        // 游戏里最多保存 30 个标点预设。
+        public const int MaxWayMarkSlots = 30;
+
         public List<WayMark> WayMarks { get; private set; } = [];
         private byte[] _markerHeader = [];
         private byte[] _markerTail = [];
+
+        public int MarkerTailLength => _markerTail.Length;
 
         public SectionFMARKER(
             short index,
@@ -27,75 +31,107 @@ namespace FF14ConfigEditor.UISave
             byte[] data,
             byte[] endFlag) : base(index, unknown1, length, unknown2, data, endFlag)
         {
-            // 解析标记数据
             ParseMarker();
         }
 
         public void ParseMarker()
         {
             WayMarks.Clear();
+            _markerHeader = [];
+            _markerTail = [];
 
-            // 使用 MemoryStream 和 BinaryReader 优化读取
             using MemoryStream ms = new(data);
             using BinaryReader reader = new(ms);
 
-            // 16 bytes unknown header
-            _markerHeader = reader.ReadBytes(16);
-            DebugHelper.Log($"Marker Unknown1: {BitConverter.ToString(_markerHeader)}");
+            byte[] markerHeader = UISaveBinaryReader.ReadExact(
+                reader,
+                MarkerHeaderByteLength,
+                "FMARKER 标记头",
+                index);
+            DebugHelper.Log($"Marker 标记头: {BitConverter.ToString(markerHeader)}");
 
             int count = 0;
-            // 接下来每一段都是一个WayMark结构
-            // 每一个WayMark结构通常大小为 104 字节 (8个标记点 * 12字节 + 8字节元数据)
-            while (ms.Position < ms.Length)
+            List<WayMark> parsedWayMarks = [];
+            while (ms.Length - ms.Position >= WayMarkByteLength)
             {
-                // 防止读取越界，检查剩余长度是否足够解析一个完整结构
-                // 标准结构包含 8 个坐标点 (A,B,C,D,1,2,3,4) = 96 字节
-                // 加上后续元数据，至少需要 104 字节
-                if (ms.Length - ms.Position < 104) break;
+                if (count >= MaxWayMarkSlots)
+                {
+                    throw new UISaveFormatException(
+                        $"FMARKER 的标点槽位超过上限 {MaxWayMarkSlots}。",
+                        offset: ms.Position,
+                        sectionIndex: index,
+                        expectedLength: MaxWayMarkSlots,
+                        remainingLength: (ms.Length - MarkerHeaderByteLength) / WayMarkByteLength);
+                }
 
                 long startPos = ms.Position;
-                WayMark wayMark = ParseWayMark(reader);
-                WayMarks.Add(wayMark);
+                WayMark wayMark = ParseWayMark(reader, index);
+                parsedWayMarks.Add(wayMark);
 
                 DebugHelper.Log($"WayMark Parsed #{++count} at offset {startPos}");
                 DebugHelper.Log($"= = = = =");
                 wayMark.DebugPrintInfo();
             }
 
-            // 读取可能的尾部填充
+            byte[] markerTail = [];
             if (ms.Position < ms.Length)
             {
-                _markerTail = reader.ReadBytes((int)(ms.Length - ms.Position));
-                DebugHelper.Log($"Marker Tail: {_markerTail.Length} bytes");
+                markerTail = UISaveBinaryReader.ReadExact(
+                    reader,
+                    checked((int)(ms.Length - ms.Position)),
+                    "FMARKER 标记尾部",
+                    index);
+                DebugHelper.Log($"Marker 尾部: {markerTail.Length} bytes");
             }
+
+            _markerHeader = markerHeader;
+            WayMarks = parsedWayMarks;
+            _markerTail = markerTail;
         }
 
         public override byte[] ToRawBytes()
         {
+            ValidateMarkerForSave();
+
             using MemoryStream ms = new();
             using BinaryWriter writer = new(ms);
 
-            // 写入头部 (16 bytes)
-            if (_markerHeader.Length < 16) Array.Resize(ref _markerHeader, 16);
             writer.Write(_markerHeader);
 
-            // 写入 WayMarks
             foreach (WayMark wayMark in WayMarks)
             {
                 WriteWayMark(writer, wayMark);
             }
 
-            // 写入尾部
             if (_markerTail.Length > 0)
             {
                 writer.Write(_markerTail);
             }
 
-            // 更新基类数据用于最终序列化
             data = ms.ToArray();
             length = data.Length;
 
             return base.ToRawBytes();
+        }
+
+        public override void ValidateForSave()
+        {
+            ValidateMarkerForSave();
+            base.ValidateForSave();
+        }
+
+        private void ValidateMarkerForSave()
+        {
+            ValidateByteArray(_markerHeader, MarkerHeaderByteLength, "FMARKER 标记头", index);
+
+            if (WayMarks.Count > MaxWayMarkSlots)
+            {
+                throw new UISaveFormatException(
+                    $"FMARKER 保存的标点槽位不能超过 {MaxWayMarkSlots}。",
+                    sectionIndex: index,
+                    expectedLength: MaxWayMarkSlots,
+                    remainingLength: WayMarks.Count);
+            }
         }
 
         private static void WriteWayMark(BinaryWriter writer, WayMark wayMark)
@@ -122,44 +158,41 @@ namespace FF14ConfigEditor.UISave
             writer.Write(point.Z);
         }
 
-        private static WayMark ParseWayMark(BinaryReader reader)
+        private static WayMark ParseWayMark(BinaryReader reader, int sectionIndex)
         {
             WayMark wayMark = new()
             {
-                // 解析坐标点 (A, B, C, D, 1, 2, 3, 4)
-                // 每个点 3 个 int32 (X, Y, Z) = 12 字节
-                A = ReadRawPoint(reader),
-                B = ReadRawPoint(reader),
-                C = ReadRawPoint(reader),
-                D = ReadRawPoint(reader),
-                One = ReadRawPoint(reader),
-                Two = ReadRawPoint(reader),
-                Three = ReadRawPoint(reader),
-                Four = ReadRawPoint(reader),
+                A = ReadRawPoint(reader, sectionIndex),
+                B = ReadRawPoint(reader, sectionIndex),
+                C = ReadRawPoint(reader, sectionIndex),
+                D = ReadRawPoint(reader, sectionIndex),
+                One = ReadRawPoint(reader, sectionIndex),
+                Two = ReadRawPoint(reader, sectionIndex),
+                Three = ReadRawPoint(reader, sectionIndex),
+                Four = ReadRawPoint(reader, sectionIndex),
 
-                // 解析标志位和其他信息 (Offset 96)
-                enableFlag = reader.ReadByte(),     // Offset 96
-                unknown = reader.ReadByte(),        // Offset 97
-                RegionID = reader.ReadUInt16(),     // Offset 98
-                timestamp = reader.ReadInt32()     // Offset 100
+                enableFlag = UISaveBinaryReader.ReadByte(reader, "FMARKER 启用标记", sectionIndex),
+                unknown = UISaveBinaryReader.ReadByte(reader, "FMARKER 未知字节", sectionIndex),
+                RegionID = UISaveBinaryReader.ReadUInt16(reader, "FMARKER 区域 ID", sectionIndex),
+                timestamp = UISaveBinaryReader.ReadInt32(reader, "FMARKER 时间戳", sectionIndex)
             };
 
             return wayMark;
         }
 
-        private static WayMarkPoint ReadRawPoint(BinaryReader reader)
+        private static WayMarkPoint ReadRawPoint(BinaryReader reader, int sectionIndex)
         {
             return new WayMarkPoint
             {
-                X = reader.ReadInt32(),
-                Y = reader.ReadInt32(),
-                Z = reader.ReadInt32()
+                X = UISaveBinaryReader.ReadInt32(reader, "FMARKER 坐标 X", sectionIndex),
+                Y = UISaveBinaryReader.ReadInt32(reader, "FMARKER 坐标 Y", sectionIndex),
+                Z = UISaveBinaryReader.ReadInt32(reader, "FMARKER 坐标 Z", sectionIndex)
             };
         }
     }
 
     /// <summary>
-    /// 每一个标点预设的数据结构
+    /// 每一组标点预设的数据结构。
     /// </summary>
     public class WayMark : INotifyPropertyChanged
     {
@@ -175,8 +208,8 @@ namespace FF14ConfigEditor.UISave
         public WayMarkPoint Three { get; set; } = new();
         public WayMarkPoint Four { get; set; } = new();
 
-        // enableFlag共8位，每一位代表一个标点的启用状态
-        // 位0代表A，位1代表B，位6代表3，位7代表4
+        // enableFlag 共 8 位，每一位代表一个标点的启用状态。
+        // 位 0 到位 7 依次代表 A、B、C、D、1、2、3、4。
         public byte enableFlag;
         public bool AEnabled
         {
@@ -283,7 +316,6 @@ namespace FF14ConfigEditor.UISave
             }
         }
 
-
         public byte unknown;
 
         private ushort _regionID;
@@ -337,15 +369,14 @@ namespace FF14ConfigEditor.UISave
     }
 
     /// <summary>
-    /// 每一个标点的坐标数据结构
+    /// 每一个标点的坐标数据结构。
     /// </summary>
     public class WayMarkPoint : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
-        // 使用时坐标会转换为浮点数，但存储时是整数形式
-        // 转换比例为 1000
+        // 游戏内显示时坐标会换算为浮点数，文件中以乘以 1000 后的整数保存。
         private int rawX = 0;
         private int rawY = 0;
         private int rawZ = 0;
@@ -353,7 +384,7 @@ namespace FF14ConfigEditor.UISave
         public int X
         {
             get { return rawX; }
-            set 
+            set
             {
                 if (rawX != value)
                 {
@@ -366,7 +397,7 @@ namespace FF14ConfigEditor.UISave
         public int Y
         {
             get { return rawY; }
-            set 
+            set
             {
                 if (rawY != value)
                 {
@@ -379,7 +410,7 @@ namespace FF14ConfigEditor.UISave
         public int Z
         {
             get { return rawZ; }
-            set 
+            set
             {
                 if (rawZ != value)
                 {
@@ -393,7 +424,7 @@ namespace FF14ConfigEditor.UISave
         public float FloatX
         {
             get { return rawX / 1000f; }
-            set 
+            set
             {
                 int newVal = (int)(value * 1000);
                 if (rawX != newVal)
@@ -407,7 +438,7 @@ namespace FF14ConfigEditor.UISave
         public float FloatY
         {
             get { return rawY / 1000f; }
-            set 
+            set
             {
                 int newVal = (int)(value * 1000);
                 if (rawY != newVal)
@@ -421,7 +452,7 @@ namespace FF14ConfigEditor.UISave
         public float FloatZ
         {
             get { return rawZ / 1000f; }
-            set 
+            set
             {
                 int newVal = (int)(value * 1000);
                 if (rawZ != newVal)

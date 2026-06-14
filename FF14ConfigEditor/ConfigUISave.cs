@@ -1,9 +1,7 @@
-﻿using FF14ConfigEditor.UISave;
+using FF14ConfigEditor.UISave;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.IO;
 
 namespace FF14ConfigEditor
 {
@@ -20,7 +18,13 @@ namespace FF14ConfigEditor
          * https://github.com/Haselnussbomber/HaselDebug/blob/main/HaselDebug/Tabs/Disabled/UIModuleTab.cs
          */
 
-        // 写会文件的时候需要用到
+        private const int FileFormatVersionByteLength = 8;
+        private const int FileUnknownByteLength = 4;
+        private const int PayloadUnknownByteLength = 8;
+        private const int UserIdByteLength = 8;
+        private const int SectionIndexByteLength = 2;
+
+        // 写回文件的时候需要用到
         // 没加密的部分
         private byte[] fileFormatVersionRaw = [];
         private byte[] fileUnknownRaw = [];
@@ -30,20 +34,292 @@ namespace FF14ConfigEditor
         private byte[] payloadTailRaw = []; // 保存解密数据末尾的填充
 
         /// <summary>
-        /// 解析出的 Section 列表
+        /// 解析出的段列表
         /// </summary>
         public List<UISaveSection> Sections { get; private set; } = [];
 
-        public string UserIDHex => userIDRaw.Length == 8
-            ? BitConverter.ToUInt64(userIDRaw, 0).ToString("X16")
-            : string.Empty;
+        public string UserIDHex => FormatUserIdHex(userIDRaw);
 
         public string UserIDRawBytesHex => BitConverter.ToString(userIDRaw);
 
+        public SectionFMARKER? Marks
+        {
+            get
+            {
+                // 根据段的 index 字段查找 FMARKER (index == 17)，避免直接按列表下标访问
+                foreach (UISaveSection s in Sections)
+                {
+                    if (s is SectionFMARKER fm && fm.index == 17)
+                        return fm;
+                }
+                return null;
+            }
+        }
+
+        public ConfigUISave(string filePath) : base(filePath)
+        {
+            Load();
+        }
+
+        public override void Load()
+        {
+            ParsedUISaveFile parsedFile = ParseFile(FilePath);
+            ApplyParsedFile(parsedFile);
+        }
+
+        public override void Save()
+        {
+            ValidateEnvelopeForSave();
+
+            byte[] encryptedData;
+            using (MemoryStream ms = new())
+            {
+                using (BinaryWriter writer = new(ms))
+                {
+                    writer.Write(payloadUnknownRaw);
+                    writer.Write(userIDRaw);
+
+                    foreach (UISaveSection section in Sections)
+                    {
+                        writer.Write(section.ToRawBytes());
+                    }
+
+                    if (payloadTailRaw.Length > 0)
+                    {
+                        writer.Write(payloadTailRaw);
+                    }
+                }
+
+                byte[] decryptedData = ms.ToArray();
+                encryptedData = Utils.EncryptData(decryptedData);
+            }
+
+            byte[] fileBytes;
+            using (MemoryStream ms = new())
+            {
+                using (BinaryWriter writer = new(ms))
+                {
+                    writer.Write(fileFormatVersionRaw);
+                    writer.Write(encryptedData.Length);
+                    writer.Write(fileUnknownRaw);
+                    writer.Write(encryptedData);
+                }
+
+                fileBytes = ms.ToArray();
+            }
+
+            SafeFileWriter.WriteAllBytes(FilePath, fileBytes);
+        }
+
         /// <summary>
-        /// 每个Section对应的内容
+        /// 解析加密后的数据内容。
         /// </summary>
-        private readonly Dictionary<int, string> sectionFunctionMap = new()
+        /// <param name="decryptedData"></param>
+        public void ParseEncryptedPart(byte[] decryptedData)
+        {
+            ParsedEncryptedPayload parsedPayload = ParseEncryptedPayload(decryptedData);
+            ApplyParsedFile(new ParsedUISaveFile(
+                fileFormatVersionRaw,
+                fileUnknownRaw,
+                parsedPayload.PayloadUnknownRaw,
+                parsedPayload.UserIDRaw,
+                parsedPayload.Sections,
+                parsedPayload.PayloadTailRaw));
+        }
+
+        private static ParsedUISaveFile ParseFile(string filePath)
+        {
+            using FileStream fs = new(filePath, FileMode.Open, FileAccess.Read);
+            using BinaryReader reader = new(fs);
+
+            byte[] fileFormatVersionRaw = UISaveBinaryReader.ReadExact(
+                reader,
+                FileFormatVersionByteLength,
+                "文件格式版本");
+            DebugHelper.Log($"文件格式版本: {BitConverter.ToString(fileFormatVersionRaw)}");
+
+            long encryptedLengthOffset = UISaveBinaryReader.GetOffset(reader);
+            int encryptLength = UISaveBinaryReader.ReadInt32(reader, "加密数据长度");
+            DebugHelper.Log($"加密数据长度: {encryptLength}");
+            if (encryptLength < 0)
+            {
+                throw new UISaveFormatException(
+                    $"加密数据长度不能为负数：{encryptLength}。",
+                    offset: encryptedLengthOffset,
+                    expectedLength: 0);
+            }
+
+            byte[] fileUnknownRaw = UISaveBinaryReader.ReadExact(
+                reader,
+                FileUnknownByteLength,
+                "文件未知头部");
+            DebugHelper.Log($"未知头部: {BitConverter.ToString(fileUnknownRaw)}");
+
+            byte[] encryptedData = UISaveBinaryReader.ReadExact(
+                reader,
+                encryptLength,
+                "加密数据");
+            byte[] decryptedData = Utils.DecryptData(encryptedData);
+
+            ParsedEncryptedPayload parsedPayload = ParseEncryptedPayload(decryptedData);
+            return new ParsedUISaveFile(
+                fileFormatVersionRaw,
+                fileUnknownRaw,
+                parsedPayload.PayloadUnknownRaw,
+                parsedPayload.UserIDRaw,
+                parsedPayload.Sections,
+                parsedPayload.PayloadTailRaw);
+        }
+
+        private static ParsedEncryptedPayload ParseEncryptedPayload(byte[] decryptedData)
+        {
+            ArgumentNullException.ThrowIfNull(decryptedData);
+
+            using MemoryStream ms = new(decryptedData);
+            using BinaryReader reader = new(ms);
+
+            byte[] payloadUnknownRaw = UISaveBinaryReader.ReadExact(
+                reader,
+                PayloadUnknownByteLength,
+                "加密部分未知头");
+            DebugHelper.Log($"加密部分 - 未知: {BitConverter.ToString(payloadUnknownRaw)}");
+
+            byte[] userIDRaw = UISaveBinaryReader.ReadExact(
+                reader,
+                UserIdByteLength,
+                "加密部分用户 ID");
+            DebugHelper.Log($"加密部分 - 用户ID: {FormatUserIdHex(userIDRaw)}");
+
+            List<UISaveSection> sections = [];
+            byte[] payloadTailRaw = [];
+
+            while (ms.Position < ms.Length)
+            {
+                long sectionStartOffset = ms.Position;
+                long remaining = ms.Length - ms.Position;
+                if (remaining < SectionIndexByteLength)
+                {
+                    payloadTailRaw = UISaveBinaryReader.ReadExact(
+                        reader,
+                        checked((int)remaining),
+                        "加密部分尾部填充");
+                    DebugHelper.Log($"加密部分 - 尾部填充: {payloadTailRaw.Length} bytes");
+                    break;
+                }
+
+                short index = UISaveBinaryReader.ReadInt16(reader, "段索引");
+                byte[] sectionUnknown1 = UISaveBinaryReader.ReadExact(
+                    reader,
+                    UISaveSection.Unknown1ByteLength,
+                    "段 unknown1",
+                    index);
+
+                long sectionLengthOffset = ms.Position;
+                int sectionLength = UISaveBinaryReader.ReadInt32(reader, "段长度", index);
+                if (sectionLength < 0)
+                {
+                    throw new UISaveFormatException(
+                        $"段长度不能为负数：{sectionLength}。",
+                        offset: sectionLengthOffset,
+                        sectionIndex: index,
+                        expectedLength: 0);
+                }
+
+                byte[] sectionUnknown2 = UISaveBinaryReader.ReadExact(
+                    reader,
+                    UISaveSection.Unknown2ByteLength,
+                    "段 unknown2",
+                    index);
+
+                long bytesNeeded = (long)sectionLength + UISaveSection.EndFlagByteLength;
+                long bytesRemaining = ms.Length - ms.Position;
+                if (bytesNeeded > bytesRemaining)
+                {
+                    throw new UISaveFormatException(
+                        "段数据或结束标记被截断。",
+                        offset: sectionStartOffset,
+                        sectionIndex: index,
+                        expectedLength: bytesNeeded,
+                        remainingLength: bytesRemaining);
+                }
+
+                byte[] sectionData = UISaveBinaryReader.ReadExact(reader, sectionLength, "段数据", index);
+                byte[] endFlag = UISaveBinaryReader.ReadExact(
+                    reader,
+                    UISaveSection.EndFlagByteLength,
+                    "段结束标记",
+                    index);
+
+                UISaveSection section = CreateSection(
+                    index,
+                    sectionUnknown1,
+                    sectionLength,
+                    sectionUnknown2,
+                    sectionData,
+                    endFlag);
+                sections.Add(section);
+
+                DebugHelper.Log($"- - - - -");
+                if (SectionFunctionMap.TryGetValue(index, out string? name))
+                {
+                    DebugHelper.Log($"Section Name: {name}");
+                }
+                section.DebugPrintInfo();
+            }
+
+            return new ParsedEncryptedPayload(payloadUnknownRaw, userIDRaw, sections, payloadTailRaw);
+        }
+
+        private void ApplyParsedFile(ParsedUISaveFile parsedFile)
+        {
+            fileFormatVersionRaw = parsedFile.FileFormatVersionRaw;
+            fileUnknownRaw = parsedFile.FileUnknownRaw;
+            payloadUnknownRaw = parsedFile.PayloadUnknownRaw;
+            userIDRaw = parsedFile.UserIDRaw;
+            Sections = parsedFile.Sections;
+            payloadTailRaw = parsedFile.PayloadTailRaw;
+        }
+
+        private static UISaveSection CreateSection(
+            short index,
+            byte[] sectionUnknown1,
+            int sectionLength,
+            byte[] sectionUnknown2,
+            byte[] sectionData,
+            byte[] endFlag)
+        {
+            return index == 17
+                ? new SectionFMARKER(index, sectionUnknown1, sectionLength, sectionUnknown2, sectionData, endFlag)
+                : new UISaveSection(index, sectionUnknown1, sectionLength, sectionUnknown2, sectionData, endFlag);
+        }
+
+        private void ValidateEnvelopeForSave()
+        {
+            ValidateRawLength(fileFormatVersionRaw, FileFormatVersionByteLength, "文件格式版本");
+            ValidateRawLength(fileUnknownRaw, FileUnknownByteLength, "文件未知头部");
+            ValidateRawLength(payloadUnknownRaw, PayloadUnknownByteLength, "加密部分未知头");
+            ValidateRawLength(userIDRaw, UserIdByteLength, "加密部分用户 ID");
+        }
+
+        private static void ValidateRawLength(byte[] value, int expectedLength, string fieldName)
+        {
+            if (value.Length != expectedLength)
+            {
+                throw new UISaveFormatException(
+                    $"{fieldName} 必须正好是 {expectedLength} 字节。",
+                    expectedLength: expectedLength,
+                    remainingLength: value.Length);
+            }
+        }
+
+        private static string FormatUserIdHex(byte[] raw)
+        {
+            return raw.Length == UserIdByteLength
+                ? BitConverter.ToUInt64(raw, 0).ToString("X16")
+                : string.Empty;
+        }
+
+        private static readonly Dictionary<int, string> SectionFunctionMap = new()
         {
             //邮件历史
             {0,"LETTER.DAT"},
@@ -95,187 +371,18 @@ namespace FF14ConfigEditor
             {42,"未知内容"},
         };
 
-        public SectionFMARKER? Marks
-        {
-            get
-            {
-                // 根据 section 的 index 字段查找 FMARKER (index == 17)，避免直接按列表下标访问
-                foreach (UISaveSection s in Sections)
-                {
-                    if (s is SectionFMARKER fm && fm.index == 17)
-                        return fm;
-                }
-                return null;
-            }
-        }
+        private sealed record ParsedUISaveFile(
+            byte[] FileFormatVersionRaw,
+            byte[] FileUnknownRaw,
+            byte[] PayloadUnknownRaw,
+            byte[] UserIDRaw,
+            List<UISaveSection> Sections,
+            byte[] PayloadTailRaw);
 
-        public ConfigUISave(string filePath) : base(filePath)
-        {
-            Load();
-        }
-
-        public override void Load()
-        {
-            using FileStream fs = new(FilePath, FileMode.Open, FileAccess.Read);
-            using BinaryReader reader = new(fs);
-
-            fileFormatVersionRaw = reader.ReadBytes(8);
-            DebugHelper.Log($"文件格式版本: {BitConverter.ToString(fileFormatVersionRaw)}");
-
-            int encryptLength = reader.ReadInt32();
-            DebugHelper.Log($"加密数据长度: {encryptLength}");
-
-            fileUnknownRaw = reader.ReadBytes(4);
-            DebugHelper.Log($"未知头部: {BitConverter.ToString(fileUnknownRaw)}");
-
-            // 读取加密数据
-            byte[] encryptedData = reader.ReadBytes(encryptLength);
-            byte[] decryptedData = Utils.DecryptData(encryptedData);
-
-            // 处理解密后的数据（根据不同的部分需要进行解析）
-            ParseEncryptedPart(decryptedData);
-        }
-
-        public override void Save()
-        {
-            // 先处理加密部分
-            byte[] encryptedData;
-            using (MemoryStream ms = new())
-            {
-                using (BinaryWriter writer = new(ms))
-                {
-                    // 写入加密部分
-                    writer.Write(payloadUnknownRaw);
-                    writer.Write(userIDRaw);
-
-                    // 写入 Sections
-                    foreach (UISaveSection section in Sections)
-                    {
-                        writer.Write(section.ToRawBytes());
-                    }
-
-                    // 写入尾部填充
-                    if (payloadTailRaw.Length > 0)
-                    {
-                        writer.Write(payloadTailRaw);
-                    }
-                }
-
-                byte[] decryptedData = ms.ToArray();
-                encryptedData = Utils.EncryptData(decryptedData);
-            }
-
-            byte[] fileBytes;
-            using (MemoryStream ms = new())
-            {
-                using (BinaryWriter writer = new(ms))
-                {
-                    // 写入未加密部分
-                    writer.Write(fileFormatVersionRaw);
-                    writer.Write(encryptedData.Length);
-                    writer.Write(fileUnknownRaw);
-
-                    // 写入加密部分
-                    writer.Write(encryptedData);
-                }
-
-                fileBytes = ms.ToArray();
-            }
-
-            SafeFileWriter.WriteAllBytes(FilePath, fileBytes);
-        }
-
-        /// <summary>
-        /// 解析加密后的数据内容
-        /// </summary>
-        /// <param name="decryptedData"></param>
-        public void ParseEncryptedPart(byte[] decryptedData)
-        {
-            using MemoryStream ms = new(decryptedData);
-            using BinaryReader reader = new(ms);
-
-            // 解析第一层结构
-            // 8字节未知
-            payloadUnknownRaw = reader.ReadBytes(8);
-            DebugHelper.Log($"加密部分 - 未知: {BitConverter.ToString(payloadUnknownRaw)}");
-
-            // 8字节用户ID，是int64
-            userIDRaw = reader.ReadBytes(8);
-            DebugHelper.Log($"加密部分 - 用户ID: {UserIDHex}");
-
-            Sections.Clear();
-
-            // 解析sections
-            /**
-             * 每个section的结构
-             * - int16, index
-             * - 6 bytes, section unknown1
-             * - int32, section length
-             * - 4 bytes, section unknown2
-             * - section length bytes, section data
-             * - 4 bytes, end flag
-             */
-            while (ms.Position < ms.Length)
-            {
-                // 防止读取越界，虽然理论上结构严谨不会发生，但加上判读更安全
-                if (ms.Length - ms.Position < 2) break;
-
-                short index = reader.ReadInt16();
-                byte[] sectionUnknown1 = reader.ReadBytes(6);
-                int sectionLength = reader.ReadInt32();
-                byte[] sectionUnknown2 = reader.ReadBytes(4);
-                byte[] sectionData = reader.ReadBytes(sectionLength);
-                byte[] endFlag = reader.ReadBytes(4);
-
-                if (index == 17)
-                {
-                    // FMARKER 特殊处理
-                    SectionFMARKER fmarkerSection = new(
-                        index,
-                        sectionUnknown1,
-                        sectionLength,
-                        sectionUnknown2,
-                        sectionData,
-                        endFlag);
-                    fmarkerSection.ParseMarker();
-                    Sections.Add(fmarkerSection);
-
-                    // 打印section信息
-                    DebugHelper.Log($"- - - - -");
-                    if (sectionFunctionMap.TryGetValue(index, out string? name))
-                    {
-                        DebugHelper.Log($"Section Name: {name}");
-                    }
-                    fmarkerSection.DebugPrintInfo();
-                }
-                else
-                {
-                    UISaveSection section = new(
-                        index,
-                        sectionUnknown1,
-                        sectionLength,
-                        sectionUnknown2,
-                        sectionData,
-                        endFlag);
-
-                    Sections.Add(section);
-
-                    // 打印section信息
-                    DebugHelper.Log($"- - - - -");
-                    if (sectionFunctionMap.TryGetValue(index, out string? name))
-                    {
-                        DebugHelper.Log($"Section Name: {name}");
-                    }
-                    section.DebugPrintInfo();
-                }
-            }
-
-            // 读取剩余的尾部数据（padding）
-            if (ms.Position < ms.Length)
-            {
-                payloadTailRaw = reader.ReadBytes((int)(ms.Length - ms.Position));
-                DebugHelper.Log($"加密部分 - 尾部填充: {payloadTailRaw.Length} bytes");
-            }
-        }
+        private sealed record ParsedEncryptedPayload(
+            byte[] PayloadUnknownRaw,
+            byte[] UserIDRaw,
+            List<UISaveSection> Sections,
+            byte[] PayloadTailRaw);
     }
 }
