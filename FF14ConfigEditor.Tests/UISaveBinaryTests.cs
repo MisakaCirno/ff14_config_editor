@@ -30,6 +30,30 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
     }
 
     [Fact]
+    public void Load_EncryptedLengthIsTruncated_ThrowsFormatException()
+    {
+        string path = WriteFile(UISaveTestData.BuildFileWithPartialEncryptedLength([0x01, 0x02]));
+
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(() => new ConfigUISave(path));
+
+        Assert.Equal(8, ex.Offset);
+        Assert.Equal(4, ex.ExpectedLength);
+        Assert.Equal(2, ex.RemainingLength);
+    }
+
+    [Fact]
+    public void Load_FileUnknownHeaderIsTruncated_ThrowsFormatException()
+    {
+        string path = WriteFile(UISaveTestData.BuildFileWithPartialFileUnknown(0, [0xAA, 0xBB]));
+
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(() => new ConfigUISave(path));
+
+        Assert.Equal(12, ex.Offset);
+        Assert.Equal(4, ex.ExpectedLength);
+        Assert.Equal(2, ex.RemainingLength);
+    }
+
+    [Fact]
     public void Load_NegativeEncryptedLength_ThrowsFormatException()
     {
         string path = WriteFile(UISaveTestData.BuildFileWithDeclaredEncryptedLength(-1));
@@ -123,6 +147,49 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         config.Sections[0].length++;
 
         Assert.Throws<UISaveFormatException>(config.Save);
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void Save_PayloadTail_RoundTripsTailBytes()
+    {
+        string path = WritePayloadFile(UISaveTestData.BuildPayloadWithTail(
+            [0xEF],
+            UISaveTestData.BuildSection(1, [0xAA, 0xBB])));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+
+        config.Save();
+
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void Save_UnknownSectionIndex_RoundTripsSectionBytes()
+    {
+        string path = WritePayloadFile(UISaveTestData.BuildPayload(
+            UISaveTestData.BuildSection(99, [0xAA, 0xBB])));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+
+        config.Save();
+
+        Assert.IsType<UISaveSection>(config.Sections[0]);
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void Save_NonZeroSectionEndFlag_RoundTripsEndFlagBytes()
+    {
+        byte[] endFlag = [0xDE, 0xAD, 0xBE, 0xEF];
+        string path = WritePayloadFile(UISaveTestData.BuildPayload(
+            UISaveTestData.BuildSection(1, [0xAA, 0xBB], UISaveTestData.SectionUnknown1(), UISaveTestData.SectionUnknown2(), endFlag)));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+
+        config.Save();
+
+        Assert.Equal(endFlag, config.Sections[0].endFlag);
         Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
     }
 
@@ -392,6 +459,29 @@ internal static class UISaveTestData
         return ms.ToArray();
     }
 
+    public static byte[] BuildFileWithPartialEncryptedLength(byte[] partialEncryptedLength)
+    {
+        using MemoryStream ms = new();
+        using BinaryWriter writer = new(ms);
+
+        writer.Write(FileFormatVersion);
+        writer.Write(partialEncryptedLength);
+
+        return ms.ToArray();
+    }
+
+    public static byte[] BuildFileWithPartialFileUnknown(int declaredLength, byte[] partialFileUnknown)
+    {
+        using MemoryStream ms = new();
+        using BinaryWriter writer = new(ms);
+
+        writer.Write(FileFormatVersion);
+        writer.Write(declaredLength);
+        writer.Write(partialFileUnknown);
+
+        return ms.ToArray();
+    }
+
     public static byte[] BuildFileWithDeclaredEncryptedLength(int declaredLength, byte[] encryptedPayload)
     {
         using MemoryStream ms = new();
@@ -421,6 +511,22 @@ internal static class UISaveTestData
         {
             writer.Write(section);
         }
+
+        return ms.ToArray();
+    }
+
+    public static byte[] BuildPayloadWithTail(byte[] payloadTail, params byte[][] sections)
+    {
+        using MemoryStream ms = new();
+        using BinaryWriter writer = new(ms);
+
+        writer.Write(PayloadUnknown);
+        writer.Write(UserId);
+        foreach (byte[] section in sections)
+        {
+            writer.Write(section);
+        }
+        writer.Write(payloadTail);
 
         return ms.ToArray();
     }

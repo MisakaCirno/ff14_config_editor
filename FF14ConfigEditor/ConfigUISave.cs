@@ -161,6 +161,7 @@ namespace FF14ConfigEditor
                 "文件未知头部");
             DebugHelper.Log($"未知头部: {BitConverter.ToString(fileUnknownRaw)}");
 
+            UISaveBinaryReader.EnsureRemaining(reader, encryptLength, "加密数据");
             byte[] encryptedData = UISaveBinaryReader.ReadExact(
                 reader,
                 encryptLength,

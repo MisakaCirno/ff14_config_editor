@@ -24,7 +24,7 @@
 - `[x]` 代码注释优先使用中文；如果中途为了效率临时写英文，最终提交前统一改回中文。
 - `[x]` 不为了旧版网游文件做专门兼容分支。旧文件只作为观察样本，帮助判断结构规律。
 - `[ ]` 二进制解析层只做结构安全校验，避免把当前版本观察值当作未来永远不变的格式上限。
-- `[ ]` 未知字段、未知 section、尾部填充应尽量原样保留，保证 round-trip。
+- `[x]` 未知字段、未知 section、尾部填充应尽量原样保留，保证 round-trip。
 - `[ ]` 导入导出层可以做更严格的业务校验，例如地图 ID、坐标精度、剪贴板 JSON 完整性。
 
 ## 已完成的前置加固
@@ -45,8 +45,8 @@
 - `[~]` 新增 `UISaveFormatException`，用于格式错误并携带 offset、section index、expected length、remaining length 等信息。
 - `[~]` `ConfigUISave.Load()` 已改为先解析到临时结构，成功后再替换对象状态。
 - `[~]` `ParseEncryptedPart()` 已避免中途失败污染当前对象状态。
-- `[~]` section header、section data、endFlag 截断场景已有更明确异常。
-- `[~]` `sectionLength < 0` 和 section data 超出 payload 剩余长度已有拒绝。
+- `[x]` section header、section data、endFlag 截断场景已有更明确异常。
+- `[x]` `sectionLength < 0` 和 section data 超出 payload 剩余长度已有拒绝。
 - `[x]` `SectionFMARKER.ParseMarker()` 使用局部结果解析，全部成功后再替换 `_markerHeader`、`_markerTail` 和 `WayMarks`。
 - `[~]` `SectionFMARKER` 构造函数解析后，调用方不应再重复调用 `ParseMarker()`。
 - `[~]` `UISaveSection.ValidateForSave()` 已校验 section length、unknown 字段长度和 endFlag 长度。
@@ -78,40 +78,40 @@
 - `[x]` `Load()` 读取加密 payload 后，把剩余文件字节读入 `fileTailRaw`。
 - `[x]` `Save()` 写回时在 encrypted data 后追加 `fileTailRaw`。
 - `[x]` 不要求文件级 tail 必须全零；如需提示，可记录日志，但不要破坏未来兼容性。
-- `[ ]` 外层硬校验改为：`encryptLength >= 0` 且 `encryptLength <= fileSize - 16`。
-- `[ ]` 不设置文件总大小硬上限。
-- `[ ]` 所有长度计算使用 `long` 做边界判断，避免 `int` 加法溢出后绕过检查。
+- `[x]` 外层硬校验改为：`encryptLength >= 0` 且 `encryptLength <= fileSize - 16`。
+- `[x]` 不设置文件总大小硬上限。
+- `[x]` 所有长度计算使用 `long` 做边界判断，避免 `int` 加法溢出后绕过检查。
 - `[ ]` 明确区分文件 offset 和 payload offset，异常信息中尽量写清楚来源。
 
 ### 阶段一测试
 
-- `[ ]` 文件头不足 8 字节时抛出 `UISaveFormatException`。
-- `[ ]` 外层不足 16 字节时错误信息明确。
-- `[ ]` `encryptLength < 0` 时抛出明确格式异常。
-- `[ ]` `encryptLength > fileSize - 16` 时抛出明确格式异常。
+- `[x]` 文件头不足 8 字节时抛出 `UISaveFormatException`。
+- `[x]` 外层不足 16 字节时错误信息明确。
+- `[x]` `encryptLength < 0` 时抛出明确格式异常。
+- `[x]` `encryptLength > fileSize - 16` 时抛出明确格式异常。
 - `[x]` 文件级 tail 能在 load/save 后原样保留。
 - `[x]` 没有文件级 tail 的文件仍能 round-trip。
 
 ## 阶段二：payload 和 section 解析边界
 
-- `[~]` payload 开头 8 字节未知字段和 8 字节 user id 已使用 exact read。
-- `[~]` section index、unknown1、length、unknown2、data、endFlag 已做截断检查。
-- `[ ]` 复核 while 循环尾部逻辑：payload 剩余不足一个 section index 时只作为 tail 保留，不误解析 section。
-- `[ ]` 复核 `sectionLength + endFlagLength` 是否全程使用 `long`。
-- `[ ]` 复核 `ReadBytes(n)` 是否已经完全被 `ReadExact` 替代。
-- `[ ]` 未知 section index 不拒绝，使用普通 `UISaveSection` 保留。
-- `[ ]` 不强制 section index 连续、不强制 section 数量上限。
-- `[ ]` 不强制 section endFlag 内容必须为零，只校验长度并原样保留。
+- `[x]` payload 开头 8 字节未知字段和 8 字节 user id 已使用 exact read。
+- `[x]` section index、unknown1、length、unknown2、data、endFlag 已做截断检查。
+- `[x]` 复核 while 循环尾部逻辑：payload 剩余不足一个 section index 时只作为 tail 保留，不误解析 section。
+- `[x]` 复核 `sectionLength + endFlagLength` 是否全程使用 `long`。
+- `[x]` 复核 `ReadBytes(n)` 是否已经完全被 `ReadExact` 替代。
+- `[x]` 未知 section index 不拒绝，使用普通 `UISaveSection` 保留。
+- `[x]` 不强制 section index 连续、不强制 section 数量上限。
+- `[x]` 不强制 section endFlag 内容必须为零，只校验长度并原样保留。
 - `[ ]` `SectionFunctionMap` 可补充已知 index，但不得影响未知 section 的保留与保存。
 
 ### 阶段二测试
 
-- `[~]` 负 `sectionLength` 测试。
-- `[~]` 超长 `sectionLength` 测试。
-- `[~]` 缺失 endFlag 测试。
-- `[ ]` payload 剩余 1 字节时作为 payload tail 保留。
-- `[ ]` 未知 section index 能 load/save 原样保留。
-- `[ ]` section endFlag 非零时能原样保留，除非后续确认它必须为零。
+- `[x]` 负 `sectionLength` 测试。
+- `[x]` 超长 `sectionLength` 测试。
+- `[x]` 缺失 endFlag 测试。
+- `[x]` payload 剩余 1 字节时作为 payload tail 保留。
+- `[x]` 未知 section index 能 load/save 原样保留。
+- `[x]` section endFlag 非零时能原样保留，除非后续确认它必须为零。
 
 ## 阶段三：事务式解析状态
 
@@ -220,18 +220,18 @@
 
 ## 暂不做的事情
 
-- `[ ]` 暂不设置 `UISAVE.DAT` 文件总大小上限。
+- `[x]` 暂不设置 `UISAVE.DAT` 文件总大小上限。
 - `[ ]` 暂不实现旧版游戏文件专用兼容。
 - `[ ]` 暂不把卫月插件 JSON 当成本工具唯一共享格式。
 - `[ ]` 暂不根据地图实际范围硬编码坐标合理性。
-- `[ ]` 暂不因为未知 section 或未知尾部内容拒绝加载。
+- `[x]` 暂不因为未知 section 或未知尾部内容拒绝加载。
 
 ## 推荐修复顺序
 
 1. `[x]` 文件级 tail 保留：新增 `fileTailRaw`，确保真实文件 round-trip 不丢尾部。
 2. `[x]` FMARKER 动态槽位：移除 30 槽硬上限，按当前 FMARKER section 中的完整 WayMark 结构推导槽位数量。
 3. `[x]` FMARKER tail 固定长度：长度必须 4，内容先保留。
-4. `[ ]` payload 和 section 长度复核：统一 `long` 边界计算和异常信息。
+4. `[x]` payload 和 section 长度复核：统一 `long` 边界计算和异常信息。
 5. `[ ]` 保存前校验补齐：确保保存失败不写目标文件。
 6. `[ ]` 剪贴板导入导出收紧：`MapID`、坐标精度、culture 稳定性。
 7. `[ ]` section 名称映射补充：新增已知 section 名称，但不影响未知 section 保留。
@@ -264,3 +264,9 @@
 - 改动文件：`FF14ConfigEditor/UISave/SectionFMARKER.cs`、`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`
 - 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
 - 剩余风险：尚未提供 UI 级未知格式诊断信息导出，后续异常/UI 文案阶段继续处理。
+
+- 日期：2026-06-14
+- 阶段：阶段一/二，payload 和 section 长度复核
+- 改动文件：`FF14ConfigEditor/ConfigUISave.cs`、`FF14ConfigEditor/UISave/UISaveBinaryReader.cs`、`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`
+- 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
+- 剩余风险：异常 offset 来源细分和 UI 级诊断信息导出仍留到异常/UI 文案阶段处理。

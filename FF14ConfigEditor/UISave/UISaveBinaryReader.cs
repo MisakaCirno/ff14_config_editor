@@ -46,6 +46,33 @@ namespace FF14ConfigEditor.UISave
             return bytes;
         }
 
+        public static void EnsureRemaining(
+            BinaryReader reader,
+            long byteCount,
+            string fieldName,
+            int? sectionIndex = null)
+        {
+            if (byteCount < 0)
+            {
+                throw new UISaveFormatException(
+                    $"{fieldName} 的长度不能为负数。",
+                    offset: GetOffset(reader),
+                    sectionIndex: sectionIndex,
+                    expectedLength: byteCount);
+            }
+
+            long? remaining = GetRemaining(reader);
+            if (remaining.HasValue && remaining.Value < byteCount)
+            {
+                throw new UISaveFormatException(
+                    $"{fieldName} 超出剩余数据长度。",
+                    offset: GetOffset(reader),
+                    sectionIndex: sectionIndex,
+                    expectedLength: byteCount,
+                    remainingLength: remaining.Value);
+            }
+        }
+
         public static byte ReadByte(BinaryReader reader, string fieldName, int? sectionIndex = null)
         {
             return ReadExact(reader, sizeof(byte), fieldName, sectionIndex)[0];
