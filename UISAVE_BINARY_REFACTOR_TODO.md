@@ -57,7 +57,7 @@
 - `[x]` `Lujiang0111/FFxivUisaveParser` 支持以下理解：`FMARKER` section data 是 16 字节头、若干个 104 字节标点预设、末尾 4 字节尾部。
 - `[x]` `FFXIVClientStructs` 中 `MarkerPresetPlacement` 是 104 字节内存结构，能说明单个预设的语义，但它不是 `UISAVE.DAT` 文件结构的完整模型。
 - `[x]` 卫月 `WaymarkPresetPlugin` 主要维护独立预设库，不是完整 `UISAVE.DAT` 解析器；它对共享 JSON 兼容性有参考价值，但不能直接当成本项目文件解析依据。
-- `[ ]` 补查或复核 `HaselDebug` 中 section 名称映射，确认当前文件中新增 section index 的语义；未知时仍应原样保留。
+- `[x]` 已复核 `FFXIVClientStructs` 中 `UiSavePackModule.DataSegment` 的 section 名称映射；当前 `HaselDebug` 主分支不再保留旧 `UIModuleTab` 参考页，未知 section 仍应原样保留。
 
 ## 真实文件只读观察
 
@@ -102,7 +102,7 @@
 - `[x]` 未知 section index 不拒绝，使用普通 `UISaveSection` 保留。
 - `[x]` 不强制 section index 连续、不强制 section 数量上限。
 - `[x]` 不强制 section endFlag 内容必须为零，只校验长度并原样保留。
-- `[ ]` `SectionFunctionMap` 可补充已知 index，但不得影响未知 section 的保留与保存。
+- `[x]` `SectionFunctionMap` 已补充已知 index，并通过 `TryGetSectionName` 明确该映射只用于日志和显示，不影响未知 section 的保留与保存。
 
 ### 阶段二测试
 
@@ -234,7 +234,7 @@
 4. `[x]` payload 和 section 长度复核：统一 `long` 边界计算和异常信息。
 5. `[x]` 保存前校验补齐：确保保存失败不写目标文件。
 6. `[x]` 剪贴板导入导出收紧：`MapID`、坐标精度、culture 稳定性。
-7. `[ ]` section 名称映射补充：新增已知 section 名称，但不影响未知 section 保留。
+7. `[x]` section 名称映射补充：新增已知 section 名称，但不影响未知 section 保留。
 8. `[ ]` UI 友好错误和日志分级。
 
 ## 每轮修复后的记录格式
@@ -276,3 +276,9 @@
 - 改动文件：`FF14ConfigEditor/UISave/MarkerShare.cs`、`UIMarkerEditor/Controls/WayMarkEditorParts/WayMarkEditorControl.ImportExport.cs`、`UIMarkerEditor/MapData.cs`、`FF14ConfigEditor.Tests/MarkerShareConverterTests.cs`
 - 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
 - 剩余风险：剪贴板 JSON 的 UI 文案和异常分层仍留到异常/UI 文案阶段处理。
+
+- 日期：2026-06-14
+- 阶段：阶段二，section 名称映射补充
+- 改动文件：`FF14ConfigEditor/ConfigUISave.cs`、`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`、`UISAVE_BINARY_REFACTOR_TODO.md`
+- 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
+- 剩余风险：section 名称来源仍依赖社区逆向资料，未来游戏更新新增 index 时应继续按“未知但保留”策略处理。

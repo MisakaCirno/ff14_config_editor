@@ -230,6 +230,42 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
     }
 
+    [Theory]
+    [InlineData(0, "LETTER.DAT")]
+    [InlineData(17, "FMARKER.DAT")]
+    [InlineData(21, "GRPSTAMP.DAT")]
+    [InlineData(30, "ACTION.DAT")]
+    [InlineData(31, "TFILTER.DAT")]
+    [InlineData(32, "READYC.DAT")]
+    [InlineData(33, "PTRLST.DAT")]
+    [InlineData(34, "CATSBM.DAT")]
+    [InlineData(35, "DESCRI.DAT")]
+    [InlineData(36, "MJICWSP.DAT")]
+    [InlineData(37, "PERFORM.DAT")]
+    [InlineData(38, "MKDSJOB.DAT")]
+    [InlineData(39, "MKDLORE.DAT")]
+    [InlineData(40, "MKDSJN.DAT")]
+    [InlineData(41, "QPNL.DAT")]
+    [InlineData(42, "GLASSES.DAT")]
+    [InlineData(43, "XBMNOTE.DAT")]
+    [InlineData(44, "XBM.DAT")]
+    public void TryGetSectionName_KnownSectionIndex_ReturnsName(int sectionIndex, string expectedName)
+    {
+        bool result = ConfigUISave.TryGetSectionName(sectionIndex, out string sectionName);
+
+        Assert.True(result);
+        Assert.Equal(expectedName, sectionName);
+    }
+
+    [Fact]
+    public void TryGetSectionName_UnknownSectionIndex_ReturnsFalse()
+    {
+        bool result = ConfigUISave.TryGetSectionName(99, out string sectionName);
+
+        Assert.False(result);
+        Assert.Equal(string.Empty, sectionName);
+    }
+
     [Fact]
     public void Save_NonZeroSectionEndFlag_RoundTripsEndFlagBytes()
     {

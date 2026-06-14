@@ -15,7 +15,8 @@ namespace FF14ConfigEditor
          * 文件解析参考:
          * https://github.com/PunishedPineapple/UISAVE_Reader
          * https://github.com/Lujiang0111/FFxivUisaveParser
-         * https://github.com/Haselnussbomber/HaselDebug/blob/main/HaselDebug/Tabs/Disabled/UIModuleTab.cs
+         * section 名称映射参考:
+         * https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Client/UI/Misc/UiSavePackModule.cs
          */
 
         private const int FileFormatVersionByteLength = 8;
@@ -42,6 +43,18 @@ namespace FF14ConfigEditor
         public string UserIDHex => FormatUserIdHex(userIDRaw);
 
         public string UserIDRawBytesHex => BitConverter.ToString(userIDRaw);
+
+        public static bool TryGetSectionName(int sectionIndex, out string sectionName)
+        {
+            if (SectionFunctionMap.TryGetValue(sectionIndex, out string? name))
+            {
+                sectionName = name;
+                return true;
+            }
+
+            sectionName = string.Empty;
+            return false;
+        }
 
         public SectionFMARKER? Marks
         {
@@ -269,7 +282,7 @@ namespace FF14ConfigEditor
                 sections.Add(section);
 
                 DebugHelper.Log($"- - - - -");
-                if (SectionFunctionMap.TryGetValue(index, out string? name))
+                if (TryGetSectionName(index, out string name))
                 {
                     DebugHelper.Log($"Section Name: {name}");
                 }
@@ -386,6 +399,8 @@ namespace FF14ConfigEditor
                 : string.Empty;
         }
 
+        // section 名称只用于日志和显示，不参与解析、保存或拒绝未知 section。
+        // 名称主要参考 FFXIVClientStructs 的 UiSavePackModule.DataSegment，2026-06-14 复核。
         private static readonly Dictionary<int, string> SectionFunctionMap = new()
         {
             //邮件历史
@@ -406,6 +421,7 @@ namespace FF14ConfigEditor
             {12,"AOZNOTE.DAT"},
             //跨服通讯贝
             {13,"CWLS.DAT"},
+            // 旧 UISAVE 文档写作 ACHVLST，FFXIVClientStructs enum 写作 ARCHVLST；这里保留旧文件名。
             {14,"ACHVLST.DAT"},
             {15,"GRPPOS.DAT"},
             {16,"CRAFT.DAT"},
@@ -414,7 +430,7 @@ namespace FF14ConfigEditor
             {18,"MYCNOT.DAT"},
             {19,"ORNMLST.DAT"},
             {20,"MYCITEM.DAT"},
-            {21,"GPSTAMP.DAT"},
+            {21,"GRPSTAMP.DAT"},
             {22,"RTNR.DAT"},
             {23,"BANNER.DAT"},
             {24,"ADVNOTE.DAT"},
@@ -423,19 +439,21 @@ namespace FF14ConfigEditor
             {27,"VVDACT.DAT"},
             {28,"TOFU.DAT"},
             {29,"FISHING.DAT"},
-            {30,"未知内容"},
-            {31,"未知内容"},
-            {32,"未知内容"},
-            {33,"未知内容"},
-            {34,"未知内容"},
-            {35,"未知内容"},
-            {36,"未知内容"},
-            {37,"未知内容"},
-            {38,"未知内容"},
-            {39,"未知内容"},
-            {40,"未知内容"},
-            {41,"未知内容"},
-            {42,"未知内容"},
+            {30,"ACTION.DAT"},
+            {31,"TFILTER.DAT"},
+            {32,"READYC.DAT"},
+            {33,"PTRLST.DAT"},
+            {34,"CATSBM.DAT"},
+            {35,"DESCRI.DAT"},
+            {36,"MJICWSP.DAT"},
+            {37,"PERFORM.DAT"},
+            {38,"MKDSJOB.DAT"},
+            {39,"MKDLORE.DAT"},
+            {40,"MKDSJN.DAT"},
+            {41,"QPNL.DAT"},
+            {42,"GLASSES.DAT"},
+            {43,"XBMNOTE.DAT"},
+            {44,"XBM.DAT"},
         };
 
         private sealed record ParsedUISaveFile(
