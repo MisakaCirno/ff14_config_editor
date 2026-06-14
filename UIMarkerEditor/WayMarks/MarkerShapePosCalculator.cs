@@ -1,26 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace UIMarkerEditor
 {
-    public class GamePosition
-    {
-        public double X, Y, Z;
-
-        public GamePosition()
-        {
-            
-        }
-
-        public GamePosition(double x, double y, double z)
-        {
-            X = x;
-            Y = y;
-            Z = z;
-        }
-    }
-
     public static class MarkerShapePosCalculator
     {
         private static double GetLegFromHypotenuse(double hypotenuse)
