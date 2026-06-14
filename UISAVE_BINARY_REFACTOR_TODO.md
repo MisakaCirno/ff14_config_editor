@@ -121,15 +121,15 @@
 
 - `[~]` `ParseMarker()` 开头已清空 `WayMarks`，并重置 `_markerHeader`、`_markerTail`。
 - `[~]` 已移除或计划移除重复解析职责，构造函数解析后调用方不再手动 `ParseMarker()`。
-- `[ ]` 移除 `MaxWayMarkSlots = 30` 作为格式硬上限。
-- `[ ]` 改用动态槽位数量：`slotCount = (data.Length - 16 - 4) / 104`。
+- `[x]` 移除 `MaxWayMarkSlots = 30` 作为格式硬上限。
+- `[x]` 改用当前 section data 推导槽位数量：从 16 字节头之后连续读取完整 104 字节 WayMark，剩余交给 tail 规则处理。
 - `[ ]` `data.Length < 20` 时抛出明确格式异常。
 - `[ ]` `data.Length - 16 - 4` 不能被 104 整除时抛出明确格式异常。
 - `[ ]` `_markerTail` 长度应固定为 4 字节。
 - `[ ]` `_markerTail` 内容先原样保留，不强制必须为零；如果非零，可记录诊断信息。
-- `[ ]` `KnownCurrentWayMarkSlots = 30` 仅用于 UI 提示、日志或测试说明，不用于拒绝解析。
-- `[ ]` 如果未来游戏增加槽位，加载和保存应能保留全部槽位。
-- `[ ]` UI 若暂不支持编辑超过 30 个槽位，应限制编辑行为而不是拒绝文件加载。
+- `[x]` 生产代码不保留当前槽位数量常量；真实样本的 30 槽只写在测试和文档说明中。
+- `[x]` 如果未来游戏增加槽位，加载和保存应能保留全部槽位。
+- `[x]` UI 当前按文件读出的 WayMarks 列表显示、导入覆盖和移动排序，不设置 30 槽限制。
 
 ### 阶段四测试
 
@@ -138,9 +138,9 @@
 - `[~]` 重新解析时不残留旧 tail。
 - `[~]` data 不足 16 字节时报错。
 - `[ ]` data 长度不足 20 字节时报错。
-- `[ ]` FMARKER 长度为 `16 + 104 * 30 + 4` 时通过。
+- `[x]` FMARKER 长度为 `16 + 104 * 30 + 4` 时通过。
 - `[ ]` FMARKER 长度为 `16 + 104 * 5 + 4` 时通过，但测试名称不要写成旧版兼容。
-- `[ ]` 合成 `16 + 104 * 31 + 4` 或更多槽位时应通过，证明没有 30 槽硬上限。
+- `[x]` 合成 `16 + 104 * 31 + 4` 或更多槽位时应通过，证明没有 30 槽硬上限。
 - `[ ]` FMARKER tail 长度不是 4 字节时失败。
 - `[ ]` FMARKER tail 非零时能原样保留，除非后续确认必须拒绝。
 
@@ -149,7 +149,7 @@
 - `[~]` `UISaveSection.ValidateForSave()` 已校验 `unknown1`、`unknown2`、`endFlag` 长度和 `length == data.Length`。
 - `[~]` `SectionFMARKER.ValidateForSave()` 已校验 marker header 长度。
 - `[ ]` `SectionFMARKER.ValidateForSave()` 改为校验 tail 长度为 4。
-- `[ ]` `SectionFMARKER.ValidateForSave()` 不再因为 WayMark 数量超过 30 而失败。
+- `[x]` `SectionFMARKER.ValidateForSave()` 不再因为 WayMark 数量超过 30 而失败。
 - `[ ]` 每个 `WayMark` 写出必须稳定为 104 字节。
 - `[ ]` 保存前重新生成 FMARKER data 后，`section.length` 必须与 data 实际长度一致。
 - `[ ]` `ConfigUISave.ValidateEnvelopeForSave()` 加入 `fileTailRaw` 基础校验。
@@ -160,7 +160,7 @@
 - `[~]` 保存前结构校验失败时不写文件。
 - `[ ]` FMARKER header 长度错误时保存失败。
 - `[ ]` FMARKER tail 长度错误时保存失败。
-- `[ ]` WayMark 数量超过 30 但结构合法时保存成功。
+- `[x]` WayMark 数量超过 30 但结构合法时保存成功。
 - `[ ]` 普通 section 的 `length != data.Length` 时保存失败。
 
 ## 阶段六：剪贴板导入导出模型
@@ -219,7 +219,7 @@
 ## 推荐修复顺序
 
 1. `[x]` 文件级 tail 保留：新增 `fileTailRaw`，确保真实文件 round-trip 不丢尾部。
-2. `[ ]` FMARKER 动态槽位：移除 30 槽硬上限，改成 `16 + 104 * N + 4`。
+2. `[x]` FMARKER 动态槽位：移除 30 槽硬上限，按当前 FMARKER section 中的完整 WayMark 结构推导槽位数量。
 3. `[ ]` FMARKER tail 固定长度：长度必须 4，内容先保留。
 4. `[ ]` payload 和 section 长度复核：统一 `long` 边界计算和异常信息。
 5. `[ ]` 保存前校验补齐：确保保存失败不写目标文件。
@@ -242,3 +242,9 @@
 - 改动文件：`FF14ConfigEditor/ConfigUISave.cs`、`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`
 - 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
 - 剩余风险：阶段一中 offset 文案细化和超大文件尾的策略仍需后续复核。
+
+- 日期：2026-06-14
+- 阶段：阶段四，FMARKER 动态槽位
+- 改动文件：`FF14ConfigEditor/UISave/SectionFMARKER.cs`、`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`
+- 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
+- 剩余风险：FMARKER tail 固定 4 字节规则尚未收紧，下一项继续处理。

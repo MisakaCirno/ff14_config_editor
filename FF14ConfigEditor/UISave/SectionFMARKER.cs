@@ -14,8 +14,6 @@ namespace FF14ConfigEditor.UISave
     {
         public const int MarkerHeaderByteLength = 16;
         public const int WayMarkByteLength = 104;
-        // 游戏里最多保存 30 个标点预设。
-        public const int MaxWayMarkSlots = 30;
 
         public List<WayMark> WayMarks { get; private set; } = [];
         private byte[] _markerHeader = [];
@@ -54,16 +52,6 @@ namespace FF14ConfigEditor.UISave
             List<WayMark> parsedWayMarks = [];
             while (ms.Length - ms.Position >= WayMarkByteLength)
             {
-                if (count >= MaxWayMarkSlots)
-                {
-                    throw new UISaveFormatException(
-                        $"FMARKER 的标点槽位超过上限 {MaxWayMarkSlots}。",
-                        offset: ms.Position,
-                        sectionIndex: index,
-                        expectedLength: MaxWayMarkSlots,
-                        remainingLength: (ms.Length - MarkerHeaderByteLength) / WayMarkByteLength);
-                }
-
                 long startPos = ms.Position;
                 WayMark wayMark = ParseWayMark(reader, index);
                 parsedWayMarks.Add(wayMark);
@@ -123,15 +111,6 @@ namespace FF14ConfigEditor.UISave
         private void ValidateMarkerForSave()
         {
             ValidateByteArray(_markerHeader, MarkerHeaderByteLength, "FMARKER 标记头", index);
-
-            if (WayMarks.Count > MaxWayMarkSlots)
-            {
-                throw new UISaveFormatException(
-                    $"FMARKER 保存的标点槽位不能超过 {MaxWayMarkSlots}。",
-                    sectionIndex: index,
-                    expectedLength: MaxWayMarkSlots,
-                    remainingLength: WayMarks.Count);
-            }
         }
 
         private static void WriteWayMark(BinaryWriter writer, WayMark wayMark)

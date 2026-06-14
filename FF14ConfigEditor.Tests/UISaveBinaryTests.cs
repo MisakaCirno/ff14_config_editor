@@ -175,7 +175,7 @@ public class SectionFMarkerTests
         byte[] unknown1 = UISaveTestData.SectionUnknown1();
         byte[] unknown2 = UISaveTestData.SectionUnknown2();
         byte[] endFlag = UISaveTestData.SectionEndFlag();
-        byte[] markerData = UISaveTestData.BuildMarkerData(1, [0xF0, 0x0D]);
+        byte[] markerData = UISaveTestData.BuildMarkerData(1, UISaveTestData.MarkerTail());
         SectionFMARKER section = new(17, unknown1, markerData.Length, unknown2, markerData, endFlag);
 
         byte[] rawBytes = section.ToRawBytes();
@@ -186,9 +186,9 @@ public class SectionFMarkerTests
     [Fact]
     public void ParseMarker_ReparseClearsPreviousTail()
     {
-        byte[] firstMarkerData = UISaveTestData.BuildMarkerData(1, [0xEE]);
+        byte[] firstMarkerData = UISaveTestData.BuildMarkerData(1, UISaveTestData.MarkerTail());
         SectionFMARKER section = UISaveTestData.BuildFMarkerSection(firstMarkerData);
-        Assert.Equal(1, section.MarkerTailLength);
+        Assert.Equal(4, section.MarkerTailLength);
 
         byte[] secondMarkerData = UISaveTestData.BuildMarkerData(1);
         section.data = secondMarkerData;
@@ -213,32 +213,46 @@ public class SectionFMarkerTests
     }
 
     [Fact]
-    public void Constructor_TooManyWayMarks_ThrowsFormatException()
+    public void Constructor_ThirtyWayMarks_RoundTripsMarkerData()
     {
-        byte[] markerData = UISaveTestData.BuildMarkerData(SectionFMARKER.MaxWayMarkSlots + 1);
+        byte[] markerData = UISaveTestData.BuildMarkerData(30, UISaveTestData.MarkerTail());
+        SectionFMARKER section = UISaveTestData.BuildFMarkerSection(markerData);
 
-        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(
-            () => UISaveTestData.BuildFMarkerSection(markerData));
+        byte[] rawBytes = section.ToRawBytes();
 
-        Assert.Equal(17, ex.SectionIndex);
-        Assert.Equal(SectionFMARKER.MaxWayMarkSlots, ex.ExpectedLength);
-        Assert.Equal(SectionFMARKER.MaxWayMarkSlots + 1, ex.RemainingLength);
+        Assert.Equal(30, section.WayMarks.Count);
+        Assert.Equal(UISaveTestData.BuildSection(17, markerData), rawBytes);
     }
 
     [Fact]
-    public void ToRawBytes_TooManyWayMarks_ThrowsFormatException()
+    public void Constructor_MoreThanThirtyWayMarks_RoundTripsMarkerData()
     {
-        SectionFMARKER section = UISaveTestData.BuildFMarkerSection(UISaveTestData.BuildMarkerData(1));
-        while (section.WayMarks.Count <= SectionFMARKER.MaxWayMarkSlots)
+        byte[] markerData = UISaveTestData.BuildMarkerData(31, UISaveTestData.MarkerTail());
+        SectionFMARKER section = UISaveTestData.BuildFMarkerSection(markerData);
+
+        byte[] rawBytes = section.ToRawBytes();
+
+        Assert.Equal(31, section.WayMarks.Count);
+        Assert.Equal(UISaveTestData.BuildSection(17, markerData), rawBytes);
+    }
+
+    [Fact]
+    public void ToRawBytes_MoreThanThirtyWayMarks_Succeeds()
+    {
+        SectionFMARKER section = UISaveTestData.BuildFMarkerSection(
+            UISaveTestData.BuildMarkerData(1, UISaveTestData.MarkerTail()));
+        while (section.WayMarks.Count < 31)
         {
             section.WayMarks.Add(new WayMark());
         }
 
-        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(section.ToRawBytes);
+        byte[] rawBytes = section.ToRawBytes();
 
-        Assert.Equal(17, ex.SectionIndex);
-        Assert.Equal(SectionFMARKER.MaxWayMarkSlots, ex.ExpectedLength);
-        Assert.Equal(SectionFMARKER.MaxWayMarkSlots + 1, ex.RemainingLength);
+        Assert.Equal(31, section.WayMarks.Count);
+        Assert.Equal(
+            SectionFMARKER.MarkerHeaderByteLength + SectionFMARKER.WayMarkByteLength * 31 + section.MarkerTailLength,
+            section.length);
+        Assert.Equal(UISaveTestData.BuildSection(17, section.data), rawBytes);
     }
 }
 
@@ -262,6 +276,11 @@ internal static class UISaveTestData
     public static byte[] SectionEndFlag()
     {
         return [0xE1, 0xE2, 0xE3, 0xE4];
+    }
+
+    public static byte[] MarkerTail()
+    {
+        return [0x00, 0x00, 0x00, 0x00];
     }
 
     public static byte[] BuildFile(byte[] decryptedPayload, byte[]? fileTail = null)
