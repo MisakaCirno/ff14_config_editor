@@ -57,9 +57,21 @@ namespace UIMarkerEditor.Controls
                 _ => ["A", "1", "B", "2", "C", "3", "D", "4"]
             };
 
+            List<(string PointName, RawGamePosition Position)> rawPositions = [];
             for (int i = 0; i < pointOrder.Length; i++)
             {
-                SetPointPosition(currentWayMark, pointOrder[i], positions[i]);
+                if (!TryCreateRawGamePosition(positions[i], out RawGamePosition rawPosition))
+                {
+                    MessageBox.Show("生成的坐标超出可保存范围，请检查中心点和距离。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                rawPositions.Add((pointOrder[i], rawPosition));
+            }
+
+            foreach ((string pointName, RawGamePosition rawPosition) in rawPositions)
+            {
+                SetPointPosition(currentWayMark, pointName, rawPosition);
             }
 
             currentWayMark.AEnabled = true;
@@ -81,6 +93,12 @@ namespace UIMarkerEditor.Controls
             if (double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out value) ||
                 double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
             {
+                if (!double.IsFinite(value))
+                {
+                    MessageBox.Show($"{displayName} 需要填写有限数字。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return false;
+                }
+
                 return true;
             }
 
@@ -88,7 +106,21 @@ namespace UIMarkerEditor.Controls
             return false;
         }
 
-        private static void SetPointPosition(WayMark wayMark, string pointName, GamePosition position)
+        private static bool TryCreateRawGamePosition(GamePosition position, out RawGamePosition rawPosition)
+        {
+            rawPosition = default;
+            if (!WayMarkCoordinateConverter.TryRoundToRawCoordinate(position.X, out int rawX) ||
+                !WayMarkCoordinateConverter.TryRoundToRawCoordinate(position.Y, out int rawY) ||
+                !WayMarkCoordinateConverter.TryRoundToRawCoordinate(position.Z, out int rawZ))
+            {
+                return false;
+            }
+
+            rawPosition = new RawGamePosition(rawX, rawY, rawZ);
+            return true;
+        }
+
+        private static void SetPointPosition(WayMark wayMark, string pointName, RawGamePosition position)
         {
             WayMarkPoint point = pointName switch
             {
@@ -103,15 +135,12 @@ namespace UIMarkerEditor.Controls
                 _ => throw new ArgumentOutOfRangeException(nameof(pointName), pointName, "未知标点名称")
             };
 
-            point.X = ToRawCoordinate(position.X);
-            point.Y = ToRawCoordinate(position.Y);
-            point.Z = ToRawCoordinate(position.Z);
+            point.X = position.X;
+            point.Y = position.Y;
+            point.Z = position.Z;
         }
 
-        private static int ToRawCoordinate(double value)
-        {
-            return (int)Math.Round(value * 1000, MidpointRounding.AwayFromZero);
-        }
+        private readonly record struct RawGamePosition(int X, int Y, int Z);
 
     }
 }

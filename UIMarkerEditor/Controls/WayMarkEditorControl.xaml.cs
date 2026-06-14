@@ -37,9 +37,9 @@ public partial class WayMarkEditorControl : UserControl
     private TextBox? activeCoordinateInputTipTarget;
     private System.Windows.Threading.DispatcherTimer? activeCoordinateInputTipTimer;
     private List<WayMark>? wayMarks;
-    private const int MinRawCoordinate = int.MinValue;
-    private const int MaxRawCoordinate = int.MaxValue;
-    private const int CoordinateScale = 1000;
+    private const int MinRawCoordinate = WayMarkCoordinateConverter.MinRawCoordinate;
+    private const int MaxRawCoordinate = WayMarkCoordinateConverter.MaxRawCoordinate;
+    private const int CoordinateScale = WayMarkCoordinateConverter.CoordinateScale;
     private const int MaxCoordinateTextLength = 12;
     private const string CoordinateInputTip =
         "坐标格式：\n-2147483.648 到 2147483.647的数字，最多 3 位小数。\n不可输入其他字符。";
