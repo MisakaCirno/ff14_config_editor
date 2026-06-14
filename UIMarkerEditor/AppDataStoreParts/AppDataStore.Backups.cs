@@ -26,7 +26,7 @@ public sealed partial class AppDataStore
         string backupFilePath = Path.Combine(backupDirectory, BackupDataFileName);
 
         Directory.CreateDirectory(backupDirectory);
-        File.Copy(sourceFilePath, backupFilePath, overwrite: true);
+        SafeFileWriter.Copy(sourceFilePath, backupFilePath);
         metadata.BackupDirectory = backupDirectory;
         metadata.BackupFilePath = backupFilePath;
         WriteJson(Path.Combine(backupDirectory, MetadataFileName), metadata);
@@ -79,7 +79,7 @@ public sealed partial class AppDataStore
             Directory.CreateDirectory(targetDirectory);
         }
 
-        File.Copy(backup.BackupFilePath, targetFilePath, overwrite: true);
+        SafeFileWriter.Copy(backup.BackupFilePath, targetFilePath);
     }
 
     public void CleanupBackups(params string[] preservedBackupDirectories)

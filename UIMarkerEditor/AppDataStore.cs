@@ -239,7 +239,7 @@ public sealed partial class AppDataStore
         }
 
         string json = JsonSerializer.Serialize(value, jsonOptions);
-        File.WriteAllText(path, json);
+        SafeFileWriter.WriteAllText(path, json);
     }
 
     private static void WriteText(string path, string value)
@@ -250,7 +250,7 @@ public sealed partial class AppDataStore
             Directory.CreateDirectory(directory);
         }
 
-        File.WriteAllText(path, value);
+        SafeFileWriter.WriteAllText(path, value);
     }
 
     private static void VerifyDirectoryWritable(string directory)
@@ -277,7 +277,7 @@ public sealed partial class AppDataStore
                 Directory.CreateDirectory(targetFileDirectory);
             }
 
-            File.Copy(file, targetFile, overwrite: true);
+            SafeFileWriter.Copy(file, targetFile);
         }
     }
 

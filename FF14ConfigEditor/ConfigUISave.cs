@@ -138,7 +138,6 @@ namespace FF14ConfigEditor
 
         public override void Save()
         {
-            // 写出文件内容到 filePath
             // 先处理加密部分
             byte[] encryptedData;
             using (MemoryStream ms = new())
@@ -166,17 +165,24 @@ namespace FF14ConfigEditor
                 encryptedData = Utils.EncryptData(decryptedData);
             }
 
-            using FileStream fs = new(FilePath, FileMode.Create, FileAccess.Write);
-            using (BinaryWriter writer = new(fs))
+            byte[] fileBytes;
+            using (MemoryStream ms = new())
             {
-                // 写入未加密部分
-                writer.Write(fileFormatVersionRaw);
-                writer.Write(encryptedData.Length);
-                writer.Write(fileUnknownRaw);
+                using (BinaryWriter writer = new(ms))
+                {
+                    // 写入未加密部分
+                    writer.Write(fileFormatVersionRaw);
+                    writer.Write(encryptedData.Length);
+                    writer.Write(fileUnknownRaw);
 
-                // 写入加密部分
-                writer.Write(encryptedData);
+                    // 写入加密部分
+                    writer.Write(encryptedData);
+                }
+
+                fileBytes = ms.ToArray();
             }
+
+            SafeFileWriter.WriteAllBytes(FilePath, fileBytes);
         }
 
         /// <summary>
