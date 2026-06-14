@@ -57,7 +57,7 @@
 - `[x]` `Lujiang0111/FFxivUisaveParser` 支持以下理解：`FMARKER` section data 是 16 字节头、若干个 104 字节标点预设、末尾 4 字节尾部。
 - `[x]` `FFXIVClientStructs` 中 `MarkerPresetPlacement` 是 104 字节内存结构，能说明单个预设的语义，但它不是 `UISAVE.DAT` 文件结构的完整模型。
 - `[x]` 卫月 `WaymarkPresetPlugin` 主要维护独立预设库，不是完整 `UISAVE.DAT` 解析器；它对共享 JSON 兼容性有参考价值，但不能直接当成本项目文件解析依据。
-- `[x]` 已复核 `FFXIVClientStructs` 中 `UiSavePackModule.DataSegment` 的 section 名称映射；当前 `HaselDebug` 主分支不再保留旧 `UIModuleTab` 参考页，未知 section 仍应原样保留。
+- `[x]` section 名称映射来源于 `FFXIVClientStructs` 中 `UiSavePackModule.DataSegment`；未知 section 仍应原样保留。
 
 ## 真实文件只读观察
 

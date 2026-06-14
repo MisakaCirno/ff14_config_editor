@@ -421,8 +421,7 @@ namespace FF14ConfigEditor
             {12,"AOZNOTE.DAT"},
             //跨服通讯贝
             {13,"CWLS.DAT"},
-            // 旧 UISAVE 文档写作 ACHVLST，FFXIVClientStructs enum 写作 ARCHVLST；这里保留旧文件名。
-            {14,"ACHVLST.DAT"},
+            {14,"ARCHVLST.DAT"},
             {15,"GRPPOS.DAT"},
             {16,"CRAFT.DAT"},
             //场地标点
