@@ -66,6 +66,10 @@ namespace FF14ConfigEditor.UISave
                 "FMARKER 标记尾部",
                 index);
             DebugHelper.Log($"Marker 尾部: {markerTail.Length} bytes");
+            if (markerTail.Any(value => value != 0))
+            {
+                DebugHelper.LogWarning("FMARKER 标记尾部不是全零，已原样保留。");
+            }
 
             _markerHeader = markerHeader;
             WayMarks = parsedWayMarks;

@@ -34,6 +34,7 @@ public sealed partial class AppDataStore
     private const string MapDataInstanceFileName = "instance.json";
     private const string MetadataFileName = "metadata.json";
     private const string BackupDataFileName = "UISAVE.DAT";
+    private const string LogFileName = "app.log";
     private const string ServerListSourceUrl = "https://ff.web.sdo.com/web8/index.html#/servers";
     private const string ServerStatusApiUrl = "https://ff14act.web.sdo.com/api/serverStatus/getServerStatus";
     private const string MapDataVersionUrl = "https://cdn.diemoe.net/files/ACT.DieMoe/Resources/MatchaData/data.version";
@@ -60,6 +61,7 @@ public sealed partial class AppDataStore
     public string ServersFilePath => Path.Combine(DataDirectory, ServersFileName);
     public string MapDataVersionFilePath => Path.Combine(DataDirectory, MapDataVersionFileName);
     public string MapDataInstanceFilePath => Path.Combine(DataDirectory, MapDataInstanceFileName);
+    public string LogFilePath => Path.Combine(DataDirectory, "logs", LogFileName);
 
     public AppSettings Settings { get; private set; } = new();
     public ObservableCollection<CharacterProfile> Characters { get; } = [];
@@ -109,6 +111,7 @@ public sealed partial class AppDataStore
         }
 
         SaveBootstrap();
+        ConfigureLogger();
         LoadSettings();
         LoadCharacters();
         LoadServerList();
@@ -180,6 +183,7 @@ public sealed partial class AppDataStore
 
         DataDirectory = targetDirectory;
         EnsureDataDirectory();
+        ConfigureLogger();
         SaveBootstrap(allowOverwriteInvalid: true);
         LoadSettings();
         LoadCharacters();
@@ -230,6 +234,12 @@ public sealed partial class AppDataStore
             WriteJson(CharactersFilePath, new List<CharacterProfile>());
         }
 
+    }
+
+    private void ConfigureLogger()
+    {
+        AppLogger.SetLogFilePath(LogFilePath);
+        AppLogger.Info(AppLogCategory.General, $"日志文件路径：{LogFilePath}");
     }
 
     private void LoadSettings()

@@ -209,9 +209,11 @@
 - `[~]` 二进制层已有 `UISaveFormatException`。
 - `[ ]` 所有格式异常信息统一为中文。
 - `[ ]` 格式异常尽量带字段名、offset、section index、expected length、remaining length。
-- `[ ]` UI 捕获 `UISaveFormatException` 时显示友好错误，并避免吞掉底层细节。
-- `[ ]` 非格式错误继续按一般异常处理，例如权限、文件占用、IO 错误。
-- `[ ]` 日志里区分“格式错误”“未知但保留”“警告”。
+- `[x]` UI 捕获 `UISaveFormatException` 时显示友好错误，并避免吞掉底层细节。
+- `[x]` 非格式错误继续按一般异常处理，例如权限、文件占用、IO 错误。
+- `[x]` 日志里区分“格式错误”“未知但保留”“警告”。
+- `[x]` 已新增轻量日志系统 `AppLogger`，支持级别、分类、调试输出和文件输出。
+- `[x]` 应用启动后日志写入当前数据目录 `logs/app.log`，数据目录变更后同步切换日志路径。
 
 ## 阶段八：测试和验证命令
 
@@ -239,7 +241,7 @@
 7. `[x]` section 名称映射补充：新增已知 section 名称，但不影响未知 section 保留。
 8. `[x]` 事务式解析状态复核：确认加载失败不会污染 `ConfigUISave` 已有状态，并补齐对应测试。
 9. `[x]` FMARKER 生命周期和幂等测试收口：确认不重复解析、不残留旧 tail，并补齐 round-trip 测试状态。
-10. `[ ]` UI 友好错误和日志分级：统一格式异常中文文案、offset 信息和 UI 捕获行为。
+10. `[~]` UI 友好错误和日志分级：日志系统和 UI 捕获已落地，格式异常中文文案和 offset 来源细分仍需继续。
 11. `[ ]` 测试和验证规范收尾：确认测试只使用合成数据或临时目录，真实文件观察只读。
 
 ## 每轮修复后的记录格式
@@ -305,3 +307,9 @@
 - 改动文件：`FF14ConfigEditor.Tests/UISaveBinaryTests.cs`、`UISAVE_BINARY_REFACTOR_TODO.md`
 - 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
 - 剩余风险：异常/UI 文案阶段仍需统一格式错误展示和日志分级。
+
+- 日期：2026-06-14
+- 阶段：阶段七，轻量日志系统和 UI 格式错误捕获
+- 改动文件：`FF14ConfigEditor/AppLogger.cs`、`FF14ConfigEditor/DebugHelper.cs`、`FF14ConfigEditor/ConfigUISave.cs`、`FF14ConfigEditor/UISave/SectionFMARKER.cs`、`UIMarkerEditor/AppDataStore.cs`、`UIMarkerEditor/MainWindow.xaml.cs`、`FF14ConfigEditor.Tests/AppLoggerTests.cs`、`UISAVE_BINARY_REFACTOR_TODO.md`
+- 验证命令：`dotnet test FF14ConfigEditor.Tests\FF14ConfigEditor.Tests.csproj`；`dotnet build FFXIVConfigEditor.sln`
+- 剩余风险：格式异常字段名、offset 来源和异常信息中文统一仍需继续收口。

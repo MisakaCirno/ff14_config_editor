@@ -225,7 +225,7 @@ namespace FF14ConfigEditor
                         reader,
                         checked((int)remaining),
                         "加密部分尾部填充");
-                    DebugHelper.Log($"加密部分 - 尾部填充: {payloadTailRaw.Length} bytes");
+                    DebugHelper.LogUnknownPreserved($"解密 payload 末尾存在 {payloadTailRaw.Length} 字节尾部填充，已原样保留。");
                     break;
                 }
 
@@ -271,6 +271,10 @@ namespace FF14ConfigEditor
                     UISaveSection.EndFlagByteLength,
                     "段结束标记",
                     index);
+                if (endFlag.Any(value => value != 0))
+                {
+                    DebugHelper.LogWarning($"段 {index} 的结束标记不是全零，已原样保留。");
+                }
 
                 UISaveSection section = CreateSection(
                     index,
@@ -285,6 +289,10 @@ namespace FF14ConfigEditor
                 if (TryGetSectionName(index, out string name))
                 {
                     DebugHelper.Log($"Section Name: {name}");
+                }
+                else
+                {
+                    DebugHelper.LogUnknownPreserved($"发现未知 UISAVE 段 index={index}，已按原始数据保留。");
                 }
                 section.DebugPrintInfo();
             }
@@ -361,7 +369,7 @@ namespace FF14ConfigEditor
             }
 
             byte[] fileTail = UISaveBinaryReader.ReadExact(reader, (int)remaining.Value, "文件尾部填充");
-            DebugHelper.Log($"文件尾部填充: {fileTail.Length} bytes");
+            DebugHelper.LogUnknownPreserved($"加密数据之后存在 {fileTail.Length} 字节文件尾部填充，已原样保留。");
             return fileTail;
         }
 
