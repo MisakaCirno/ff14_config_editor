@@ -85,14 +85,15 @@ public sealed partial class AppDataStore
                 return HandleServerListSyncFailure(syncAttemptTime, saveFailureAttempt);
             }
 
-            ServerList = new ServerListCache
+            ServerListCache nextServerList = new()
             {
                 SourceUrl = ServerStatusApiUrl,
                 LastUpdated = syncAttemptTime,
                 LastSyncAttempt = syncAttemptTime,
                 Groups = groups
             };
-            SaveServerList();
+            SaveServerList(nextServerList);
+            ServerList = nextServerList;
             return new ServerListLoadResult(true, true, CacheAvailable: true);
         }
         catch
@@ -127,7 +128,12 @@ public sealed partial class AppDataStore
 
     private void SaveServerList()
     {
-        WriteJson(ServersFilePath, ServerList);
+        SaveServerList(ServerList);
+    }
+
+    private void SaveServerList(ServerListCache serverList)
+    {
+        WriteJson(ServersFilePath, serverList);
     }
 
     private ServerListLoadResult HandleServerListSyncFailure(DateTime syncAttemptTime, bool saveFailureAttempt)
@@ -135,10 +141,12 @@ public sealed partial class AppDataStore
         bool cacheAvailable = HasValidServerListCache();
         if (saveFailureAttempt && cacheAvailable)
         {
-            ServerList.LastSyncAttempt = syncAttemptTime;
+            ServerListCache nextServerList = CloneServerList(ServerList);
+            nextServerList.LastSyncAttempt = syncAttemptTime;
             try
             {
-                SaveServerList();
+                SaveServerList(nextServerList);
+                ServerList = nextServerList;
             }
             catch (AppDataStoreException ex)
             {

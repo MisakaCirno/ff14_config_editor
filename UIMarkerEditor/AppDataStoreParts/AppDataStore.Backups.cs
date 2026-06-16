@@ -20,23 +20,48 @@ public sealed partial class AppDataStore
             throw new FileNotFoundException("找不到要备份的 UISAVE.DAT 文件。", sourceFilePath);
         }
 
-        ConfigUISave sourceConfig = new(sourceFilePath);
-        BackupMetadata metadata = CreateMetadata(sourceFilePath, sourceConfig);
-        string backupDirectory = Path.Combine(BackupsDirectory, metadata.Id);
-        string backupFilePath = Path.Combine(backupDirectory, BackupDataFileName);
+        DateTime backupTime = DateTime.Now;
+        string backupTimeId = backupTime.ToString("yyyyMMdd_HHmmss_fff");
+        string uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
+        string stagingDirectory = Path.Combine(BackupsDirectory, $".creating_{backupTimeId}_{uniqueSuffix}");
+        string stagingBackupFilePath = Path.Combine(stagingDirectory, BackupDataFileName);
 
-        Directory.CreateDirectory(backupDirectory);
-        SafeFileWriter.Copy(sourceFilePath, backupFilePath);
-        metadata.BackupDirectory = backupDirectory;
-        metadata.BackupFilePath = backupFilePath;
-        WriteJson(Path.Combine(backupDirectory, MetadataFileName), metadata);
-
-        if (cleanupAfterCreate)
+        try
         {
-            CleanupBackups();
-        }
+            Directory.CreateDirectory(stagingDirectory);
+            SafeFileWriter.Copy(sourceFilePath, stagingBackupFilePath);
 
-        return metadata;
+            ConfigUISave backupConfig = new(stagingBackupFilePath);
+            BackupMetadata metadata = CreateMetadata(
+                sourceFilePath,
+                stagingBackupFilePath,
+                backupConfig,
+                backupTime,
+                uniqueSuffix);
+            WriteJson(Path.Combine(stagingDirectory, MetadataFileName), metadata);
+
+            string backupDirectory = Path.Combine(BackupsDirectory, metadata.Id);
+            Directory.Move(stagingDirectory, backupDirectory);
+
+            metadata.BackupDirectory = backupDirectory;
+            metadata.BackupFilePath = Path.Combine(backupDirectory, BackupDataFileName);
+
+            if (cleanupAfterCreate)
+            {
+                CleanupBackups(metadata.BackupDirectory);
+            }
+
+            return metadata;
+        }
+        catch
+        {
+            if (Directory.Exists(stagingDirectory))
+            {
+                Directory.Delete(stagingDirectory, recursive: true);
+            }
+
+            throw;
+        }
     }
 
     public List<BackupMetadata> LoadBackups()
@@ -141,25 +166,29 @@ public sealed partial class AppDataStore
             : null;
     }
 
-    private BackupMetadata CreateMetadata(string sourceFilePath, ConfigUISave sourceConfig)
+    private BackupMetadata CreateMetadata(
+        string sourceFilePath,
+        string backedUpFilePath,
+        ConfigUISave backupConfig,
+        DateTime backupTime,
+        string uniqueSuffix)
     {
-        string backupTimeId = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-        string uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
+        string backupTimeId = backupTime.ToString("yyyyMMdd_HHmmss_fff");
         string folderUserID = GetUserIDFromCharacterFolder(sourceFilePath) ?? string.Empty;
-        string fileUserID = sourceConfig.UserIDHex;
+        string fileUserID = backupConfig.UserIDHex;
         string userIDForName = !string.IsNullOrWhiteSpace(fileUserID) ? fileUserID : folderUserID;
 
         return new BackupMetadata
         {
             Id = $"{backupTimeId}_{SanitizeFileName(userIDForName, "UNKNOWN")}_{uniqueSuffix}",
-            BackupTime = DateTime.Now,
+            BackupTime = backupTime,
             OriginalFilePath = sourceFilePath,
             OriginalDirectory = Path.GetDirectoryName(sourceFilePath) ?? string.Empty,
             FolderUserID = folderUserID,
             FileUserID = fileUserID,
-            SourceFileSize = new FileInfo(sourceFilePath).Length,
-            SourceFileSha256 = ComputeSha256(sourceFilePath),
-            MarkerSnapshots = CreateMarkerSnapshots(sourceConfig.Marks)
+            SourceFileSize = new FileInfo(backedUpFilePath).Length,
+            SourceFileSha256 = ComputeSha256(backedUpFilePath),
+            MarkerSnapshots = CreateMarkerSnapshots(backupConfig.Marks)
         };
     }
 

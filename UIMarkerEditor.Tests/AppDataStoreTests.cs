@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
 using UIMarkerEditor;
@@ -218,6 +219,30 @@ public sealed class AppDataStoreTests : IDisposable
         AppDataStore reloadedStore = CreateStore();
         reloadedStore.Initialize();
         Assert.Equal(recentFiles, reloadedStore.GetRecentFiles());
+    }
+
+    [Fact]
+    public void CreateBackup_GeneratesMetadataFromBackedUpFile()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string sourceDirectory = Path.Combine(testDirectory, "FFXIV_CHR0123456789ABCDEF");
+        Directory.CreateDirectory(sourceDirectory);
+        string sourceFilePath = Path.Combine(sourceDirectory, "UISAVE.DAT");
+        byte[] sourceBytes = CreateMinimalUISaveFile(regionId: 123);
+        File.WriteAllBytes(sourceFilePath, sourceBytes);
+
+        BackupMetadata backup = store.CreateBackup(sourceFilePath, cleanupAfterCreate: false);
+
+        Assert.True(File.Exists(backup.BackupFilePath));
+        byte[] backupBytes = File.ReadAllBytes(backup.BackupFilePath);
+        Assert.Equal(sourceBytes, backupBytes);
+        Assert.Equal(backupBytes.Length, backup.SourceFileSize);
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(backupBytes)), backup.SourceFileSha256);
+        BackupMarkerSnapshot snapshot = Assert.Single(backup.MarkerSnapshots);
+        Assert.Equal(123, snapshot.RegionID);
+        Assert.Equal(1, snapshot.SlotIndex);
+        Assert.Equal(8, snapshot.EnabledPointCount);
     }
 
     [Fact]
@@ -483,6 +508,51 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal("缓存大区", store.ServerList.Groups[0].DataCenter);
     }
 
+    [Fact]
+    public async Task TrySyncServerListAsync_WhenCacheWriteFails_KeepsPreviousCacheInMemory()
+    {
+        WriteServerCache(new ServerListCache
+        {
+            SourceUrl = "测试缓存",
+            LastUpdated = DateTime.Now,
+            LastSyncAttempt = DateTime.MinValue,
+            Groups =
+            [
+                new ServerGroup
+                {
+                    DataCenter = "缓存大区",
+                    Worlds = ["缓存服务器"]
+                }
+            ]
+        });
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddResponse(
+            ServerStatusApiUrl,
+            """
+            {
+              "IsSuccess": true,
+              "Data": [
+                {
+                  "AreaName": "新大区",
+                  "Group": [
+                    { "name": "新服务器" }
+                  ]
+                }
+              ]
+            }
+            """);
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+        File.Delete(store.ServersFilePath);
+        Directory.CreateDirectory(store.ServersFilePath);
+
+        bool result = await store.TrySyncServerListAsync();
+
+        Assert.False(result);
+        Assert.Equal("缓存大区", store.ServerList.Groups[0].DataCenter);
+        Assert.DoesNotContain(store.ServerList.Groups, group => group.DataCenter == "新大区");
+    }
+
     private AppDataStore CreateStore()
     {
         return new AppDataStore(testDirectory);
@@ -519,6 +589,69 @@ public sealed class AppDataStoreTests : IDisposable
               }
             }
             """;
+    }
+
+    private static byte[] CreateMinimalUISaveFile(ushort regionId)
+    {
+        byte[] payload = BuildPayload(BuildFMarkerSection(regionId));
+        byte[] encryptedPayload = payload.Select(value => (byte)(value ^ 0x31)).ToArray();
+
+        using MemoryStream stream = new();
+        using BinaryWriter writer = new(stream);
+        writer.Write(new byte[] { 1, 0, 0, 0, 0, 0, 0, 0 });
+        writer.Write(encryptedPayload.Length);
+        writer.Write(new byte[] { 0, 0, 0, 0 });
+        writer.Write(encryptedPayload);
+        return stream.ToArray();
+    }
+
+    private static byte[] BuildPayload(params byte[][] sections)
+    {
+        using MemoryStream stream = new();
+        using BinaryWriter writer = new(stream);
+        writer.Write(new byte[] { 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17 });
+        writer.Write(new byte[] { 0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01 });
+        foreach (byte[] section in sections)
+        {
+            writer.Write(section);
+        }
+
+        return stream.ToArray();
+    }
+
+    private static byte[] BuildFMarkerSection(ushort regionId)
+    {
+        byte[] markerData = BuildMarkerData(regionId);
+
+        using MemoryStream stream = new();
+        using BinaryWriter writer = new(stream);
+        writer.Write((short)17);
+        writer.Write(new byte[] { 1, 2, 3, 4, 5, 6 });
+        writer.Write(markerData.Length);
+        writer.Write(new byte[] { 7, 8, 9, 10 });
+        writer.Write(markerData);
+        writer.Write(new byte[] { 0, 0, 0, 0 });
+        return stream.ToArray();
+    }
+
+    private static byte[] BuildMarkerData(ushort regionId)
+    {
+        using MemoryStream stream = new();
+        using BinaryWriter writer = new(stream);
+        writer.Write(new byte[16]);
+        for (int pointIndex = 0; pointIndex < 8; pointIndex++)
+        {
+            writer.Write(1000 + pointIndex);
+            writer.Write(2000 + pointIndex);
+            writer.Write(3000 + pointIndex);
+        }
+
+        writer.Write((byte)0xFF);
+        writer.Write((byte)0);
+        writer.Write(regionId);
+        writer.Write(123456);
+        writer.Write(new byte[] { 0, 0, 0, 0 });
+        return stream.ToArray();
     }
 
     private const string MapDataVersionUrl = "https://cdn.diemoe.net/files/ACT.DieMoe/Resources/MatchaData/data.version";
