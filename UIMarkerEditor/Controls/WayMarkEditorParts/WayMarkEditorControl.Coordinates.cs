@@ -118,6 +118,7 @@ namespace UIMarkerEditor.Controls
             if (TryParseCoordinateText(textBox.Text, out int rawCoordinate))
             {
                 SetCoordinateValue(context.Point, context.Axis, rawCoordinate);
+
                 CloseCoordinateInputTipFor(textBox);
             }
             else

@@ -350,10 +350,16 @@ namespace UIMarkerEditor.Controls
                 selectedMap = regionOptions.FirstOrDefault(option => option.Index == regionId);
             }
 
-            suppressRegionTextChanged = true;
-            RegionSearch_TextBox.Text = selectedMap?.DisplayName ?? $"{MapData.GetName(regionId)}({regionId})";
-            RegionSearch_TextBox.CaretIndex = RegionSearch_TextBox.Text.Length;
-            suppressRegionTextChanged = false;
+            try
+            {
+                suppressRegionTextChanged = true;
+                RegionSearch_TextBox.Text = selectedMap?.DisplayName ?? $"{MapData.GetName(regionId)}({regionId})";
+                RegionSearch_TextBox.CaretIndex = RegionSearch_TextBox.Text.Length;
+            }
+            finally
+            {
+                suppressRegionTextChanged = false;
+            }
         }
 
     }

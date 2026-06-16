@@ -85,6 +85,7 @@ namespace UIMarkerEditor.Controls
             currentWayMark.timestamp = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             UpdatePreview();
+            NotifyWayMarksChanged();
         }
 
         private static bool TryReadDouble(TextBox textBox, string displayName, out double value)

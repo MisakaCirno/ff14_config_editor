@@ -25,6 +25,11 @@ namespace UIMarkerEditor
                 return;
             }
 
+            if (!ConfirmSaveOrDiscardWayMarkChanges())
+            {
+                return;
+            }
+
             LoadConfigFile(filePath);
         }
 

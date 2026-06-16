@@ -15,6 +15,7 @@ public partial class BackupRestoreControl : UserControl
     private Window? ownerWindow;
     private Func<string> getCurrentFilePath = () => string.Empty;
     private Action<string> loadConfigFile = _ => { };
+    private Func<bool> confirmSaveOrDiscardWayMarkChanges = () => true;
     private Func<bool> confirmSaveOrDiscardCharacterChanges = () => true;
     private Action refreshCharacterList = () => { };
 
@@ -30,6 +31,7 @@ public partial class BackupRestoreControl : UserControl
         Window ownerWindow,
         Func<string> getCurrentFilePath,
         Action<string> loadConfigFile,
+        Func<bool> confirmSaveOrDiscardWayMarkChanges,
         Func<bool> confirmSaveOrDiscardCharacterChanges,
         Action refreshCharacterList)
     {
@@ -37,6 +39,7 @@ public partial class BackupRestoreControl : UserControl
         this.ownerWindow = ownerWindow;
         this.getCurrentFilePath = getCurrentFilePath;
         this.loadConfigFile = loadConfigFile;
+        this.confirmSaveOrDiscardWayMarkChanges = confirmSaveOrDiscardWayMarkChanges;
         this.confirmSaveOrDiscardCharacterChanges = confirmSaveOrDiscardCharacterChanges;
         this.refreshCharacterList = refreshCharacterList;
     }
@@ -272,6 +275,11 @@ public partial class BackupRestoreControl : UserControl
             return;
         }
 
+        if (IsCurrentFile(backup.OriginalFilePath) && !confirmSaveOrDiscardWayMarkChanges())
+        {
+            return;
+        }
+
         string warning = BuildRestoreWarning(backup, backup.OriginalFilePath);
         if (MessageBox.Show(ownerWindow, warning, "确认还原备份", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
         {
@@ -324,14 +332,43 @@ public partial class BackupRestoreControl : UserControl
 
         if (saveFileDialog.ShowDialog() != true) return;
 
+        string targetFilePath = saveFileDialog.FileName;
+        bool targetIsCurrentFile = IsCurrentFile(targetFilePath);
+        if (targetIsCurrentFile && !confirmSaveOrDiscardWayMarkChanges())
+        {
+            return;
+        }
+
         try
         {
-            appDataStore.RestoreBackup(backup, saveFileDialog.FileName);
+            appDataStore.RestoreBackup(backup, targetFilePath);
+            if (targetIsCurrentFile)
+            {
+                loadConfigFile(getCurrentFilePath());
+            }
+
             MessageBox.Show(ownerWindow, "备份已还原到指定位置。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
             MessageBox.Show(ownerWindow, $"还原失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private bool IsCurrentFile(string filePath)
+    {
+        try
+        {
+            string currentFilePath = getCurrentFilePath();
+            return !string.IsNullOrWhiteSpace(currentFilePath) &&
+                string.Equals(
+                    Path.GetFullPath(currentFilePath),
+                    Path.GetFullPath(filePath),
+                    StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
         }
     }
 

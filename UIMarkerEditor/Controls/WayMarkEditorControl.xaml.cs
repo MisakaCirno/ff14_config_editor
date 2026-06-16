@@ -70,6 +70,8 @@ public partial class WayMarkEditorControl : UserControl
 
     private readonly record struct CoordinateEditContext(WayMarkPoint Point, CoordinateAxis Axis);
 
+    public event EventHandler? WayMarksChanged;
+
     public WayMarkEditorControl()
     {
         InitializeComponent();
@@ -149,6 +151,11 @@ public partial class WayMarkEditorControl : UserControl
     private static double ClampRatio(double value)
     {
         return double.IsFinite(value) && value > 0.05 ? value : 0.05;
+    }
+
+    private void NotifyWayMarksChanged()
+    {
+        WayMarksChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private static T? FindVisualParent<T>(DependencyObject? source) where T : DependencyObject

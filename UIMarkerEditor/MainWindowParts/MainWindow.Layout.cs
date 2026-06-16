@@ -18,6 +18,13 @@ namespace UIMarkerEditor
 
         private void Window_Closing(object? sender, CancelEventArgs e)
         {
+            if (!ConfirmSaveOrDiscardWayMarkChanges() ||
+                !ConfirmSaveOrDiscardCharacterChanges())
+            {
+                e.Cancel = true;
+                return;
+            }
+
             SaveLayoutSettings();
         }
 

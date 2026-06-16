@@ -61,6 +61,7 @@ namespace UIMarkerEditor
         {
             this.appDataStore = appDataStore;
             InitializeComponent();
+            WayMarkEditor_Control.WayMarksChanged += (_, _) => MarkWayMarkDirty();
             Title = DefaultWindowTitle;
             ApplySavedLayoutSettings();
             UpdateMaximizeRestoreButton();
@@ -76,6 +77,7 @@ namespace UIMarkerEditor
                 this,
                 () => currentFilePath,
                 filePath => LoadConfigFile(filePath),
+                ConfirmSaveOrDiscardWayMarkChanges,
                 ConfirmSaveOrDiscardCharacterChanges,
                 RefreshCharacterList);
             ToolSettings_Control.Initialize(

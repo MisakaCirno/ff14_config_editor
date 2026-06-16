@@ -63,6 +63,7 @@ namespace UIMarkerEditor.Controls
             WayMark_ListBox.SelectedItem = movedMark;
             WayMark_ListBox.ScrollIntoView(movedMark);
             UpdateMoveButtonState();
+            NotifyWayMarksChanged();
         }
 
         private List<WayMark>? GetWayMarks()

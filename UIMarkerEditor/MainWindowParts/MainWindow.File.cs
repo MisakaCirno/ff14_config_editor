@@ -33,6 +33,11 @@ namespace UIMarkerEditor
                     return;
                 }
 
+                if (!ConfirmSaveOrDiscardWayMarkChanges())
+                {
+                    return;
+                }
+
                 LoadConfigFile(filePath);
             }
         }
@@ -68,6 +73,11 @@ namespace UIMarkerEditor
             // 重新加载标点列表
             if (!string.IsNullOrEmpty(currentFilePath))
             {
+                if (!ConfirmSaveOrDiscardWayMarkChanges())
+                {
+                    return;
+                }
+
                 LoadConfigFile(currentFilePath);
             }
             else
@@ -76,7 +86,7 @@ namespace UIMarkerEditor
             }
         }
 
-        private void SaveWayMarkFile()
+        private bool SaveWayMarkFile(bool showSuccessMessage = true)
         {
             // 保存修改后的UISAVE.DAT文件
             if (configUISave != null)
@@ -92,7 +102,7 @@ namespace UIMarkerEditor
                     {
                         AppLogger.Error(AppLogCategory.IO, $"保存前自动备份失败：{configUISave.FilePath}", ex);
                         MessageBox.Show($"保存前自动备份失败，已取消保存。\n{ex.Message}", "备份失败", MessageBoxButton.OK, MessageBoxImage.Error);
-                        return;
+                        return false;
                     }
                 }
 
@@ -105,19 +115,27 @@ namespace UIMarkerEditor
                 {
                     AppLogger.Error(AppLogCategory.UISaveFormat, $"保存 UISAVE.DAT 前结构校验失败：{configUISave.FilePath}", ex);
                     MessageBox.Show(this, $"UISAVE.DAT 结构校验失败，已取消保存，原文件未写入。\n\n文件：{configUISave.FilePath}\n\n诊断信息：{ex.Message}", "保存失败", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
+                    return false;
                 }
                 catch (Exception ex)
                 {
                     AppLogger.Error(AppLogCategory.IO, $"保存 UISAVE.DAT 失败：{configUISave.FilePath}", ex);
                     MessageBox.Show(this, $"保存 UISAVE.DAT 失败，原文件未确认写入完成。\n\n文件：{configUISave.FilePath}\n\n原因：{ex.Message}", "保存失败", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
+                    return false;
                 }
-                MessageBox.Show("文件已保存。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                SetWayMarkDirty(false);
+                if (showSuccessMessage)
+                {
+                    MessageBox.Show("文件已保存。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+
+                return true;
             }
             else
             {
                 MessageBox.Show("请先加载一个UISAVE.DAT文件。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return false;
             }
         }
 
@@ -155,7 +173,19 @@ namespace UIMarkerEditor
                 RefreshRecentFileMenu();
                 List<WayMark> wayMarks = markerSection.WayMarks;
 
-                WayMarkEditor_Control.SetWayMarks(wayMarks);
+                try
+                {
+                    suppressWayMarkDirtyTracking = true;
+                    WayMarkEditor_Control.SetWayMarks(wayMarks);
+                    TrackWayMarkChanges(wayMarks);
+                }
+                finally
+                {
+                    suppressWayMarkDirtyTracking = false;
+                }
+
+                SetWayMarkDirty(false);
+                UpdateWindowTitle();
 
                 // 输出所有的enableFlag和regionID以供调试
                 foreach (WayMark mark in wayMarks)

@@ -79,6 +79,7 @@ namespace UIMarkerEditor.Controls
 
                 // 更新时间戳。
                 currentMark.timestamp = (int)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
+                NotifyWayMarksChanged();
 
                 // 强制更新UI（如果需要）
                 // 属性变更应该会自动通知UI
