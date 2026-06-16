@@ -127,12 +127,12 @@ namespace FF14ConfigEditor.UISave
 
         public void DebugPrintInfo()
         {
-            DebugHelper.Log($"Section Index: {index}");
-            DebugHelper.Log($"Section Unknown1: {BitConverter.ToString(unknown1)}");
-            DebugHelper.Log($"Section Length: {length}");
-            DebugHelper.Log($"Section Unknown2: {BitConverter.ToString(unknown2)}");
-            DebugHelper.Log($"Section Data: {BitConverter.ToString(data)}");
-            DebugHelper.Log($"Section End Flag: {BitConverter.ToString(endFlag)}");
+            AppLogger.Debug(AppLogCategory.General, $"Section Index: {index}");
+            AppLogger.Debug(AppLogCategory.General, $"Section Unknown1: {BitConverter.ToString(unknown1)}");
+            AppLogger.Debug(AppLogCategory.General, $"Section Length: {length}");
+            AppLogger.Debug(AppLogCategory.General, $"Section Unknown2: {BitConverter.ToString(unknown2)}");
+            AppLogger.Debug(AppLogCategory.General, $"Section Data: {BitConverter.ToString(data)}");
+            AppLogger.Debug(AppLogCategory.General, $"Section End Flag: {BitConverter.ToString(endFlag)}");
         }
     }
 }

@@ -45,7 +45,7 @@ namespace FF14ConfigEditor.UISave
                 "FMARKER 标记头",
                 index,
                 UISaveOffsetOrigin.FMarkerSectionData);
-            DebugHelper.Log($"Marker 标记头: {BitConverter.ToString(markerHeader)}");
+            AppLogger.Debug(AppLogCategory.General, $"Marker 标记头: {BitConverter.ToString(markerHeader)}");
 
             List<WayMark> parsedWayMarks = [];
             int wayMarkCount = GetWayMarkCount(data.Length);
@@ -55,8 +55,8 @@ namespace FF14ConfigEditor.UISave
                 WayMark wayMark = ParseWayMark(reader, index);
                 parsedWayMarks.Add(wayMark);
 
-                DebugHelper.Log($"WayMark Parsed #{count + 1} at offset {startPos}");
-                DebugHelper.Log($"= = = = =");
+                AppLogger.Debug(AppLogCategory.General, $"WayMark Parsed #{count + 1} at offset {startPos}");
+                AppLogger.Debug(AppLogCategory.General, "= = = = =");
                 wayMark.DebugPrintInfo();
             }
 
@@ -66,10 +66,10 @@ namespace FF14ConfigEditor.UISave
                 "FMARKER 标记尾部",
                 index,
                 UISaveOffsetOrigin.FMarkerSectionData);
-            DebugHelper.Log($"Marker 尾部: {markerTail.Length} bytes");
+            AppLogger.Debug(AppLogCategory.General, $"Marker 尾部: {markerTail.Length} bytes");
             if (markerTail.Any(value => value != 0))
             {
-                DebugHelper.LogWarning("FMARKER 标记尾部不是全零，已原样保留。");
+                AppLogger.Warning(AppLogCategory.UISaveWarning, "FMARKER 标记尾部不是全零，已原样保留。");
             }
 
             _markerHeader = markerHeader;

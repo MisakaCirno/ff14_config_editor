@@ -163,19 +163,19 @@ namespace FF14ConfigEditor.UISave
 
         public void DebugPrintInfo()
         {
-            DebugHelper.Log($"A Points: ({A.X}, {A.Y}, {A.Z})");
-            DebugHelper.Log($"B Points: ({B.X}, {B.Y}, {B.Z})");
-            DebugHelper.Log($"C Points: ({C.X}, {C.Y}, {C.Z})");
-            DebugHelper.Log($"D Points: ({D.X}, {D.Y}, {D.Z})");
-            DebugHelper.Log($"1 Points: ({One.X}, {One.Y}, {One.Z})");
-            DebugHelper.Log($"2 Points: ({Two.X}, {Two.Y}, {Two.Z})");
-            DebugHelper.Log($"3 Points: ({Three.X}, {Three.Y}, {Three.Z})");
-            DebugHelper.Log($"4 Points: ({Four.X}, {Four.Y}, {Four.Z})");
+            AppLogger.Debug(AppLogCategory.General, $"A Points: ({A.X}, {A.Y}, {A.Z})");
+            AppLogger.Debug(AppLogCategory.General, $"B Points: ({B.X}, {B.Y}, {B.Z})");
+            AppLogger.Debug(AppLogCategory.General, $"C Points: ({C.X}, {C.Y}, {C.Z})");
+            AppLogger.Debug(AppLogCategory.General, $"D Points: ({D.X}, {D.Y}, {D.Z})");
+            AppLogger.Debug(AppLogCategory.General, $"1 Points: ({One.X}, {One.Y}, {One.Z})");
+            AppLogger.Debug(AppLogCategory.General, $"2 Points: ({Two.X}, {Two.Y}, {Two.Z})");
+            AppLogger.Debug(AppLogCategory.General, $"3 Points: ({Three.X}, {Three.Y}, {Three.Z})");
+            AppLogger.Debug(AppLogCategory.General, $"4 Points: ({Four.X}, {Four.Y}, {Four.Z})");
 
-            DebugHelper.Log($"Enable Flag: {enableFlag:X2}");
-            DebugHelper.Log($"Unknown: {unknown:X2}");
-            DebugHelper.Log($"Region ID: {RegionID}");
-            DebugHelper.Log($"Timestamp: {timestamp}");
+            AppLogger.Debug(AppLogCategory.General, $"Enable Flag: {enableFlag:X2}");
+            AppLogger.Debug(AppLogCategory.General, $"Unknown: {unknown:X2}");
+            AppLogger.Debug(AppLogCategory.General, $"Region ID: {RegionID}");
+            AppLogger.Debug(AppLogCategory.General, $"Timestamp: {timestamp}");
         }
     }
 }

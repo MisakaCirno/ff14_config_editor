@@ -156,14 +156,14 @@ namespace FF14ConfigEditor
                 FileFormatVersionByteLength,
                 "文件格式版本",
                 offsetOrigin: UISaveOffsetOrigin.File);
-            DebugHelper.Log($"文件格式版本: {BitConverter.ToString(fileFormatVersionRaw)}");
+            AppLogger.Debug(AppLogCategory.General, $"文件格式版本: {BitConverter.ToString(fileFormatVersionRaw)}");
 
             long encryptedLengthOffset = UISaveBinaryReader.GetOffset(reader);
             int encryptLength = UISaveBinaryReader.ReadInt32(
                 reader,
                 "加密数据长度",
                 offsetOrigin: UISaveOffsetOrigin.File);
-            DebugHelper.Log($"加密数据长度: {encryptLength}");
+            AppLogger.Debug(AppLogCategory.General, $"加密数据长度: {encryptLength}");
             if (encryptLength < 0)
             {
                 throw new UISaveFormatException(
@@ -179,7 +179,7 @@ namespace FF14ConfigEditor
                 FileUnknownByteLength,
                 "文件未知头部",
                 offsetOrigin: UISaveOffsetOrigin.File);
-            DebugHelper.Log($"未知头部: {BitConverter.ToString(fileUnknownRaw)}");
+            AppLogger.Debug(AppLogCategory.General, $"未知头部: {BitConverter.ToString(fileUnknownRaw)}");
 
             UISaveBinaryReader.EnsureRemaining(
                 reader,
@@ -217,14 +217,14 @@ namespace FF14ConfigEditor
                 PayloadUnknownByteLength,
                 "加密部分未知头",
                 offsetOrigin: UISaveOffsetOrigin.DecryptedPayload);
-            DebugHelper.Log($"加密部分 - 未知: {BitConverter.ToString(payloadUnknownRaw)}");
+            AppLogger.Debug(AppLogCategory.General, $"加密部分 - 未知: {BitConverter.ToString(payloadUnknownRaw)}");
 
             byte[] userIDRaw = UISaveBinaryReader.ReadExact(
                 reader,
                 UserIdByteLength,
                 "加密部分用户 ID",
                 offsetOrigin: UISaveOffsetOrigin.DecryptedPayload);
-            DebugHelper.Log($"加密部分 - 用户ID: {FormatUserIdHex(userIDRaw)}");
+            AppLogger.Debug(AppLogCategory.General, $"加密部分 - 用户ID: {FormatUserIdHex(userIDRaw)}");
 
             List<UISaveSection> sections = [];
             byte[] payloadTailRaw = [];
@@ -240,7 +240,7 @@ namespace FF14ConfigEditor
                         checked((int)remaining),
                         "加密部分尾部填充",
                         offsetOrigin: UISaveOffsetOrigin.DecryptedPayload);
-                    DebugHelper.LogUnknownPreserved($"解密数据末尾存在 {payloadTailRaw.Length} 字节尾部填充，已原样保留。");
+                    AppLogger.Info(AppLogCategory.UISaveUnknownPreserved, $"解密数据末尾存在 {payloadTailRaw.Length} 字节尾部填充，已原样保留。");
                     break;
                 }
 
@@ -307,7 +307,7 @@ namespace FF14ConfigEditor
                     UISaveOffsetOrigin.DecryptedPayload);
                 if (endFlag.Any(value => value != 0))
                 {
-                    DebugHelper.LogWarning($"段 {index} 的结束标记不是全零，已原样保留。");
+                    AppLogger.Warning(AppLogCategory.UISaveWarning, $"段 {index} 的结束标记不是全零，已原样保留。");
                 }
 
                 UISaveSection section = CreateSection(
@@ -319,14 +319,14 @@ namespace FF14ConfigEditor
                     endFlag);
                 sections.Add(section);
 
-                DebugHelper.Log($"- - - - -");
+                AppLogger.Debug(AppLogCategory.General, "- - - - -");
                 if (TryGetSectionName(index, out string name))
                 {
-                    DebugHelper.Log($"Section Name: {name}");
+                    AppLogger.Debug(AppLogCategory.General, $"Section Name: {name}");
                 }
                 else
                 {
-                    DebugHelper.LogUnknownPreserved($"发现未知 UISAVE 段 index={index}，已按原始数据保留。");
+                    AppLogger.Info(AppLogCategory.UISaveUnknownPreserved, $"发现未知 UISAVE 段 index={index}，已按原始数据保留。");
                 }
                 section.DebugPrintInfo();
             }
@@ -413,7 +413,7 @@ namespace FF14ConfigEditor
                 (int)remaining.Value,
                 "文件尾部填充",
                 offsetOrigin: UISaveOffsetOrigin.File);
-            DebugHelper.LogUnknownPreserved($"加密数据之后存在 {fileTail.Length} 字节文件尾部填充，已原样保留。");
+            AppLogger.Info(AppLogCategory.UISaveUnknownPreserved, $"加密数据之后存在 {fileTail.Length} 字节文件尾部填充，已原样保留。");
             return fileTail;
         }
 
