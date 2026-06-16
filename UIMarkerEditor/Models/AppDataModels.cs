@@ -20,6 +20,13 @@ public sealed record ServerListLoadResult(
     bool UsedCache = false,
     bool CacheAvailable = false);
 
+public sealed class MapDataCache
+{
+    public string Version { get; set; } = string.Empty;
+    public DateTime LastUpdated { get; set; } = DateTime.Now;
+    public Dictionary<string, string> Instances { get; set; } = [];
+}
+
 public sealed class AppSettings
 {
     public int MaxBackupCount { get; set; } = 100;

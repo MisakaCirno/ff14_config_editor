@@ -18,8 +18,7 @@ public sealed partial class AppDataStore
     private const string SettingsFileName = "config.json";
     private const string CharactersFileName = "characters.json";
     private const string ServersFileName = "servers.json";
-    private const string MapDataVersionFileName = "mapdata.version";
-    private const string MapDataInstanceFileName = "instance.json";
+    private const string MapDataCacheFileName = "mapdata.json";
     private const string MetadataFileName = "metadata.json";
     private const string BackupDataFileName = "UISAVE.DAT";
     private const string LogFileName = "app.log";
@@ -48,8 +47,7 @@ public sealed partial class AppDataStore
     public string SettingsFilePath => Path.Combine(DataDirectory, SettingsFileName);
     public string CharactersFilePath => Path.Combine(DataDirectory, CharactersFileName);
     public string ServersFilePath => Path.Combine(DataDirectory, ServersFileName);
-    public string MapDataVersionFilePath => Path.Combine(DataDirectory, MapDataVersionFileName);
-    public string MapDataInstanceFilePath => Path.Combine(DataDirectory, MapDataInstanceFileName);
+    public string MapDataCacheFilePath => Path.Combine(DataDirectory, MapDataCacheFileName);
     public string LogFilePath => Path.Combine(DataDirectory, "logs", LogFileName);
 
     public AppSettings Settings { get; private set; } = new();

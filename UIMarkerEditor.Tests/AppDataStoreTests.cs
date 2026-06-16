@@ -311,15 +311,18 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.True(result.CacheAvailable);
         Assert.Equal("20260614", result.Version);
         Assert.Equal("测试副本", MapData.GetName(123));
-        Assert.Contains("\"123\"", File.ReadAllText(store.MapDataInstanceFilePath));
-        Assert.Equal("20260614", File.ReadAllText(store.MapDataVersionFilePath));
+        string cacheText = File.ReadAllText(store.MapDataCacheFilePath);
+        MapDataCache cache = JsonSerializer.Deserialize<MapDataCache>(cacheText)!;
+        Assert.Equal("20260614", cache.Version);
+        Assert.Equal("测试副本", cache.Instances["123"]);
+        Assert.False(File.Exists(Path.Combine(store.DataDirectory, "instance.json")));
+        Assert.False(File.Exists(Path.Combine(store.DataDirectory, "mapdata.version")));
     }
 
     [Fact]
     public async Task EnsureMapDataAvailableAsync_WhenNetworkFailsAndCacheExists_UsesCache()
     {
-        string instanceJson = CreateMapInstanceJson(456, "缓存副本");
-        WriteMapDataCache(instanceJson, "build_version=cache-version");
+        WriteMapDataCache(456, "缓存副本", "cache-version");
         FakeAppDataNetworkClient networkClient = new();
         networkClient.AddException(MapDataVersionUrl, new InvalidOperationException("模拟网络失败"));
         AppDataStore store = CreateStore(networkClient);
@@ -333,6 +336,26 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.True(result.CacheAvailable);
         Assert.Equal("cache-version", result.Version);
         Assert.Equal("缓存副本", MapData.GetName(456));
+    }
+
+    [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenRemoteVersionMatchesCache_UsesCacheWithoutDownloadingInstances()
+    {
+        WriteMapDataCache(567, "同版本缓存副本", "same-version");
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddResponse(MapDataVersionUrl, "build_version=same-version");
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+
+        MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
+
+        Assert.True(result.Success);
+        Assert.False(result.Updated);
+        Assert.False(result.UsedCache);
+        Assert.True(result.CacheAvailable);
+        Assert.Equal("same-version", result.Version);
+        Assert.Equal("同版本缓存副本", MapData.GetName(567));
+        Assert.DoesNotContain(networkClient.Requests, request => request.Url == MapDataInstanceUrl);
     }
 
     [Fact]
@@ -355,7 +378,7 @@ public sealed class AppDataStoreTests : IDisposable
     [Fact]
     public async Task ForceRefreshMapDataAsync_WhenNetworkFails_DoesNotUseCache()
     {
-        WriteMapDataCache(CreateMapInstanceJson(789, "缓存副本"), "build_version=cache-version");
+        WriteMapDataCache(789, "缓存副本", "cache-version");
         FakeAppDataNetworkClient networkClient = new();
         networkClient.AddException(MapDataVersionUrl, new InvalidOperationException("模拟网络失败"));
         AppDataStore store = CreateStore(networkClient);
@@ -563,12 +586,20 @@ public sealed class AppDataStoreTests : IDisposable
         return new AppDataStore(testDirectory, networkClient);
     }
 
-    private void WriteMapDataCache(string instanceJson, string versionContent)
+    private void WriteMapDataCache(ushort mapId, string mapName, string version)
     {
         string dataDirectory = Path.Combine(testDirectory, "Data");
         Directory.CreateDirectory(dataDirectory);
-        File.WriteAllText(Path.Combine(dataDirectory, "instance.json"), instanceJson);
-        File.WriteAllText(Path.Combine(dataDirectory, "mapdata.version"), versionContent);
+        MapDataCache cache = new()
+        {
+            Version = version,
+            LastUpdated = DateTime.Now,
+            Instances = new Dictionary<string, string>
+            {
+                [mapId.ToString()] = mapName
+            }
+        };
+        File.WriteAllText(Path.Combine(dataDirectory, "mapdata.json"), JsonSerializer.Serialize(cache));
     }
 
     private void WriteServerCache(ServerListCache cache)

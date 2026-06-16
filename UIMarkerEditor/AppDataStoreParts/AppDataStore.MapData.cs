@@ -31,18 +31,16 @@ public sealed partial class AppDataStore
         {
             string remoteVersionContent = await networkClient.GetStringAsync(MapDataVersionUrl, MapDataRequestTimeout);
             string remoteVersion = ParseMapDataVersion(remoteVersionContent);
-            string localVersion = ReadMapDataVersion();
             if (!forceRefresh &&
-                File.Exists(MapDataInstanceFilePath) &&
                 !string.IsNullOrWhiteSpace(remoteVersion) &&
-                string.Equals(remoteVersion, localVersion, StringComparison.OrdinalIgnoreCase))
+                TryReadMapDataCache(out MapDataCache cachedMapData) &&
+                string.Equals(remoteVersion, cachedMapData.Version, StringComparison.OrdinalIgnoreCase))
             {
-                if (!LoadMapDataCache())
+                if (!ApplyMapDataCache(cachedMapData))
                 {
                     return new MapDataLoadResult(false, false, remoteVersion);
                 }
 
-                MapDataVersion = remoteVersion;
                 return new MapDataLoadResult(true, false, remoteVersion, CacheAvailable: true);
             }
 
@@ -55,8 +53,7 @@ public sealed partial class AppDataStore
                     : new MapDataLoadResult(false, false, remoteVersion);
             }
 
-            WriteText(MapDataInstanceFilePath, instanceJson);
-            WriteText(MapDataVersionFilePath, string.IsNullOrWhiteSpace(remoteVersion) ? remoteVersionContent : remoteVersion);
+            WriteMapDataCache(CreateMapDataCache(remoteVersion, mapNames));
             MapData.ApplyMapNames(mapNames);
             MapDataVersion = remoteVersion;
             return new MapDataLoadResult(true, true, remoteVersion, CacheAvailable: true);
@@ -82,29 +79,80 @@ public sealed partial class AppDataStore
 
     private bool LoadMapDataCache()
     {
-        string? instanceJson = ReadText(MapDataInstanceFilePath);
-        if (string.IsNullOrWhiteSpace(instanceJson))
+        if (!TryReadMapDataCache(out MapDataCache cache) || !ApplyMapDataCache(cache))
         {
             MapData.Clear();
             return false;
         }
 
-        Dictionary<ushort, string> mapNames = ParseMapNamesFromInstanceJson(instanceJson);
+        return true;
+    }
+
+    private bool ApplyMapDataCache(MapDataCache cache)
+    {
+        Dictionary<ushort, string> mapNames = ParseMapNamesFromCache(cache);
         if (mapNames.Count == 0)
         {
-            MapData.Clear();
             return false;
         }
 
         MapData.ApplyMapNames(mapNames);
-        MapDataVersion = ReadMapDataVersion();
+        MapDataVersion = cache.Version;
         return true;
     }
 
-    private string ReadMapDataVersion()
+    private bool TryReadMapDataCache(out MapDataCache cache)
     {
-        string? versionContent = ReadText(MapDataVersionFilePath);
-        return string.IsNullOrWhiteSpace(versionContent) ? string.Empty : ParseMapDataVersion(versionContent);
+        JsonFileReadResult<MapDataCache> cacheResult = ReadJsonFile<MapDataCache>(MapDataCacheFilePath);
+        if (cacheResult.Status == JsonFileReadStatus.Success && cacheResult.Value != null)
+        {
+            cache = cacheResult.Value;
+            cache.Instances ??= [];
+            return true;
+        }
+
+        if (cacheResult.Status == JsonFileReadStatus.Invalid)
+        {
+            AddJsonReadWarning(
+                MapDataCacheFilePath,
+                "地图缓存无法读取，已按无缓存处理。",
+                cacheResult.Error);
+        }
+
+        cache = new MapDataCache();
+        return false;
+    }
+
+    private void WriteMapDataCache(MapDataCache cache)
+    {
+        WriteJson(MapDataCacheFilePath, cache);
+    }
+
+    private static MapDataCache CreateMapDataCache(string version, IReadOnlyDictionary<ushort, string> mapNames)
+    {
+        return new MapDataCache
+        {
+            Version = version,
+            LastUpdated = DateTime.Now,
+            Instances = mapNames
+                .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))
+                .OrderBy(pair => pair.Key)
+                .ToDictionary(pair => pair.Key.ToString(), pair => pair.Value)
+        };
+    }
+
+    private static Dictionary<ushort, string> ParseMapNamesFromCache(MapDataCache cache)
+    {
+        Dictionary<ushort, string> mapNames = [];
+        foreach (KeyValuePair<string, string> pair in cache.Instances)
+        {
+            if (!ushort.TryParse(pair.Key, out ushort mapId)) continue;
+            if (string.IsNullOrWhiteSpace(pair.Value)) continue;
+
+            mapNames[mapId] = pair.Value;
+        }
+
+        return mapNames;
     }
 
     private static string ParseMapDataVersion(string versionContent)

@@ -39,20 +39,6 @@ public sealed partial class AppDataStore
         }
     }
 
-    private static string? ReadText(string path)
-    {
-        if (!File.Exists(path)) return null;
-
-        try
-        {
-            return File.ReadAllText(path);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
     private void WriteJson<T>(string path, T value)
     {
         try
@@ -69,24 +55,6 @@ public sealed partial class AppDataStore
         catch (Exception ex)
         {
             throw new AppDataStoreException("写入本地 JSON 文件", path, ex);
-        }
-    }
-
-    private static void WriteText(string path, string value)
-    {
-        try
-        {
-            string? directory = Path.GetDirectoryName(path);
-            if (!string.IsNullOrWhiteSpace(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            SafeFileWriter.WriteAllText(path, value);
-        }
-        catch (Exception ex)
-        {
-            throw new AppDataStoreException("写入本地文本文件", path, ex);
         }
     }
 
