@@ -290,13 +290,11 @@ namespace FF14ConfigEditor
             string fileName = Path.GetFileNameWithoutExtension(logFilePath);
             string extension = Path.GetExtension(logFilePath);
             string timestampedPattern = $"^{Regex.Escape(fileName)}_\\d{{8}}_\\d{{6}}_\\d{{3}}(?:_\\d+)?{Regex.Escape(extension)}$";
-            string legacyPattern = $"^{Regex.Escape(Path.GetFileName(logFilePath))}\\.\\d+$";
 
             foreach (string archivePath in Directory.EnumerateFiles(directory))
             {
                 string archiveFileName = Path.GetFileName(archivePath);
-                if (Regex.IsMatch(archiveFileName, timestampedPattern, RegexOptions.CultureInvariant) ||
-                    Regex.IsMatch(archiveFileName, legacyPattern, RegexOptions.CultureInvariant))
+                if (Regex.IsMatch(archiveFileName, timestampedPattern, RegexOptions.CultureInvariant))
                 {
                     yield return archivePath;
                 }

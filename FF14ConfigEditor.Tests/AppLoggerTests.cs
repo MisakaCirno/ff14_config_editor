@@ -74,8 +74,6 @@ public sealed class AppLoggerTests : IDisposable
         string[] archiveFiles = logFiles.Where(fileName => fileName != "app.log").ToArray();
         Assert.All(archiveFiles, fileName => Assert.Matches(@"^app_\d{8}_\d{6}_\d{3}(?:_\d+)?\.log$", fileName));
         Assert.Equal(2, archiveFiles.Length);
-        Assert.DoesNotContain("app.log.1", logFiles);
-        Assert.DoesNotContain("app.log.3", logFiles);
     }
 
     [Fact]
