@@ -61,6 +61,7 @@ namespace UIMarkerEditor
         {
             this.appDataStore = appDataStore;
             InitializeComponent();
+            AddDeveloperToolsTab();
             WayMarkEditor_Control.WayMarksChanged += (_, _) => MarkWayMarkDirty();
             Title = DefaultWindowTitle;
             ApplySavedLayoutSettings();

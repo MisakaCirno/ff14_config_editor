@@ -1,0 +1,29 @@
+<UserControl x:Class="UIMarkerEditor.Controls.DeveloperToolsControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="18">
+            <TextBlock Text="按钮样式展示"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       HorizontalAlignment="Left"
+                       Padding="0,0,0,10"/>
+
+            <WrapPanel>
+                <Button Content="默认按钮" Width="120"/>
+                <Button Content="Primary" Width="120" Style="{StaticResource PrimaryButtonStyle}"/>
+                <Button Content="Success" Width="120" Style="{StaticResource SuccessButtonStyle}"/>
+                <Button Content="Warning" Width="120" Style="{StaticResource WarningButtonStyle}"/>
+                <Button Content="Danger" Width="120" Style="{StaticResource DangerButtonStyle}"/>
+                <Button Content="Secondary" Width="120" Style="{StaticResource SecondaryButtonStyle}"/>
+                <Button Content="Info" Width="120" Style="{StaticResource InfoButtonStyle}"/>
+                <Button Content="Light" Width="120" Style="{StaticResource LightButtonStyle}"/>
+                <Button Content="Dark" Width="120" Style="{StaticResource DarkButtonStyle}"/>
+                <Button Content="Orange" Width="120" Style="{StaticResource OrangeButtonStyle}"/>
+                <Button Content="Purple" Width="120" Style="{StaticResource PurpleButtonStyle}"/>
+                <Button Content="Teal" Width="120" Style="{StaticResource TealButtonStyle}"/>
+                <Button Content="Pink" Width="120" Style="{StaticResource PinkButtonStyle}"/>
+            </WrapPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
