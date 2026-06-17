@@ -98,4 +98,34 @@ public sealed class AppLoggerTests : IDisposable
         Assert.True(deletedCount > 0);
         Assert.Empty(Directory.GetFiles(logDirectory, "app*"));
     }
+
+    [Fact]
+    public void ClearCurrentLogFile_WhenArchiveExists_DeletesOnlyCurrentLog()
+    {
+        string logPath = Path.Combine(testDirectory, "logs", "app.log");
+        AppLogger.LogToConsole = false;
+        AppLogger.LogToDebug = false;
+        AppLogger.MinimumLevel = AppLogLevel.Debug;
+        AppLogger.ConfigureFileLogging(logPath, maxFileBytes: 240, maxFileCount: 3);
+
+        for (int index = 0; index < 4; index++)
+        {
+            AppLogger.Info(AppLogCategory.General, $"测试当前清理 {index} {new string('X', 100)}");
+        }
+
+        string logDirectory = Path.GetDirectoryName(logPath)!;
+        string[] archiveFilesBefore = Directory.GetFiles(logDirectory, "app_*");
+        Assert.NotEmpty(archiveFilesBefore);
+        Assert.True(File.Exists(logPath));
+
+        int deletedCount = AppLogger.ClearCurrentLogFile();
+
+        Assert.Equal(1, deletedCount);
+        Assert.False(File.Exists(logPath));
+        string[] archiveFilesAfter = Directory.GetFiles(logDirectory, "app_*");
+        Assert.Equal(archiveFilesBefore.Length, archiveFilesAfter.Length);
+        Assert.All(
+            archiveFilesAfter.Select(Path.GetFileName),
+            fileName => Assert.Matches(@"^app_\d{8}_\d{6}_\d{3}(?:_\d+)?\.log$", fileName));
+    }
 }

@@ -48,7 +48,8 @@ public partial class ToolSettingsControl : UserControl
         if (appDataStore == null) return;
 
         DataDirectory_TextBox.Text = appDataStore.DataDirectory;
-        CurrentLogFileName_TextBox.Text = Path.GetFileName(appDataStore.LogFilePath);
+        CurrentLogFilePath_TextBox.Text = appDataStore.LogFilePath;
+        CurrentLogFilePath_TextBox.ToolTip = appDataStore.LogFilePath;
         MaxBackupCount_TextBox.Text = appDataStore.Settings.MaxBackupCount.ToString(CultureInfo.InvariantCulture);
         MaxBackupDays_TextBox.Text = appDataStore.Settings.MaxBackupDays.ToString(CultureInfo.InvariantCulture);
         MaxLogFileSizeMb_TextBox.Text = appDataStore.Settings.MaxLogFileSizeMb.ToString(CultureInfo.InvariantCulture);
@@ -241,14 +242,39 @@ public partial class ToolSettingsControl : UserControl
         OpenDirectory(appDataStore.DataDirectory);
     }
 
-    private void ClearLogs_Button_Click(object sender, RoutedEventArgs e)
+    private void ClearCurrentLog_Button_Click(object sender, RoutedEventArgs e)
     {
         if (appDataStore == null) return;
 
         MessageBoxResult result = MessageBox.Show(
             ownerWindow,
-            "确定要清理当前日志和历史日志吗？",
-            "清理日志",
+            "确定要清理当前正在写入的日志文件吗？历史日志不会被删除。",
+            "清理当前日志",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (result != MessageBoxResult.Yes) return;
+
+        try
+        {
+            int deletedCount = appDataStore.ClearCurrentLogFile();
+            CurrentLogFilePath_TextBox.Text = appDataStore.LogFilePath;
+            CurrentLogFilePath_TextBox.ToolTip = appDataStore.LogFilePath;
+            MessageBox.Show(ownerWindow, $"已清理 {deletedCount} 个当前日志文件。", "清理当前日志", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ownerWindow, $"清理当前日志失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ClearAllLogs_Button_Click(object sender, RoutedEventArgs e)
+    {
+        if (appDataStore == null) return;
+
+        MessageBoxResult result = MessageBox.Show(
+            ownerWindow,
+            "确定要清理当前日志和所有历史日志吗？",
+            "清理所有日志",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
         if (result != MessageBoxResult.Yes) return;
@@ -256,13 +282,21 @@ public partial class ToolSettingsControl : UserControl
         try
         {
             int deletedCount = appDataStore.ClearLogFiles();
-            CurrentLogFileName_TextBox.Text = Path.GetFileName(appDataStore.LogFilePath);
-            MessageBox.Show(ownerWindow, $"已清理 {deletedCount} 个日志文件。", "清理日志", MessageBoxButton.OK, MessageBoxImage.Information);
+            CurrentLogFilePath_TextBox.Text = appDataStore.LogFilePath;
+            CurrentLogFilePath_TextBox.ToolTip = appDataStore.LogFilePath;
+            MessageBox.Show(ownerWindow, $"已清理 {deletedCount} 个日志文件。", "清理所有日志", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ownerWindow, $"清理日志失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(ownerWindow, $"清理所有日志失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void OpenLogDirectory_Button_Click(object sender, RoutedEventArgs e)
+    {
+        if (appDataStore == null) return;
+
+        OpenDirectory(appDataStore.LogDirectory);
     }
 
     private async void RefreshMapData_Button_Click(object sender, RoutedEventArgs e)

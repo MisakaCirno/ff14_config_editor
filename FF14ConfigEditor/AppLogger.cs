@@ -92,6 +92,20 @@ namespace FF14ConfigEditor
             }
         }
 
+        public static int ClearCurrentLogFile()
+        {
+            lock (SyncRoot)
+            {
+                if (string.IsNullOrWhiteSpace(LogFilePath) || !File.Exists(LogFilePath))
+                {
+                    return 0;
+                }
+
+                File.Delete(LogFilePath);
+                return 1;
+            }
+        }
+
         public static void Debug(AppLogCategory category, string message)
         {
             Log(AppLogLevel.Debug, category, message);

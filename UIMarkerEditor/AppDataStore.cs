@@ -48,7 +48,8 @@ public sealed partial class AppDataStore
     public string CharactersFilePath => Path.Combine(DataDirectory, CharactersFileName);
     public string ServersFilePath => Path.Combine(DataDirectory, ServersFileName);
     public string MapDataCacheFilePath => Path.Combine(DataDirectory, MapDataCacheFileName);
-    public string LogFilePath => Path.Combine(DataDirectory, "logs", LogFileName);
+    public string LogDirectory => Path.Combine(DataDirectory, "logs");
+    public string LogFilePath => Path.Combine(LogDirectory, LogFileName);
 
     public AppSettings Settings { get; private set; } = new();
     public ObservableCollection<CharacterProfile> Characters { get; } = [];

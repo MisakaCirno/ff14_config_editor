@@ -109,6 +109,18 @@ public sealed partial class AppDataStore
         }
     }
 
+    public int ClearCurrentLogFile()
+    {
+        try
+        {
+            return AppLogger.ClearCurrentLogFile();
+        }
+        catch (Exception ex)
+        {
+            throw new AppDataStoreException("清理当前日志文件", LogFilePath, ex);
+        }
+    }
+
     private void SaveBootstrap(bool allowOverwriteInvalid = false)
     {
         if (bootstrapFileInvalid && !allowOverwriteInvalid)
