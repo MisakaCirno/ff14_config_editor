@@ -209,11 +209,8 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="120"/>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
@@ -222,14 +219,18 @@
                                            Style="{StaticResource SettingsFormLabelStyle}"/>
                                 <TextBox x:Name="CurrentLogFilePath_TextBox"
                                          Grid.Column="1"
-                                         Grid.ColumnSpan="2"
                                          Style="{StaticResource SettingsReadOnlyTextBoxStyle}"/>
 
+                                <TextBlock Grid.Row="1"
+                                           Text="日志操作"
+                                           Style="{StaticResource SettingsFormLabelStyle}"/>
                                 <StackPanel Grid.Row="1"
                                             Grid.Column="1"
-                                            Grid.ColumnSpan="2"
                                             Orientation="Horizontal"
                                             Margin="0,4,0,8">
+                                    <Button Content="归档当前日志"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Click="ArchiveCurrentLog_Button_Click"/>
                                     <Button Content="清理当前日志"
                                             Style="{StaticResource WarningButtonStyle}"
                                             Click="ClearCurrentLog_Button_Click"/>
@@ -239,36 +240,45 @@
                                     <Button Content="打开日志目录"
                                             Click="OpenLogDirectory_Button_Click"/>
                                 </StackPanel>
+                            </Grid>
 
-                                <TextBlock Grid.Row="2"
-                                           Text="单个文件大小"
+                            <Grid Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Text="单个文件大小"
                                            Style="{StaticResource SettingsFormLabelStyle}"/>
                                 <TextBox x:Name="MaxLogFileSizeMb_TextBox"
-                                         Grid.Row="2"
                                          Grid.Column="1"
                                          Width="120"
                                          MaxLength="3"
                                          HorizontalAlignment="Left"
                                          PreviewTextInput="IntegerTextBox_PreviewTextInput"
                                          DataObject.Pasting="IntegerTextBox_Pasting"/>
-                                <TextBlock Grid.Row="2"
-                                           Grid.Column="2"
+                                <TextBlock Grid.Column="2"
                                            Text="MB 以内"
                                            Style="{StaticResource SettingsMutedTextStyle}"
                                            Margin="8,4,0,4"/>
 
-                                <TextBlock Grid.Row="3"
+                                <TextBlock Grid.Row="1"
                                            Text="最多保存数量"
                                            Style="{StaticResource SettingsFormLabelStyle}"/>
                                 <TextBox x:Name="MaxLogFileCount_TextBox"
-                                         Grid.Row="3"
+                                         Grid.Row="1"
                                          Grid.Column="1"
                                          Width="120"
                                          MaxLength="2"
                                          HorizontalAlignment="Left"
                                          PreviewTextInput="IntegerTextBox_PreviewTextInput"
                                          DataObject.Pasting="IntegerTextBox_Pasting"/>
-                                <TextBlock Grid.Row="3"
+                                <TextBlock Grid.Row="1"
                                            Grid.Column="2"
                                            Text="个文件（含当前日志）"
                                            Style="{StaticResource SettingsMutedTextStyle}"

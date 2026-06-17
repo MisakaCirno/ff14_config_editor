@@ -106,6 +106,30 @@ namespace FF14ConfigEditor
             }
         }
 
+        public static string? ArchiveCurrentLogFile()
+        {
+            lock (SyncRoot)
+            {
+                if (string.IsNullOrWhiteSpace(LogFilePath) || !File.Exists(LogFilePath))
+                {
+                    return null;
+                }
+
+                int archiveCount = maxLogFileCount - 1;
+                if (archiveCount <= 0)
+                {
+                    throw new InvalidOperationException("当前最多保存数量为 1，无法保留归档日志。");
+                }
+
+                DateTimeOffset archivedAt = DateTimeOffset.Now;
+                string archivePath = CreateTimestampedArchiveLogFilePath(LogFilePath, archivedAt);
+                File.Move(LogFilePath, archivePath);
+                File.SetLastWriteTimeUtc(archivePath, archivedAt.UtcDateTime);
+                PruneArchiveLogFiles(LogFilePath, archiveCount);
+                return archivePath;
+            }
+        }
+
         public static void Debug(AppLogCategory category, string message)
         {
             Log(AppLogLevel.Debug, category, message);

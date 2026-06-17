@@ -48,8 +48,7 @@ public partial class ToolSettingsControl : UserControl
         if (appDataStore == null) return;
 
         DataDirectory_TextBox.Text = appDataStore.DataDirectory;
-        CurrentLogFilePath_TextBox.Text = appDataStore.LogFilePath;
-        CurrentLogFilePath_TextBox.ToolTip = appDataStore.LogFilePath;
+        UpdateCurrentLogFilePathText();
         MaxBackupCount_TextBox.Text = appDataStore.Settings.MaxBackupCount.ToString(CultureInfo.InvariantCulture);
         MaxBackupDays_TextBox.Text = appDataStore.Settings.MaxBackupDays.ToString(CultureInfo.InvariantCulture);
         MaxLogFileSizeMb_TextBox.Text = appDataStore.Settings.MaxLogFileSizeMb.ToString(CultureInfo.InvariantCulture);
@@ -242,6 +241,36 @@ public partial class ToolSettingsControl : UserControl
         OpenDirectory(appDataStore.DataDirectory);
     }
 
+    private void ArchiveCurrentLog_Button_Click(object sender, RoutedEventArgs e)
+    {
+        if (appDataStore == null) return;
+
+        MessageBoxResult result = MessageBox.Show(
+            ownerWindow,
+            "确定要归档当前正在写入的日志文件，并切换到新的日志文件吗？",
+            "归档当前日志",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+        if (result != MessageBoxResult.Yes) return;
+
+        try
+        {
+            string? archivePath = appDataStore.ArchiveCurrentLogFile();
+            UpdateCurrentLogFilePathText();
+            if (string.IsNullOrWhiteSpace(archivePath))
+            {
+                MessageBox.Show(ownerWindow, "当前日志文件尚未生成。", "归档当前日志", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            MessageBox.Show(ownerWindow, $"当前日志已归档到：\n{archivePath}", "归档当前日志", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ownerWindow, $"归档当前日志失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void ClearCurrentLog_Button_Click(object sender, RoutedEventArgs e)
     {
         if (appDataStore == null) return;
@@ -257,8 +286,7 @@ public partial class ToolSettingsControl : UserControl
         try
         {
             int deletedCount = appDataStore.ClearCurrentLogFile();
-            CurrentLogFilePath_TextBox.Text = appDataStore.LogFilePath;
-            CurrentLogFilePath_TextBox.ToolTip = appDataStore.LogFilePath;
+            UpdateCurrentLogFilePathText();
             MessageBox.Show(ownerWindow, $"已清理 {deletedCount} 个当前日志文件。", "清理当前日志", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
@@ -282,8 +310,7 @@ public partial class ToolSettingsControl : UserControl
         try
         {
             int deletedCount = appDataStore.ClearLogFiles();
-            CurrentLogFilePath_TextBox.Text = appDataStore.LogFilePath;
-            CurrentLogFilePath_TextBox.ToolTip = appDataStore.LogFilePath;
+            UpdateCurrentLogFilePathText();
             MessageBox.Show(ownerWindow, $"已清理 {deletedCount} 个日志文件。", "清理所有日志", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
@@ -297,6 +324,14 @@ public partial class ToolSettingsControl : UserControl
         if (appDataStore == null) return;
 
         OpenDirectory(appDataStore.LogDirectory);
+    }
+
+    private void UpdateCurrentLogFilePathText()
+    {
+        if (appDataStore == null) return;
+
+        CurrentLogFilePath_TextBox.Text = appDataStore.LogFilePath;
+        CurrentLogFilePath_TextBox.ToolTip = appDataStore.LogFilePath;
     }
 
     private async void RefreshMapData_Button_Click(object sender, RoutedEventArgs e)

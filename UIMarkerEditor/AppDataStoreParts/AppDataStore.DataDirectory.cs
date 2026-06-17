@@ -121,6 +121,28 @@ public sealed partial class AppDataStore
         }
     }
 
+    public string? ArchiveCurrentLogFile()
+    {
+        try
+        {
+            string? archivePath = AppLogger.ArchiveCurrentLogFile();
+            if (!string.IsNullOrWhiteSpace(archivePath))
+            {
+                AppLogger.Info(AppLogCategory.General, $"已手动归档当前日志：{archivePath}");
+            }
+
+            return archivePath;
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new AppDataStoreException("归档当前日志文件", LogFilePath, ex);
+        }
+    }
+
     private void SaveBootstrap(bool allowOverwriteInvalid = false)
     {
         if (bootstrapFileInvalid && !allowOverwriteInvalid)

@@ -128,4 +128,29 @@ public sealed class AppLoggerTests : IDisposable
             archiveFilesAfter.Select(Path.GetFileName),
             fileName => Assert.Matches(@"^app_\d{8}_\d{6}_\d{3}(?:_\d+)?\.log$", fileName));
     }
+
+    [Fact]
+    public void ArchiveCurrentLogFile_WhenCurrentLogExists_MovesCurrentAndNextWriteCreatesNewLog()
+    {
+        string logPath = Path.Combine(testDirectory, "logs", "app.log");
+        AppLogger.LogToConsole = false;
+        AppLogger.LogToDebug = false;
+        AppLogger.MinimumLevel = AppLogLevel.Debug;
+        AppLogger.ConfigureFileLogging(logPath, maxFileBytes: 1024 * 1024, maxFileCount: 3);
+        AppLogger.Info(AppLogCategory.General, "归档前日志");
+
+        string? archivePath = AppLogger.ArchiveCurrentLogFile();
+
+        Assert.False(File.Exists(logPath));
+        Assert.False(string.IsNullOrWhiteSpace(archivePath));
+        Assert.True(File.Exists(archivePath));
+        Assert.Matches(@"^app_\d{8}_\d{6}_\d{3}(?:_\d+)?\.log$", Path.GetFileName(archivePath));
+        Assert.Contains("归档前日志", File.ReadAllText(archivePath));
+
+        AppLogger.Info(AppLogCategory.General, "归档后日志");
+
+        Assert.True(File.Exists(logPath));
+        Assert.Contains("归档后日志", File.ReadAllText(logPath));
+        Assert.DoesNotContain("归档后日志", File.ReadAllText(archivePath));
+    }
 }
