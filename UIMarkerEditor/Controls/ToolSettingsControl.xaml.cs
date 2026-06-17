@@ -176,6 +176,7 @@ public partial class ToolSettingsControl : UserControl
                 UseWayMarkImageLabels = WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected,
                 StartupWayMarkAction = ReadStartupWayMarkActionFromUi(),
                 LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
+                LastServerListManualRefreshAttempt = appDataStore.Settings.LastServerListManualRefreshAttempt,
                 WindowLayout = appDataStore.Settings.WindowLayout,
                 RecentFiles = [.. appDataStore.Settings.RecentFiles]
             });
@@ -250,15 +251,21 @@ public partial class ToolSettingsControl : UserControl
     private async void RefreshServerList_Button_Click(object sender, RoutedEventArgs e)
     {
         if (appDataStore == null) return;
-        if (!CanStartManualRefresh(appDataStore.ServerList.LastSyncAttempt, out TimeSpan waitTime))
+        if (!CanStartManualRefresh(appDataStore.Settings.LastServerListManualRefreshAttempt, out TimeSpan waitTime))
         {
             ShowRefreshCooldownMessage("服务器列表", waitTime);
             return;
         }
 
         SetManualRefreshButtonsEnabled(false);
+        DateTime attemptTime = DateTime.Now;
         try
         {
+            SaveSettingsPreservingEditableValues(settings =>
+            {
+                settings.LastServerListManualRefreshAttempt = attemptTime;
+            });
+
             bool success = await appDataStore.TrySyncServerListAsync();
             RefreshStatusFields();
             if (!success)
@@ -289,7 +296,7 @@ public partial class ToolSettingsControl : UserControl
             ? $"{mapCount} 张地图"
             : "未加载";
         MapDataUpdatedAt_TextBox.Text = FormatOptionalTime(appDataStore.MapDataLastUpdated, "尚未更新");
-        MapDataCheckedAt_TextBox.Text = FormatOptionalTime(appDataStore.MapDataLastSyncAttempt, "尚未检查");
+        MapDataCheckedAt_TextBox.Text = FormatOptionalTime(appDataStore.MapDataLastSuccessfulSyncAt, "尚未成功检查");
         MapDataVersionSource_TextBox.Text = appDataStore.MapDataVersionSourceUrl;
         MapDataContentSource_TextBox.Text = appDataStore.MapDataContentSourceUrl;
 
@@ -297,7 +304,7 @@ public partial class ToolSettingsControl : UserControl
         int worldCount = appDataStore.ServerList.Groups.Sum(group => group.Worlds.Count);
         ServerListStatus_TextBox.Text = $"{dataCenterCount} 个大区，{worldCount} 个服务器";
         ServerListUpdatedAt_TextBox.Text = FormatOptionalTime(appDataStore.ServerList.LastUpdated, "尚未更新");
-        ServerListCheckedAt_TextBox.Text = FormatOptionalTime(appDataStore.ServerList.LastSyncAttempt, "尚未检查");
+        ServerListCheckedAt_TextBox.Text = FormatOptionalTime(appDataStore.ServerList.LastSuccessfulSyncAt, "尚未成功检查");
         ServerListSource_TextBox.Text = string.IsNullOrWhiteSpace(appDataStore.ServerList.SourceUrl)
             ? "未知"
             : appDataStore.ServerList.SourceUrl;
@@ -355,6 +362,7 @@ public partial class ToolSettingsControl : UserControl
             UseWayMarkImageLabels = appDataStore.Settings.UseWayMarkImageLabels,
             StartupWayMarkAction = appDataStore.Settings.StartupWayMarkAction,
             LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
+            LastServerListManualRefreshAttempt = appDataStore.Settings.LastServerListManualRefreshAttempt,
             WindowLayout = appDataStore.Settings.WindowLayout,
             RecentFiles = [.. appDataStore.Settings.RecentFiles]
         };

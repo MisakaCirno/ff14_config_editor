@@ -34,7 +34,7 @@ public sealed partial class AppDataStore
             return new ServerListLoadResult(true, false, CacheAvailable: true);
         }
 
-        ServerListLoadResult syncResult = await SyncServerListAsync(saveFailureAttempt: HasValidServerListCache());
+        ServerListLoadResult syncResult = await SyncServerListAsync();
         if (syncResult.Success)
         {
             return syncResult;
@@ -47,13 +47,13 @@ public sealed partial class AppDataStore
 
     public async Task<bool> TrySyncServerListAsync()
     {
-        ServerListLoadResult result = await SyncServerListAsync(saveFailureAttempt: HasValidServerListCache());
+        ServerListLoadResult result = await SyncServerListAsync();
         return result.Success;
     }
 
-    private async Task<ServerListLoadResult> SyncServerListAsync(bool saveFailureAttempt)
+    private async Task<ServerListLoadResult> SyncServerListAsync()
     {
-        DateTime syncAttemptTime = DateTime.Now;
+        DateTime successfulSyncTime = DateTime.Now;
         try
         {
             string apiJson = await GetServerStatusApiJsonAsync();
@@ -82,14 +82,14 @@ public sealed partial class AppDataStore
 
             if (groups.Count == 0)
             {
-                return HandleServerListSyncFailure(syncAttemptTime, saveFailureAttempt);
+                return CreateServerListSyncFailureResult();
             }
 
             ServerListCache nextServerList = new()
             {
                 SourceUrl = ServerStatusApiUrl,
-                LastUpdated = syncAttemptTime,
-                LastSyncAttempt = syncAttemptTime,
+                LastUpdated = successfulSyncTime,
+                LastSuccessfulSyncAt = successfulSyncTime,
                 Groups = groups
             };
             SaveServerList(nextServerList);
@@ -98,7 +98,7 @@ public sealed partial class AppDataStore
         }
         catch
         {
-            return HandleServerListSyncFailure(syncAttemptTime, saveFailureAttempt);
+            return CreateServerListSyncFailureResult();
         }
     }
 
@@ -136,24 +136,9 @@ public sealed partial class AppDataStore
         WriteJson(ServersFilePath, serverList);
     }
 
-    private ServerListLoadResult HandleServerListSyncFailure(DateTime syncAttemptTime, bool saveFailureAttempt)
+    private ServerListLoadResult CreateServerListSyncFailureResult()
     {
         bool cacheAvailable = HasValidServerListCache();
-        if (saveFailureAttempt && cacheAvailable)
-        {
-            ServerListCache nextServerList = CloneServerList(ServerList);
-            nextServerList.LastSyncAttempt = syncAttemptTime;
-            try
-            {
-                SaveServerList(nextServerList);
-                ServerList = nextServerList;
-            }
-            catch (AppDataStoreException ex)
-            {
-                AppLogger.Warning(AppLogCategory.IO, "保存服务器列表同步尝试时间失败", ex);
-            }
-        }
-
         return new ServerListLoadResult(false, false, CacheAvailable: cacheAvailable);
     }
 
@@ -164,9 +149,9 @@ public sealed partial class AppDataStore
 
     private bool ShouldSyncServerList()
     {
-        DateTime lastServerSyncCheck = ServerList.LastUpdated > ServerList.LastSyncAttempt
+        DateTime lastServerSyncCheck = ServerList.LastUpdated > ServerList.LastSuccessfulSyncAt
             ? ServerList.LastUpdated
-            : ServerList.LastSyncAttempt;
+            : ServerList.LastSuccessfulSyncAt;
         return lastServerSyncCheck == DateTime.MinValue ||
             DateTime.Now - lastServerSyncCheck >= ServerListAutoSyncInterval;
     }

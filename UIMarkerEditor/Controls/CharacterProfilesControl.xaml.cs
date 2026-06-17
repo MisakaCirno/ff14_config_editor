@@ -74,9 +74,9 @@ public partial class CharacterProfilesControl : UserControl
     {
         if (appDataStore == null) return;
 
-        DateTime lastServerSyncCheck = appDataStore.ServerList.LastUpdated > appDataStore.ServerList.LastSyncAttempt
+        DateTime lastServerSyncCheck = appDataStore.ServerList.LastUpdated > appDataStore.ServerList.LastSuccessfulSyncAt
             ? appDataStore.ServerList.LastUpdated
-            : appDataStore.ServerList.LastSyncAttempt;
+            : appDataStore.ServerList.LastSuccessfulSyncAt;
         if (DateTime.Now - lastServerSyncCheck < TimeSpan.FromDays(7)) return;
 
         if (await appDataStore.TrySyncServerListAsync())

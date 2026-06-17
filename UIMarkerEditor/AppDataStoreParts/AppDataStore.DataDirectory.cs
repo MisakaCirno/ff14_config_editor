@@ -198,7 +198,7 @@ public sealed partial class AppDataStore
         {
             SourceUrl = serverList.SourceUrl,
             LastUpdated = serverList.LastUpdated,
-            LastSyncAttempt = serverList.LastSyncAttempt,
+            LastSuccessfulSyncAt = serverList.LastSuccessfulSyncAt,
             Groups = []
         };
 

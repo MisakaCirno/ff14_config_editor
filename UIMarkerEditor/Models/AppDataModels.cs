@@ -24,7 +24,7 @@ public sealed class MapDataCache
 {
     public string Version { get; set; } = string.Empty;
     public DateTime LastUpdated { get; set; } = DateTime.Now;
-    public DateTime LastSyncAttempt { get; set; } = DateTime.MinValue;
+    public DateTime LastSuccessfulSyncAt { get; set; } = DateTime.MinValue;
     public Dictionary<string, string> Instances { get; set; } = [];
 }
 
@@ -45,6 +45,7 @@ public sealed class AppSettings
     public bool UseWayMarkImageLabels { get; set; } = true;
     public StartupWayMarkAction StartupWayMarkAction { get; set; } = StartupWayMarkAction.None;
     public DateTime LastMapDataManualRefreshAttempt { get; set; } = DateTime.MinValue;
+    public DateTime LastServerListManualRefreshAttempt { get; set; } = DateTime.MinValue;
     public WindowLayoutSettings WindowLayout { get; set; } = new();
     public List<string> RecentFiles { get; set; } = [];
 }
@@ -88,7 +89,7 @@ public sealed class ServerListCache
 {
     public string SourceUrl { get; set; } = string.Empty;
     public DateTime LastUpdated { get; set; } = DateTime.Now;
-    public DateTime LastSyncAttempt { get; set; } = DateTime.MinValue;
+    public DateTime LastSuccessfulSyncAt { get; set; } = DateTime.MinValue;
     public List<ServerGroup> Groups { get; set; } = [];
 
     public static ServerListCache CreateBuiltin()
@@ -97,7 +98,7 @@ public sealed class ServerListCache
         {
             SourceUrl = "内置服务器列表",
             LastUpdated = DateTime.MinValue,
-            LastSyncAttempt = DateTime.MinValue,
+            LastSuccessfulSyncAt = DateTime.MinValue,
             Groups =
             [
                 new ServerGroup

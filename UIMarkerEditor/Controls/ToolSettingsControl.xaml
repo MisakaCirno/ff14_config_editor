@@ -349,7 +349,7 @@
 
                                 <TextBlock Grid.Row="1"
                                            Grid.Column="2"
-                                           Text="上次检查更新时间"
+                                           Text="上次成功检查时间"
                                            Style="{StaticResource SettingsDataSyncLabelStyle}"/>
                                 <TextBox x:Name="MapDataCheckedAt_TextBox"
                                          Grid.Row="1"
@@ -422,7 +422,7 @@
 
                                 <TextBlock Grid.Row="1"
                                            Grid.Column="2"
-                                           Text="上次检查更新时间"
+                                           Text="上次成功检查时间"
                                            Style="{StaticResource SettingsDataSyncLabelStyle}"/>
                                 <TextBox x:Name="ServerListCheckedAt_TextBox"
                                          Grid.Row="1"

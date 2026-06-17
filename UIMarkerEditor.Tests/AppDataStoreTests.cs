@@ -137,13 +137,15 @@ public sealed class AppDataStoreTests : IDisposable
         store.SaveSettings(new AppSettings
         {
             UseWayMarkImageLabels = false,
-            StartupWayMarkAction = StartupWayMarkAction.LoadMostRecentFile
+            StartupWayMarkAction = StartupWayMarkAction.LoadMostRecentFile,
+            LastServerListManualRefreshAttempt = new DateTime(2026, 6, 18, 8, 30, 0)
         });
 
         AppDataStore reloadedStore = CreateStore();
         reloadedStore.Initialize();
         Assert.False(reloadedStore.Settings.UseWayMarkImageLabels);
         Assert.Equal(StartupWayMarkAction.LoadMostRecentFile, reloadedStore.Settings.StartupWayMarkAction);
+        Assert.Equal(new DateTime(2026, 6, 18, 8, 30, 0), reloadedStore.Settings.LastServerListManualRefreshAttempt);
     }
 
     [Fact]
@@ -288,7 +290,7 @@ public sealed class AppDataStoreTests : IDisposable
         {
             SourceUrl = "测试缓存",
             LastUpdated = DateTime.Now,
-            LastSyncAttempt = DateTime.MinValue,
+            LastSuccessfulSyncAt = DateTime.MinValue,
             Groups =
             [
                 new ServerGroup
@@ -334,9 +336,9 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal("20260614", cache.Version);
         Assert.Equal("测试副本", cache.Instances["123"]);
         Assert.True(cache.LastUpdated > DateTime.MinValue);
-        Assert.True(cache.LastSyncAttempt > DateTime.MinValue);
+        Assert.True(cache.LastSuccessfulSyncAt > DateTime.MinValue);
         Assert.True(store.MapDataLastUpdated > DateTime.MinValue);
-        Assert.True(store.MapDataLastSyncAttempt > DateTime.MinValue);
+        Assert.True(store.MapDataLastSuccessfulSyncAt > DateTime.MinValue);
         Assert.False(File.Exists(Path.Combine(store.DataDirectory, "instance.json")));
         Assert.False(File.Exists(Path.Combine(store.DataDirectory, "mapdata.version")));
     }
@@ -344,7 +346,8 @@ public sealed class AppDataStoreTests : IDisposable
     [Fact]
     public async Task EnsureMapDataAvailableAsync_WhenNetworkFailsAndCacheExists_UsesCache()
     {
-        WriteMapDataCache(456, "缓存副本", "cache-version");
+        DateTime successfulSyncAt = new(2026, 6, 18, 9, 0, 0);
+        WriteMapDataCache(456, "缓存副本", "cache-version", successfulSyncAt);
         FakeAppDataNetworkClient networkClient = new();
         networkClient.AddException(MapDataVersionUrl, new InvalidOperationException("模拟网络失败"));
         AppDataStore store = CreateStore(networkClient);
@@ -358,6 +361,11 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.True(result.CacheAvailable);
         Assert.Equal("cache-version", result.Version);
         Assert.Equal("缓存副本", MapData.GetName(456));
+        Assert.Equal(successfulSyncAt, store.MapDataLastSuccessfulSyncAt);
+
+        string savedCacheText = File.ReadAllText(store.MapDataCacheFilePath);
+        MapDataCache savedCache = JsonSerializer.Deserialize<MapDataCache>(savedCacheText)!;
+        Assert.Equal(successfulSyncAt, savedCache.LastSuccessfulSyncAt);
     }
 
     [Fact]
@@ -380,8 +388,8 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.DoesNotContain(networkClient.Requests, request => request.Url == MapDataInstanceUrl);
         string savedCacheText = File.ReadAllText(store.MapDataCacheFilePath);
         MapDataCache savedCache = JsonSerializer.Deserialize<MapDataCache>(savedCacheText)!;
-        Assert.True(savedCache.LastSyncAttempt > DateTime.MinValue);
-        Assert.True(store.MapDataLastSyncAttempt > DateTime.MinValue);
+        Assert.True(savedCache.LastSuccessfulSyncAt > DateTime.MinValue);
+        Assert.True(store.MapDataLastSuccessfulSyncAt > DateTime.MinValue);
     }
 
     [Fact]
@@ -399,6 +407,25 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(result.UsedCache);
         Assert.False(result.CacheAvailable);
         Assert.False(MapData.HasData);
+        Assert.Equal(DateTime.MinValue, store.MapDataLastSuccessfulSyncAt);
+    }
+
+    [Fact]
+    public async Task ForceRefreshMapDataAsync_WhenInstanceJsonHasNoMaps_DoesNotRecordSuccessfulSyncTime()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddResponse(MapDataVersionUrl, "build_version=empty-instance");
+        networkClient.AddResponse(MapDataInstanceUrl, "{}");
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+
+        MapDataLoadResult result = await store.ForceRefreshMapDataAsync();
+
+        Assert.False(result.Success);
+        Assert.False(result.Updated);
+        Assert.False(result.UsedCache);
+        Assert.False(result.CacheAvailable);
+        Assert.Equal(DateTime.MinValue, store.MapDataLastSuccessfulSyncAt);
     }
 
     [Fact]
@@ -417,6 +444,7 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(result.UsedCache);
         Assert.False(result.CacheAvailable);
         Assert.False(MapData.HasData);
+        Assert.Equal(DateTime.MinValue, store.MapDataLastSuccessfulSyncAt);
     }
 
     [Fact]
@@ -449,6 +477,7 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.True(result.CacheAvailable);
         Assert.Single(store.ServerList.Groups);
         Assert.Equal("测试大区", store.ServerList.Groups[0].DataCenter);
+        Assert.True(store.ServerList.LastSuccessfulSyncAt > DateTime.MinValue);
         Assert.Contains("测试服务器", File.ReadAllText(store.ServersFilePath));
         Assert.Contains(networkClient.Requests, request =>
             request.Url == ServerStatusApiUrl &&
@@ -481,7 +510,7 @@ public sealed class AppDataStoreTests : IDisposable
         {
             SourceUrl = "测试缓存",
             LastUpdated = DateTime.Now.AddDays(-8),
-            LastSyncAttempt = originalAttempt,
+            LastSuccessfulSyncAt = originalAttempt,
             Groups =
             [
                 new ServerGroup
@@ -502,12 +531,12 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(result.Updated);
         Assert.True(result.UsedCache);
         Assert.True(result.CacheAvailable);
-        Assert.True(store.ServerList.LastSyncAttempt > originalAttempt);
+        Assert.Equal(originalAttempt, store.ServerList.LastSuccessfulSyncAt);
         Assert.Equal("缓存大区", store.ServerList.Groups[0].DataCenter);
 
         string savedCacheText = File.ReadAllText(store.ServersFilePath);
         ServerListCache savedCache = JsonSerializer.Deserialize<ServerListCache>(savedCacheText)!;
-        Assert.True(savedCache.LastSyncAttempt > originalAttempt);
+        Assert.Equal(originalAttempt, savedCache.LastSuccessfulSyncAt);
         Assert.Contains(savedCache.Groups, group => group.Worlds.Contains("缓存服务器"));
     }
 
@@ -528,14 +557,14 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task TrySyncServerListAsync_WhenNetworkFailsAndCacheExists_ReturnsFalseAndRecordsAttempt()
+    public async Task TrySyncServerListAsync_WhenNetworkFailsAndCacheExists_ReturnsFalseAndKeepsSuccessfulSyncTime()
     {
         DateTime originalAttempt = DateTime.MinValue;
         WriteServerCache(new ServerListCache
         {
             SourceUrl = "测试缓存",
             LastUpdated = DateTime.Now,
-            LastSyncAttempt = originalAttempt,
+            LastSuccessfulSyncAt = originalAttempt,
             Groups =
             [
                 new ServerGroup
@@ -553,7 +582,7 @@ public sealed class AppDataStoreTests : IDisposable
         bool result = await store.TrySyncServerListAsync();
 
         Assert.False(result);
-        Assert.True(store.ServerList.LastSyncAttempt > originalAttempt);
+        Assert.Equal(originalAttempt, store.ServerList.LastSuccessfulSyncAt);
         Assert.Equal("缓存大区", store.ServerList.Groups[0].DataCenter);
     }
 
@@ -564,7 +593,7 @@ public sealed class AppDataStoreTests : IDisposable
         {
             SourceUrl = "测试缓存",
             LastUpdated = DateTime.Now,
-            LastSyncAttempt = DateTime.MinValue,
+            LastSuccessfulSyncAt = DateTime.MinValue,
             Groups =
             [
                 new ServerGroup
@@ -612,7 +641,11 @@ public sealed class AppDataStoreTests : IDisposable
         return new AppDataStore(testDirectory, networkClient);
     }
 
-    private void WriteMapDataCache(ushort mapId, string mapName, string version)
+    private void WriteMapDataCache(
+        ushort mapId,
+        string mapName,
+        string version,
+        DateTime? lastSuccessfulSyncAt = null)
     {
         string dataDirectory = Path.Combine(testDirectory, "Data");
         Directory.CreateDirectory(dataDirectory);
@@ -620,6 +653,7 @@ public sealed class AppDataStoreTests : IDisposable
         {
             Version = version,
             LastUpdated = DateTime.Now,
+            LastSuccessfulSyncAt = lastSuccessfulSyncAt ?? DateTime.MinValue,
             Instances = new Dictionary<string, string>
             {
                 [mapId.ToString()] = mapName

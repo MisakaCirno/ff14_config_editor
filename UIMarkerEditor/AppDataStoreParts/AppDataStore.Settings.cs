@@ -71,6 +71,7 @@ public sealed partial class AppDataStore
             UseWayMarkImageLabels = settings.UseWayMarkImageLabels,
             StartupWayMarkAction = settings.StartupWayMarkAction,
             LastMapDataManualRefreshAttempt = settings.LastMapDataManualRefreshAttempt,
+            LastServerListManualRefreshAttempt = settings.LastServerListManualRefreshAttempt,
             WindowLayout = CloneWindowLayout(settings.WindowLayout),
             RecentFiles = settings.RecentFiles == null ? [] : [.. settings.RecentFiles]
         };

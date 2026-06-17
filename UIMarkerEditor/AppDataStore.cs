@@ -55,7 +55,7 @@ public sealed partial class AppDataStore
     public ServerListCache ServerList { get; private set; } = new();
     public string MapDataVersion { get; private set; } = string.Empty;
     public DateTime MapDataLastUpdated { get; private set; } = DateTime.MinValue;
-    public DateTime MapDataLastSyncAttempt { get; private set; } = DateTime.MinValue;
+    public DateTime MapDataLastSuccessfulSyncAt { get; private set; } = DateTime.MinValue;
     public string MapDataVersionSourceUrl => MapDataVersionUrl;
     public string MapDataContentSourceUrl => MapDataInstanceUrl;
 
