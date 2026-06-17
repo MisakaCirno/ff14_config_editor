@@ -84,14 +84,19 @@ public sealed partial class AppDataStore
     {
         if (!TryReadMapDataCache(out MapDataCache cache) || !ApplyMapDataCache(cache))
         {
-            MapData.Clear();
-            MapDataVersion = string.Empty;
-            MapDataLastUpdated = DateTime.MinValue;
-            MapDataLastSuccessfulSyncAt = DateTime.MinValue;
+            ClearMapDataCacheState();
             return false;
         }
 
         return true;
+    }
+
+    private void ClearMapDataCacheState()
+    {
+        MapData.Clear();
+        MapDataVersion = string.Empty;
+        MapDataLastUpdated = DateTime.MinValue;
+        MapDataLastSuccessfulSyncAt = DateTime.MinValue;
     }
 
     private bool ApplyMapDataCache(MapDataCache cache)

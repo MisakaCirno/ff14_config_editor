@@ -166,9 +166,12 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
-    public void ChangeDataDirectory_WhenBootstrapWriteFails_RestoresPreviousState()
+    public async Task ChangeDataDirectory_WhenBootstrapWriteFails_RestoresPreviousState()
     {
-        AppDataStore store = CreateStore();
+        DateTime mapSuccessfulSyncAt = new(2026, 6, 18, 10, 0, 0);
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddException(MapDataVersionUrl, new InvalidOperationException("模拟网络失败"));
+        AppDataStore store = CreateStore(networkClient);
         store.Initialize();
         store.SaveSettings(new AppSettings
         {
@@ -178,6 +181,11 @@ public sealed class AppDataStoreTests : IDisposable
         CharacterProfile profile = store.GetOrCreateCharacter("abc");
         profile.CharacterName = "旧角色";
         store.SaveCharacters();
+        WriteMapDataCache(908, "旧地图", "old-map-version", mapSuccessfulSyncAt);
+        MapDataLoadResult mapDataResult = await store.EnsureMapDataAvailableAsync();
+        Assert.True(mapDataResult.Success);
+        Assert.Equal("旧地图", MapData.GetName(908));
+
         string oldDataDirectory = store.DataDirectory;
         string oldSettingsFilePath = store.SettingsFilePath;
         string targetDirectory = Path.Combine(testDirectory, "NewData");
@@ -196,7 +204,52 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.EndsWith("old.dat", store.Settings.RecentFiles[0]);
         Assert.Contains(store.Characters, character =>
             character.UserID == "ABC" && character.CharacterName == "旧角色");
+        Assert.Equal("old-map-version", store.MapDataVersion);
+        Assert.Equal(mapSuccessfulSyncAt, store.MapDataLastSuccessfulSyncAt);
+        Assert.Equal("旧地图", MapData.GetName(908));
         Assert.DoesNotContain(store.ConsumeDataLoadWarnings(), warning => warning.Contains("工具设置无法读取"));
+    }
+
+    [Fact]
+    public void ChangeDataDirectory_WhenMigratingData_LoadsMigratedMapCache()
+    {
+        DateTime mapSuccessfulSyncAt = new(2026, 6, 18, 10, 20, 0);
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        WriteMapDataCache(901, "迁移地图", "migrated-map-version", mapSuccessfulSyncAt);
+        string targetDirectory = Path.Combine(testDirectory, "MigratedData");
+
+        store.ChangeDataDirectory(targetDirectory, migrateExistingData: true);
+
+        Assert.Equal(Path.GetFullPath(targetDirectory), store.DataDirectory);
+        Assert.True(File.Exists(Path.Combine(targetDirectory, "mapdata.json")));
+        Assert.Equal("migrated-map-version", store.MapDataVersion);
+        Assert.Equal(mapSuccessfulSyncAt, store.MapDataLastSuccessfulSyncAt);
+        Assert.Equal("迁移地图", MapData.GetName(901));
+    }
+
+    [Fact]
+    public async Task ChangeDataDirectory_WhenNotMigratingData_ClearsMapCacheState()
+    {
+        DateTime mapSuccessfulSyncAt = new(2026, 6, 18, 10, 40, 0);
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddException(MapDataVersionUrl, new InvalidOperationException("模拟网络失败"));
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+        WriteMapDataCache(902, "旧目录地图", "old-directory-map-version", mapSuccessfulSyncAt);
+        MapDataLoadResult mapDataResult = await store.EnsureMapDataAvailableAsync();
+        Assert.True(mapDataResult.Success);
+        Assert.Equal("旧目录地图", MapData.GetName(902));
+
+        string targetDirectory = Path.Combine(testDirectory, "EmptyData");
+        store.ChangeDataDirectory(targetDirectory, migrateExistingData: false);
+
+        Assert.Equal(Path.GetFullPath(targetDirectory), store.DataDirectory);
+        Assert.Equal(string.Empty, store.MapDataVersion);
+        Assert.Equal(DateTime.MinValue, store.MapDataLastUpdated);
+        Assert.Equal(DateTime.MinValue, store.MapDataLastSuccessfulSyncAt);
+        Assert.False(MapData.HasData);
+        Assert.False(File.Exists(Path.Combine(targetDirectory, "mapdata.json")));
     }
 
     [Fact]

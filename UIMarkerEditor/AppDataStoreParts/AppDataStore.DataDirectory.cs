@@ -41,12 +41,14 @@ public sealed partial class AppDataStore
                 Settings = new AppSettings();
                 Characters.Clear();
                 ServerList = new ServerListCache();
+                ClearMapDataCacheState();
             }
 
             EnsureDataDirectory();
             LoadSettings();
             LoadCharacters();
             LoadServerList();
+            LoadMapDataCache();
             SaveBootstrap(allowOverwriteInvalid: true);
             ConfigureLogger();
         }
@@ -135,6 +137,10 @@ public sealed partial class AppDataStore
             CloneSettings(Settings),
             CloneCharacterProfiles(Characters),
             CloneServerList(ServerList),
+            MapDataVersion,
+            MapDataLastUpdated,
+            MapDataLastSuccessfulSyncAt,
+            CreateMapNamesSnapshot(),
             bootstrapFileInvalid,
             settingsFileInvalid,
             charactersFileInvalid,
@@ -154,6 +160,18 @@ public sealed partial class AppDataStore
         }
 
         ServerList = CloneServerList(snapshot.ServerList);
+        MapDataVersion = snapshot.MapDataVersion;
+        MapDataLastUpdated = snapshot.MapDataLastUpdated;
+        MapDataLastSuccessfulSyncAt = snapshot.MapDataLastSuccessfulSyncAt;
+        if (snapshot.MapNames.Count > 0)
+        {
+            MapData.ApplyMapNames(snapshot.MapNames);
+        }
+        else
+        {
+            MapData.Clear();
+        }
+
         bootstrapFileInvalid = snapshot.BootstrapFileInvalid;
         settingsFileInvalid = snapshot.SettingsFileInvalid;
         charactersFileInvalid = snapshot.CharactersFileInvalid;
@@ -217,11 +235,21 @@ public sealed partial class AppDataStore
         return result;
     }
 
+    private static Dictionary<ushort, string> CreateMapNamesSnapshot()
+    {
+        return MapData.GetKnownMapIds()
+            .ToDictionary(mapId => mapId, MapData.GetName);
+    }
+
     private sealed record AppDataStateSnapshot(
         string DataDirectory,
         AppSettings Settings,
         List<CharacterProfile> Characters,
         ServerListCache ServerList,
+        string MapDataVersion,
+        DateTime MapDataLastUpdated,
+        DateTime MapDataLastSuccessfulSyncAt,
+        Dictionary<ushort, string> MapNames,
         bool BootstrapFileInvalid,
         bool SettingsFileInvalid,
         bool CharactersFileInvalid,
