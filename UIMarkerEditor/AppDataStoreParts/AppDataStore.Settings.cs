@@ -53,6 +53,10 @@ public sealed partial class AppDataStore
     {
         settings.WindowLayout ??= new WindowLayoutSettings();
         settings.RecentFiles ??= [];
+        if (!Enum.IsDefined(settings.StartupWayMarkAction))
+        {
+            settings.StartupWayMarkAction = StartupWayMarkAction.None;
+        }
     }
 
     private static AppSettings CloneSettings(AppSettings settings)
@@ -64,6 +68,8 @@ public sealed partial class AppDataStore
             LimitBackupCount = settings.LimitBackupCount,
             LimitBackupDays = settings.LimitBackupDays,
             AutoBackupBeforeSave = settings.AutoBackupBeforeSave,
+            UseWayMarkImageLabels = settings.UseWayMarkImageLabels,
+            StartupWayMarkAction = settings.StartupWayMarkAction,
             LastMapDataManualRefreshAttempt = settings.LastMapDataManualRefreshAttempt,
             WindowLayout = CloneWindowLayout(settings.WindowLayout),
             RecentFiles = settings.RecentFiles == null ? [] : [.. settings.RecentFiles]

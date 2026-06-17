@@ -27,6 +27,7 @@ public sealed partial class AppDataStore
 
     private async Task<MapDataLoadResult> LoadMapDataAsync(bool forceRefresh, bool allowCacheFallback)
     {
+        DateTime syncAttemptTime = DateTime.Now;
         try
         {
             string remoteVersionContent = await networkClient.GetStringAsync(MapDataVersionUrl, MapDataRequestTimeout);
@@ -36,6 +37,7 @@ public sealed partial class AppDataStore
                 TryReadMapDataCache(out MapDataCache cachedMapData) &&
                 string.Equals(remoteVersion, cachedMapData.Version, StringComparison.OrdinalIgnoreCase))
             {
+                TryUpdateMapDataSyncAttempt(cachedMapData, syncAttemptTime);
                 if (!ApplyMapDataCache(cachedMapData))
                 {
                     return new MapDataLoadResult(false, false, remoteVersion);
@@ -53,13 +55,15 @@ public sealed partial class AppDataStore
                     : new MapDataLoadResult(false, false, remoteVersion);
             }
 
-            WriteMapDataCache(CreateMapDataCache(remoteVersion, mapNames));
-            MapData.ApplyMapNames(mapNames);
-            MapDataVersion = remoteVersion;
+            MapDataCache cache = CreateMapDataCache(remoteVersion, mapNames);
+            cache.LastSyncAttempt = syncAttemptTime;
+            WriteMapDataCache(cache);
+            ApplyMapDataCache(cache);
             return new MapDataLoadResult(true, true, remoteVersion, CacheAvailable: true);
         }
         catch
         {
+            TryRecordMapDataSyncAttempt(syncAttemptTime);
             return allowCacheFallback
                 ? LoadMapDataCacheFallback(string.Empty)
                 : new MapDataLoadResult(false, false, string.Empty);
@@ -82,6 +86,8 @@ public sealed partial class AppDataStore
         if (!TryReadMapDataCache(out MapDataCache cache) || !ApplyMapDataCache(cache))
         {
             MapData.Clear();
+            MapDataVersion = string.Empty;
+            MapDataLastUpdated = DateTime.MinValue;
             return false;
         }
 
@@ -98,6 +104,8 @@ public sealed partial class AppDataStore
 
         MapData.ApplyMapNames(mapNames);
         MapDataVersion = cache.Version;
+        MapDataLastUpdated = cache.LastUpdated;
+        MapDataLastSyncAttempt = cache.LastSyncAttempt;
         return true;
     }
 
@@ -126,6 +134,27 @@ public sealed partial class AppDataStore
     private void WriteMapDataCache(MapDataCache cache)
     {
         WriteJson(MapDataCacheFilePath, cache);
+    }
+
+    private void TryRecordMapDataSyncAttempt(DateTime syncAttemptTime)
+    {
+        if (!TryReadMapDataCache(out MapDataCache cache)) return;
+
+        TryUpdateMapDataSyncAttempt(cache, syncAttemptTime);
+    }
+
+    private void TryUpdateMapDataSyncAttempt(MapDataCache cache, DateTime syncAttemptTime)
+    {
+        cache.LastSyncAttempt = syncAttemptTime;
+        MapDataLastSyncAttempt = syncAttemptTime;
+        try
+        {
+            WriteMapDataCache(cache);
+        }
+        catch (AppDataStoreException ex)
+        {
+            AppLogger.Warning(AppLogCategory.IO, "保存地图数据同步尝试时间失败", ex);
+        }
     }
 
     private static MapDataCache CreateMapDataCache(string version, IReadOnlyDictionary<ushort, string> mapNames)

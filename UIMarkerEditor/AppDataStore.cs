@@ -54,6 +54,10 @@ public sealed partial class AppDataStore
     public ObservableCollection<CharacterProfile> Characters { get; } = [];
     public ServerListCache ServerList { get; private set; } = new();
     public string MapDataVersion { get; private set; } = string.Empty;
+    public DateTime MapDataLastUpdated { get; private set; } = DateTime.MinValue;
+    public DateTime MapDataLastSyncAttempt { get; private set; } = DateTime.MinValue;
+    public string MapDataVersionSourceUrl => MapDataVersionUrl;
+    public string MapDataContentSourceUrl => MapDataInstanceUrl;
 
     public AppDataStore()
         : this(Path.Combine(

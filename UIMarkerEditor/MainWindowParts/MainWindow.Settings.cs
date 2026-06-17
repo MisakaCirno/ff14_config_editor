@@ -5,6 +5,12 @@ namespace UIMarkerEditor
         private void LoadSettingsIntoUi()
         {
             ToolSettings_Control.LoadSettingsIntoUi();
+            RefreshAppearanceSettings();
+        }
+
+        private void RefreshAppearanceSettings()
+        {
+            WayMarkEditor_Control.ApplyAppearanceSettings(appDataStore.Settings);
         }
 
         private void RefreshServerListConsumers()

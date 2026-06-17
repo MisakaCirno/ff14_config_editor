@@ -11,10 +11,12 @@ public partial class ToolSettingsControl : UserControl
     private static readonly TimeSpan ManualRefreshCooldown = TimeSpan.FromMinutes(5);
     private AppDataStore? appDataStore;
     private Window? ownerWindow;
+    private bool isUpdatingNavigationFromScroll;
     private Action refreshBackupList = () => { };
     private Action refreshCharacterList = () => { };
     private Action refreshServerListConsumers = () => { };
     private Action refreshMapDataConsumers = () => { };
+    private Action refreshAppearance = () => { };
 
     public ToolSettingsControl()
     {
@@ -28,7 +30,8 @@ public partial class ToolSettingsControl : UserControl
         Action refreshBackupList,
         Action refreshCharacterList,
         Action refreshServerListConsumers,
-        Action refreshMapDataConsumers)
+        Action refreshMapDataConsumers,
+        Action refreshAppearance)
     {
         this.appDataStore = appDataStore;
         this.ownerWindow = ownerWindow;
@@ -36,6 +39,7 @@ public partial class ToolSettingsControl : UserControl
         this.refreshCharacterList = refreshCharacterList;
         this.refreshServerListConsumers = refreshServerListConsumers;
         this.refreshMapDataConsumers = refreshMapDataConsumers;
+        this.refreshAppearance = refreshAppearance;
     }
 
     public void LoadSettingsIntoUi()
@@ -46,8 +50,10 @@ public partial class ToolSettingsControl : UserControl
         MaxBackupCount_TextBox.Text = appDataStore.Settings.MaxBackupCount.ToString(CultureInfo.InvariantCulture);
         MaxBackupDays_TextBox.Text = appDataStore.Settings.MaxBackupDays.ToString(CultureInfo.InvariantCulture);
         AutoBackup_CheckBox.IsChecked = appDataStore.Settings.AutoBackupBeforeSave;
+        WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.UseWayMarkImageLabels;
         LimitBackupCount_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCount;
         LimitBackupDays_CheckBox.IsChecked = appDataStore.Settings.LimitBackupDays;
+        ApplyStartupWayMarkActionToUi(appDataStore.Settings.StartupWayMarkAction);
         UpdateBackupLimitInputState();
         RefreshStatusFields();
     }
@@ -59,10 +65,48 @@ public partial class ToolSettingsControl : UserControl
 
     private void SettingsNavigation_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (isUpdatingNavigationFromScroll) return;
         if (SettingsNavigation_ListBox.SelectedItem is not ListBoxItem { Tag: string sectionName }) return;
         if (FindName(sectionName) is not FrameworkElement section) return;
 
         section.BringIntoView();
+    }
+
+    private void SettingsContent_ScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        UpdateNavigationSelectionFromScroll();
+    }
+
+    private void UpdateNavigationSelectionFromScroll()
+    {
+        ListBoxItem? activeItem = null;
+        foreach (ListBoxItem item in SettingsNavigation_ListBox.Items.OfType<ListBoxItem>())
+        {
+            if (item.Tag is not string sectionName) continue;
+            if (FindName(sectionName) is not FrameworkElement section) continue;
+
+            double sectionTop = section.TransformToAncestor(SettingsContent_ScrollViewer).Transform(new Point(0, 0)).Y;
+            if (sectionTop <= 24)
+            {
+                activeItem = item;
+                continue;
+            }
+
+            activeItem ??= item;
+            break;
+        }
+
+        if (activeItem == null || ReferenceEquals(activeItem, SettingsNavigation_ListBox.SelectedItem)) return;
+
+        isUpdatingNavigationFromScroll = true;
+        try
+        {
+            SettingsNavigation_ListBox.SelectedItem = activeItem;
+        }
+        finally
+        {
+            isUpdatingNavigationFromScroll = false;
+        }
     }
 
     private void BrowseDataDirectory_Button_Click(object sender, RoutedEventArgs e)
@@ -86,16 +130,22 @@ public partial class ToolSettingsControl : UserControl
         UpdateBackupLimitInputState();
     }
 
+    private void AutoBackup_CheckChanged(object sender, RoutedEventArgs e)
+    {
+        UpdateBackupLimitInputState();
+    }
+
     private void SaveSettings_Button_Click(object sender, RoutedEventArgs e)
     {
         if (appDataStore == null) return;
 
+        bool autoBackupBeforeSave = AutoBackup_CheckBox.IsChecked == true;
         bool limitBackupCount = LimitBackupCount_CheckBox.IsChecked == true;
         bool limitBackupDays = LimitBackupDays_CheckBox.IsChecked == true;
         int maxBackupCount = appDataStore.Settings.MaxBackupCount;
         int maxBackupDays = appDataStore.Settings.MaxBackupDays;
-        if ((limitBackupCount && !TryReadPositiveInt(MaxBackupCount_TextBox, "最多保留备份数量", out maxBackupCount)) ||
-            (limitBackupDays && !TryReadPositiveInt(MaxBackupDays_TextBox, "最多保留天数", out maxBackupDays)))
+        if ((autoBackupBeforeSave && limitBackupCount && !TryReadPositiveInt(MaxBackupCount_TextBox, "最多保留备份数量", out maxBackupCount)) ||
+            (autoBackupBeforeSave && limitBackupDays && !TryReadPositiveInt(MaxBackupDays_TextBox, "最多保留天数", out maxBackupDays)))
         {
             return;
         }
@@ -122,13 +172,20 @@ public partial class ToolSettingsControl : UserControl
                 MaxBackupDays = limitBackupDays ? maxBackupDays : appDataStore.Settings.MaxBackupDays,
                 LimitBackupCount = limitBackupCount,
                 LimitBackupDays = limitBackupDays,
-                AutoBackupBeforeSave = AutoBackup_CheckBox.IsChecked == true,
+                AutoBackupBeforeSave = autoBackupBeforeSave,
+                UseWayMarkImageLabels = WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected,
+                StartupWayMarkAction = ReadStartupWayMarkActionFromUi(),
                 LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
                 WindowLayout = appDataStore.Settings.WindowLayout,
                 RecentFiles = [.. appDataStore.Settings.RecentFiles]
             });
-            appDataStore.CleanupBackups();
+            if (autoBackupBeforeSave)
+            {
+                appDataStore.CleanupBackups();
+            }
+
             LoadSettingsIntoUi();
+            refreshAppearance();
             refreshBackupList();
             refreshCharacterList();
             MessageBox.Show(ownerWindow, "设置已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -175,13 +232,13 @@ public partial class ToolSettingsControl : UserControl
             RefreshStatusFields();
             if (!result.Success)
             {
-                MessageBox.Show(ownerWindow, "地图数据刷新失败，请稍后再试。", "在线数据缓存", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(ownerWindow, "地图数据检查更新失败，请稍后再试。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             refreshMapDataConsumers();
             string versionText = string.IsNullOrWhiteSpace(result.Version) ? "未知版本" : result.Version;
-            MessageBox.Show(ownerWindow, $"地图数据已刷新到：{versionText}", "在线数据缓存", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(ownerWindow, $"地图数据已更新到：{versionText}", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         finally
         {
@@ -206,12 +263,12 @@ public partial class ToolSettingsControl : UserControl
             RefreshStatusFields();
             if (!success)
             {
-                MessageBox.Show(ownerWindow, "服务器列表刷新失败，已继续使用本地缓存。", "在线数据缓存", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(ownerWindow, "服务器列表检查更新失败，已继续使用本地缓存。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             refreshServerListConsumers();
-            MessageBox.Show(ownerWindow, "服务器列表已刷新。", "在线数据缓存", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(ownerWindow, "服务器列表已更新。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         finally
         {
@@ -227,12 +284,20 @@ public partial class ToolSettingsControl : UserControl
         MapDataVersion_TextBox.Text = string.IsNullOrWhiteSpace(appDataStore.MapDataVersion)
             ? "未加载"
             : appDataStore.MapDataVersion;
+        int mapCount = MapData.GetKnownMapIds().Count;
+        MapDataSummary_TextBox.Text = mapCount > 0
+            ? $"{mapCount} 张地图"
+            : "未加载";
+        MapDataUpdatedAt_TextBox.Text = FormatOptionalTime(appDataStore.MapDataLastUpdated, "尚未更新");
+        MapDataCheckedAt_TextBox.Text = FormatOptionalTime(appDataStore.MapDataLastSyncAttempt, "尚未检查");
+        MapDataVersionSource_TextBox.Text = appDataStore.MapDataVersionSourceUrl;
+        MapDataContentSource_TextBox.Text = appDataStore.MapDataContentSourceUrl;
 
         int dataCenterCount = appDataStore.ServerList.Groups.Count;
         int worldCount = appDataStore.ServerList.Groups.Sum(group => group.Worlds.Count);
         ServerListStatus_TextBox.Text = $"{dataCenterCount} 个大区，{worldCount} 个服务器";
-        MapDataRefreshStatus_TextBox.Text = FormatOptionalTime(appDataStore.Settings.LastMapDataManualRefreshAttempt);
-        ServerListSyncAttempt_TextBox.Text = FormatOptionalTime(appDataStore.ServerList.LastSyncAttempt);
+        ServerListUpdatedAt_TextBox.Text = FormatOptionalTime(appDataStore.ServerList.LastUpdated, "尚未更新");
+        ServerListCheckedAt_TextBox.Text = FormatOptionalTime(appDataStore.ServerList.LastSyncAttempt, "尚未检查");
         ServerListSource_TextBox.Text = string.IsNullOrWhiteSpace(appDataStore.ServerList.SourceUrl)
             ? "未知"
             : appDataStore.ServerList.SourceUrl;
@@ -240,8 +305,11 @@ public partial class ToolSettingsControl : UserControl
 
     private void UpdateBackupLimitInputState()
     {
-        MaxBackupCount_TextBox.IsEnabled = LimitBackupCount_CheckBox.IsChecked == true;
-        MaxBackupDays_TextBox.IsEnabled = LimitBackupDays_CheckBox.IsChecked == true;
+        bool autoBackupEnabled = AutoBackup_CheckBox.IsChecked == true;
+        LimitBackupCount_CheckBox.IsEnabled = autoBackupEnabled;
+        LimitBackupDays_CheckBox.IsEnabled = autoBackupEnabled;
+        MaxBackupCount_TextBox.IsEnabled = autoBackupEnabled && LimitBackupCount_CheckBox.IsChecked == true;
+        MaxBackupDays_TextBox.IsEnabled = autoBackupEnabled && LimitBackupDays_CheckBox.IsChecked == true;
     }
 
     private bool CanStartManualRefresh(DateTime lastAttempt, out TimeSpan waitTime)
@@ -261,8 +329,8 @@ public partial class ToolSettingsControl : UserControl
         int waitSeconds = Math.Max(1, (int)Math.Ceiling(waitTime.TotalSeconds));
         MessageBox.Show(
             ownerWindow,
-            $"{dataName}刚刚刷新过，请约 {waitSeconds} 秒后再试。",
-            "刷新过于频繁",
+            $"{dataName}刚刚检查过，请约 {waitSeconds} 秒后再试。",
+            "检查过于频繁",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
     }
@@ -284,6 +352,8 @@ public partial class ToolSettingsControl : UserControl
             LimitBackupCount = appDataStore.Settings.LimitBackupCount,
             LimitBackupDays = appDataStore.Settings.LimitBackupDays,
             AutoBackupBeforeSave = appDataStore.Settings.AutoBackupBeforeSave,
+            UseWayMarkImageLabels = appDataStore.Settings.UseWayMarkImageLabels,
+            StartupWayMarkAction = appDataStore.Settings.StartupWayMarkAction,
             LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
             WindowLayout = appDataStore.Settings.WindowLayout,
             RecentFiles = [.. appDataStore.Settings.RecentFiles]
@@ -295,18 +365,40 @@ public partial class ToolSettingsControl : UserControl
         }
         catch (InvalidOperationException ex)
         {
-            MessageBox.Show(ownerWindow, $"无法保存刷新记录：{ex.Message}", "设置保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(ownerWindow, $"无法保存检查记录：{ex.Message}", "设置保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         catch (AppDataStoreException ex)
         {
-            MessageBox.Show(ownerWindow, $"无法保存刷新记录：{ex.Message}", "设置保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(ownerWindow, $"无法保存检查记录：{ex.Message}", "设置保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
-    private static string FormatOptionalTime(DateTime value)
+    private void ApplyStartupWayMarkActionToUi(StartupWayMarkAction action)
+    {
+        StartupLoadRecentWayMarkFile_RadioButton.IsChecked = action == StartupWayMarkAction.LoadMostRecentFile;
+        StartupOpenWayMarkFileDialog_RadioButton.IsChecked = action == StartupWayMarkAction.OpenFileDialog;
+        StartupDoNothing_RadioButton.IsChecked = action == StartupWayMarkAction.None;
+    }
+
+    private StartupWayMarkAction ReadStartupWayMarkActionFromUi()
+    {
+        if (StartupLoadRecentWayMarkFile_RadioButton.IsChecked == true)
+        {
+            return StartupWayMarkAction.LoadMostRecentFile;
+        }
+
+        if (StartupOpenWayMarkFileDialog_RadioButton.IsChecked == true)
+        {
+            return StartupWayMarkAction.OpenFileDialog;
+        }
+
+        return StartupWayMarkAction.None;
+    }
+
+    private static string FormatOptionalTime(DateTime value, string emptyText)
     {
         return value == DateTime.MinValue
-            ? "尚未刷新"
+            ? emptyText
             : value.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture);
     }
 

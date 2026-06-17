@@ -86,11 +86,13 @@ namespace UIMarkerEditor
                 RefreshBackupList,
                 RefreshCharacterList,
                 RefreshServerListConsumers,
-                RefreshMapDataConsumers);
+                RefreshMapDataConsumers,
+                RefreshAppearanceSettings);
             LoadSettingsIntoUi();
             RefreshBackupList();
             RefreshCharacterList();
             ShowDataLoadWarnings();
+            ScheduleStartupWayMarkAction();
         }
 
     }

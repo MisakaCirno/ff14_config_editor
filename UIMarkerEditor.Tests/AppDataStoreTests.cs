@@ -129,6 +129,24 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public void SaveSettings_PersistsStartupAndAppearanceSettings()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+
+        store.SaveSettings(new AppSettings
+        {
+            UseWayMarkImageLabels = false,
+            StartupWayMarkAction = StartupWayMarkAction.LoadMostRecentFile
+        });
+
+        AppDataStore reloadedStore = CreateStore();
+        reloadedStore.Initialize();
+        Assert.False(reloadedStore.Settings.UseWayMarkImageLabels);
+        Assert.Equal(StartupWayMarkAction.LoadMostRecentFile, reloadedStore.Settings.StartupWayMarkAction);
+    }
+
+    [Fact]
     public void AddRecentFile_WhenSettingsSaveFails_DoesNotMutateRecentFilesInMemory()
     {
         AppDataStore store = CreateStore();
@@ -315,6 +333,10 @@ public sealed class AppDataStoreTests : IDisposable
         MapDataCache cache = JsonSerializer.Deserialize<MapDataCache>(cacheText)!;
         Assert.Equal("20260614", cache.Version);
         Assert.Equal("测试副本", cache.Instances["123"]);
+        Assert.True(cache.LastUpdated > DateTime.MinValue);
+        Assert.True(cache.LastSyncAttempt > DateTime.MinValue);
+        Assert.True(store.MapDataLastUpdated > DateTime.MinValue);
+        Assert.True(store.MapDataLastSyncAttempt > DateTime.MinValue);
         Assert.False(File.Exists(Path.Combine(store.DataDirectory, "instance.json")));
         Assert.False(File.Exists(Path.Combine(store.DataDirectory, "mapdata.version")));
     }
@@ -356,6 +378,10 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal("same-version", result.Version);
         Assert.Equal("同版本缓存副本", MapData.GetName(567));
         Assert.DoesNotContain(networkClient.Requests, request => request.Url == MapDataInstanceUrl);
+        string savedCacheText = File.ReadAllText(store.MapDataCacheFilePath);
+        MapDataCache savedCache = JsonSerializer.Deserialize<MapDataCache>(savedCacheText)!;
+        Assert.True(savedCache.LastSyncAttempt > DateTime.MinValue);
+        Assert.True(store.MapDataLastSyncAttempt > DateTime.MinValue);
     }
 
     [Fact]

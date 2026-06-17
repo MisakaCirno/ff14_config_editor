@@ -1,0 +1,79 @@
+<UserControl x:Class="UIMarkerEditor.Controls.SegmentedSwitchControl"
+             x:Name="Root"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="SegmentedSwitchOptionStyle" TargetType="{x:Type RadioButton}">
+            <Setter Property="MinWidth" Value="86"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderStrongBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type RadioButton}">
+                        <Border x:Name="OptionBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"
+                                Padding="{TemplateBinding Padding}">
+                            <TextBlock Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}"
+                                       HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                       VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="OptionBorder" Property="Background" Value="{StaticResource AppControlHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource AppPrimaryButtonForegroundBrush}"/>
+                                <Setter TargetName="OptionBorder" Property="Background" Value="{StaticResource AppPrimaryButtonBrush}"/>
+                                <Setter TargetName="OptionBorder" Property="BorderBrush" Value="{StaticResource AppPrimaryButtonBorderBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.56"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SegmentedSwitchLeftOptionStyle" TargetType="{x:Type RadioButton}" BasedOn="{StaticResource SegmentedSwitchOptionStyle}">
+            <Setter Property="Tag">
+                <Setter.Value>
+                    <CornerRadius>5,0,0,5</CornerRadius>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SegmentedSwitchRightOptionStyle" TargetType="{x:Type RadioButton}" BasedOn="{StaticResource SegmentedSwitchOptionStyle}">
+            <Setter Property="Margin" Value="-1,0,0,0"/>
+            <Setter Property="Tag">
+                <Setter.Value>
+                    <CornerRadius>0,5,5,0</CornerRadius>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <StackPanel Orientation="Horizontal"
+                VerticalAlignment="Center">
+        <RadioButton x:Name="LeftOption_RadioButton"
+                     Content="{Binding LeftContent, ElementName=Root}"
+                     ToolTip="{Binding LeftToolTip, ElementName=Root}"
+                     Style="{StaticResource SegmentedSwitchLeftOptionStyle}"
+                     Checked="LeftOption_RadioButton_Checked"/>
+        <RadioButton x:Name="RightOption_RadioButton"
+                     Content="{Binding RightContent, ElementName=Root}"
+                     ToolTip="{Binding RightToolTip, ElementName=Root}"
+                     Style="{StaticResource SegmentedSwitchRightOptionStyle}"
+                     Checked="RightOption_RadioButton_Checked"/>
+    </StackPanel>
+</UserControl>

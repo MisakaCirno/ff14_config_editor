@@ -24,7 +24,15 @@ public sealed class MapDataCache
 {
     public string Version { get; set; } = string.Empty;
     public DateTime LastUpdated { get; set; } = DateTime.Now;
+    public DateTime LastSyncAttempt { get; set; } = DateTime.MinValue;
     public Dictionary<string, string> Instances { get; set; } = [];
+}
+
+public enum StartupWayMarkAction
+{
+    None = 0,
+    LoadMostRecentFile = 1,
+    OpenFileDialog = 2
 }
 
 public sealed class AppSettings
@@ -34,6 +42,8 @@ public sealed class AppSettings
     public bool LimitBackupCount { get; set; } = true;
     public bool LimitBackupDays { get; set; } = true;
     public bool AutoBackupBeforeSave { get; set; } = true;
+    public bool UseWayMarkImageLabels { get; set; } = true;
+    public StartupWayMarkAction StartupWayMarkAction { get; set; } = StartupWayMarkAction.None;
     public DateTime LastMapDataManualRefreshAttempt { get; set; } = DateTime.MinValue;
     public WindowLayoutSettings WindowLayout { get; set; } = new();
     public List<string> RecentFiles { get; set; } = [];
