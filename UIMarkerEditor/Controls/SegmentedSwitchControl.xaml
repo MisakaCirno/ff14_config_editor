@@ -66,12 +66,12 @@
     <StackPanel Orientation="Horizontal"
                 VerticalAlignment="Center">
         <RadioButton x:Name="LeftOption_RadioButton"
-                     Content="{Binding LeftContent, ElementName=Root}"
+                     Content="{Binding LeftText, ElementName=Root}"
                      ToolTip="{Binding LeftToolTip, ElementName=Root}"
                      Style="{StaticResource SegmentedSwitchLeftOptionStyle}"
                      Checked="LeftOption_RadioButton_Checked"/>
         <RadioButton x:Name="RightOption_RadioButton"
-                     Content="{Binding RightContent, ElementName=Root}"
+                     Content="{Binding RightText, ElementName=Root}"
                      ToolTip="{Binding RightToolTip, ElementName=Root}"
                      Style="{StaticResource SegmentedSwitchRightOptionStyle}"
                      Checked="RightOption_RadioButton_Checked"/>

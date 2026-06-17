@@ -26,22 +26,22 @@ public partial class SegmentedSwitchControl : UserControl
         set => SetValue(IsLeftSelectedProperty, value);
     }
 
-    public static readonly DependencyProperty LeftContentProperty =
-        DependencyProperty.Register(nameof(LeftContent), typeof(object), typeof(SegmentedSwitchControl));
+    public static readonly DependencyProperty LeftTextProperty =
+        DependencyProperty.Register(nameof(LeftText), typeof(string), typeof(SegmentedSwitchControl), new PropertyMetadata(string.Empty));
 
-    public object? LeftContent
+    public string LeftText
     {
-        get => GetValue(LeftContentProperty);
-        set => SetValue(LeftContentProperty, value);
+        get => (string)GetValue(LeftTextProperty);
+        set => SetValue(LeftTextProperty, value);
     }
 
-    public static readonly DependencyProperty RightContentProperty =
-        DependencyProperty.Register(nameof(RightContent), typeof(object), typeof(SegmentedSwitchControl));
+    public static readonly DependencyProperty RightTextProperty =
+        DependencyProperty.Register(nameof(RightText), typeof(string), typeof(SegmentedSwitchControl), new PropertyMetadata(string.Empty));
 
-    public object? RightContent
+    public string RightText
     {
-        get => GetValue(RightContentProperty);
-        set => SetValue(RightContentProperty, value);
+        get => (string)GetValue(RightTextProperty);
+        set => SetValue(RightTextProperty, value);
     }
 
     public static readonly DependencyProperty LeftToolTipProperty =

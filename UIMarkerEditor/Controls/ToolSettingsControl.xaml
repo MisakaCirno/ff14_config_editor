@@ -214,9 +214,9 @@
                                            Style="{StaticResource SettingsFormLabelStyle}"/>
                                 <controls:SegmentedSwitchControl x:Name="WayMarkLabelDisplayMode_SegmentedSwitch"
                                                                  Grid.Column="1"
-                                                                 LeftContent="图片"
+                                                                 LeftText="图片"
                                                                  LeftToolTip="使用项目图片显示 A/B/C/D 和 1/2/3/4 标点"
-                                                                 RightContent="文字"
+                                                                 RightText="文字"
                                                                  RightToolTip="使用 A点、B点 等文字显示"
                                                                  VerticalAlignment="Center"/>
                             </Grid>
