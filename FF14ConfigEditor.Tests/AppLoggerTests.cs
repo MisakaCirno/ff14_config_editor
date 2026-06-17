@@ -64,15 +64,40 @@ public sealed class AppLoggerTests : IDisposable
         }
 
         string logDirectory = Path.GetDirectoryName(logPath)!;
-        string[] logFiles = Directory.GetFiles(logDirectory, "app.log*")
+        string[] logFiles = Directory.GetFiles(logDirectory, "app*")
             .Select(Path.GetFileName)
             .Order(StringComparer.OrdinalIgnoreCase)
             .ToArray()!;
 
         Assert.True(logFiles.Length <= 3);
         Assert.Contains("app.log", logFiles);
-        Assert.Contains("app.log.1", logFiles);
-        Assert.Contains("app.log.2", logFiles);
+        string[] archiveFiles = logFiles.Where(fileName => fileName != "app.log").ToArray();
+        Assert.All(archiveFiles, fileName => Assert.Matches(@"^app_\d{8}_\d{6}_\d{3}(?:_\d+)?\.log$", fileName));
+        Assert.Equal(2, archiveFiles.Length);
+        Assert.DoesNotContain("app.log.1", logFiles);
         Assert.DoesNotContain("app.log.3", logFiles);
+    }
+
+    [Fact]
+    public void ClearLogFiles_WhenFilesExist_DeletesCurrentAndArchivedLogs()
+    {
+        string logPath = Path.Combine(testDirectory, "logs", "app.log");
+        AppLogger.LogToConsole = false;
+        AppLogger.LogToDebug = false;
+        AppLogger.MinimumLevel = AppLogLevel.Debug;
+        AppLogger.ConfigureFileLogging(logPath, maxFileBytes: 240, maxFileCount: 3);
+
+        for (int index = 0; index < 4; index++)
+        {
+            AppLogger.Info(AppLogCategory.General, $"测试清理 {index} {new string('X', 100)}");
+        }
+
+        string logDirectory = Path.GetDirectoryName(logPath)!;
+        Assert.NotEmpty(Directory.GetFiles(logDirectory, "app*"));
+
+        int deletedCount = AppLogger.ClearLogFiles();
+
+        Assert.True(deletedCount > 0);
+        Assert.Empty(Directory.GetFiles(logDirectory, "app*"));
     }
 }

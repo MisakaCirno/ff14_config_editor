@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
+using FF14ConfigEditor;
 using UIMarkerEditor;
 
 namespace UIMarkerEditor.Tests;
@@ -18,6 +19,8 @@ public sealed class AppDataStoreTests : IDisposable
 
     public void Dispose()
     {
+        AppLogger.SetLogFilePath(null);
+
         if (Directory.Exists(testDirectory))
         {
             Directory.Delete(testDirectory, recursive: true);
@@ -126,6 +129,34 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal(37, store.Settings.MaxBackupCount);
         Assert.Single(store.Settings.RecentFiles);
         Assert.EndsWith("old.dat", store.Settings.RecentFiles[0]);
+    }
+
+    [Fact]
+    public void SaveSettings_WhenNumericSettingsInvalid_ThrowsAndDoesNotReplaceCurrentSettings()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        store.SaveSettings(new AppSettings
+        {
+            MaxBackupCount = 37,
+            MaxBackupDays = 120,
+            MaxLogFileSizeMb = 13,
+            MaxLogFileCount = 4
+        });
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            store.SaveSettings(new AppSettings
+            {
+                MaxBackupCount = 37,
+                MaxBackupDays = 120,
+                MaxLogFileSizeMb = AppSettings.MaxLogFileSizeMbLimit + 1,
+                MaxLogFileCount = 4
+            }));
+
+        Assert.Contains("日志文件大小", exception.Message);
+        Assert.Equal(13, store.Settings.MaxLogFileSizeMb);
+        Assert.Equal(4, store.Settings.MaxLogFileCount);
+        Assert.Equal(37, store.Settings.MaxBackupCount);
     }
 
     [Fact]

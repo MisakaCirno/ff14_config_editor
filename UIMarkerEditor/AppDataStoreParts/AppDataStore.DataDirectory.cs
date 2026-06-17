@@ -96,6 +96,19 @@ public sealed partial class AppDataStore
             $"日志文件路径：{LogFilePath}，单个文件上限：{Settings.MaxLogFileSizeMb} MB，最多保留：{Settings.MaxLogFileCount} 个文件");
     }
 
+    public int ClearLogFiles()
+    {
+        try
+        {
+            return AppLogger.ClearLogFiles();
+        }
+        catch (Exception ex)
+        {
+            string logDirectory = Path.GetDirectoryName(LogFilePath) ?? LogFilePath;
+            throw new AppDataStoreException("清理日志文件", logDirectory, ex);
+        }
+    }
+
     private void SaveBootstrap(bool allowOverwriteInvalid = false)
     {
         if (bootstrapFileInvalid && !allowOverwriteInvalid)

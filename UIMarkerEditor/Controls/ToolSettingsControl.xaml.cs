@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace UIMarkerEditor.Controls;
 
@@ -47,6 +48,7 @@ public partial class ToolSettingsControl : UserControl
         if (appDataStore == null) return;
 
         DataDirectory_TextBox.Text = appDataStore.DataDirectory;
+        CurrentLogFileName_TextBox.Text = Path.GetFileName(appDataStore.LogFilePath);
         MaxBackupCount_TextBox.Text = appDataStore.Settings.MaxBackupCount.ToString(CultureInfo.InvariantCulture);
         MaxBackupDays_TextBox.Text = appDataStore.Settings.MaxBackupDays.ToString(CultureInfo.InvariantCulture);
         MaxLogFileSizeMb_TextBox.Text = appDataStore.Settings.MaxLogFileSizeMb.ToString(CultureInfo.InvariantCulture);
@@ -148,8 +150,18 @@ public partial class ToolSettingsControl : UserControl
         int maxBackupDays = appDataStore.Settings.MaxBackupDays;
         int maxLogFileSizeMb = appDataStore.Settings.MaxLogFileSizeMb;
         int maxLogFileCount = appDataStore.Settings.MaxLogFileCount;
-        if ((autoBackupBeforeSave && limitBackupCount && !TryReadPositiveInt(MaxBackupCount_TextBox, "最多保留备份数量", out maxBackupCount)) ||
-            (autoBackupBeforeSave && limitBackupDays && !TryReadPositiveInt(MaxBackupDays_TextBox, "最多保留天数", out maxBackupDays)) ||
+        if (!TryReadIntInRange(
+                MaxBackupCount_TextBox,
+                "最多保留备份数量",
+                AppSettings.MinBackupCount,
+                AppSettings.MaxBackupCountLimit,
+                out maxBackupCount) ||
+            !TryReadIntInRange(
+                MaxBackupDays_TextBox,
+                "最多保留备份天数",
+                AppSettings.MinBackupDays,
+                AppSettings.MaxBackupDaysLimit,
+                out maxBackupDays) ||
             !TryReadIntInRange(
                 MaxLogFileSizeMb_TextBox,
                 "日志文件大小",
@@ -184,8 +196,8 @@ public partial class ToolSettingsControl : UserControl
 
             appDataStore.SaveSettings(new AppSettings
             {
-                MaxBackupCount = limitBackupCount ? maxBackupCount : appDataStore.Settings.MaxBackupCount,
-                MaxBackupDays = limitBackupDays ? maxBackupDays : appDataStore.Settings.MaxBackupDays,
+                MaxBackupCount = maxBackupCount,
+                MaxBackupDays = maxBackupDays,
                 LimitBackupCount = limitBackupCount,
                 LimitBackupDays = limitBackupDays,
                 AutoBackupBeforeSave = autoBackupBeforeSave,
@@ -227,6 +239,30 @@ public partial class ToolSettingsControl : UserControl
         if (appDataStore == null) return;
 
         OpenDirectory(appDataStore.DataDirectory);
+    }
+
+    private void ClearLogs_Button_Click(object sender, RoutedEventArgs e)
+    {
+        if (appDataStore == null) return;
+
+        MessageBoxResult result = MessageBox.Show(
+            ownerWindow,
+            "确定要清理当前日志和历史日志吗？",
+            "清理日志",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (result != MessageBoxResult.Yes) return;
+
+        try
+        {
+            int deletedCount = appDataStore.ClearLogFiles();
+            CurrentLogFileName_TextBox.Text = Path.GetFileName(appDataStore.LogFilePath);
+            MessageBox.Show(ownerWindow, $"已清理 {deletedCount} 个日志文件。", "清理日志", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ownerWindow, $"清理日志失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private async void RefreshMapData_Button_Click(object sender, RoutedEventArgs e)
@@ -430,22 +466,6 @@ public partial class ToolSettingsControl : UserControl
             : value.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture);
     }
 
-    private void TryReadPositiveIntFailed(string displayName)
-    {
-        MessageBox.Show(ownerWindow, $"{displayName} 必须是大于 0 的整数。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-    }
-
-    private bool TryReadPositiveInt(TextBox textBox, string displayName, out int value)
-    {
-        if (int.TryParse(textBox.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value) && value > 0)
-        {
-            return true;
-        }
-
-        TryReadPositiveIntFailed(displayName);
-        return false;
-    }
-
     private bool TryReadIntInRange(TextBox textBox, string displayName, int min, int max, out int value)
     {
         if (int.TryParse(textBox.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value) &&
@@ -457,6 +477,26 @@ public partial class ToolSettingsControl : UserControl
 
         MessageBox.Show(ownerWindow, $"{displayName} 必须是 {min} 到 {max} 之间的整数。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
         return false;
+    }
+
+    private void IntegerTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        e.Handled = !IsDigitsOnly(e.Text);
+    }
+
+    private void IntegerTextBox_Pasting(object sender, DataObjectPastingEventArgs e)
+    {
+        if (!e.DataObject.GetDataPresent(DataFormats.Text) ||
+            e.DataObject.GetData(DataFormats.Text) is not string text ||
+            !IsDigitsOnly(text))
+        {
+            e.CancelCommand();
+        }
+    }
+
+    private static bool IsDigitsOnly(string text)
+    {
+        return !string.IsNullOrEmpty(text) && text.All(character => character is >= '0' and <= '9');
     }
 
     private static void OpenDirectory(string directory)

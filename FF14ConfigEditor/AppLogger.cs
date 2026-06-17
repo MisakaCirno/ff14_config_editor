@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace FF14ConfigEditor
 {
@@ -75,6 +76,19 @@ namespace FF14ConfigEditor
                 LogFilePath = string.IsNullOrWhiteSpace(filePath) ? null : filePath;
                 maxLogFileBytes = Math.Max(1, maxFileBytes);
                 maxLogFileCount = Math.Max(1, maxFileCount);
+            }
+        }
+
+        public static int ClearLogFiles()
+        {
+            lock (SyncRoot)
+            {
+                if (string.IsNullOrWhiteSpace(LogFilePath))
+                {
+                    return 0;
+                }
+
+                return DeleteManagedLogFiles(LogFilePath);
             }
         }
 
@@ -184,38 +198,109 @@ namespace FF14ConfigEditor
             if (archiveCount <= 0)
             {
                 File.Delete(logFilePath);
+                PruneArchiveLogFiles(logFilePath, archiveCount);
                 return;
             }
 
-            string lastArchivePath = GetArchiveLogFilePath(logFilePath, archiveCount);
-            if (File.Exists(lastArchivePath))
+            DateTimeOffset rotatedAt = DateTimeOffset.Now;
+            string archivePath = CreateTimestampedArchiveLogFilePath(logFilePath, rotatedAt);
+            File.Move(logFilePath, archivePath);
+            File.SetLastWriteTimeUtc(archivePath, rotatedAt.UtcDateTime);
+            PruneArchiveLogFiles(logFilePath, archiveCount);
+        }
+
+        private static string CreateTimestampedArchiveLogFilePath(string logFilePath, DateTimeOffset rotatedAt)
+        {
+            string? directory = Path.GetDirectoryName(logFilePath);
+            string fileName = Path.GetFileNameWithoutExtension(logFilePath);
+            string extension = Path.GetExtension(logFilePath);
+            string timestamp = rotatedAt.ToString("yyyyMMdd_HHmmss_fff");
+            string archiveFileName = $"{fileName}_{timestamp}{extension}";
+            string archivePath = string.IsNullOrWhiteSpace(directory)
+                ? archiveFileName
+                : Path.Combine(directory, archiveFileName);
+            if (!File.Exists(archivePath))
             {
-                File.Delete(lastArchivePath);
+                return archivePath;
             }
 
-            for (int index = archiveCount - 1; index >= 1; index--)
+            for (int index = 2; ; index++)
             {
-                string sourcePath = GetArchiveLogFilePath(logFilePath, index);
-                if (!File.Exists(sourcePath))
+                string retryFileName = $"{fileName}_{timestamp}_{index}{extension}";
+                string retryPath = string.IsNullOrWhiteSpace(directory)
+                    ? retryFileName
+                    : Path.Combine(directory, retryFileName);
+                if (!File.Exists(retryPath))
+                {
+                    return retryPath;
+                }
+            }
+        }
+
+        private static void PruneArchiveLogFiles(string logFilePath, int archiveCount)
+        {
+            foreach (FileInfo archiveFile in EnumerateArchiveLogFiles(logFilePath)
+                         .Select(path => new FileInfo(path))
+                         .OrderByDescending(file => file.LastWriteTimeUtc)
+                         .ThenByDescending(file => file.Name, StringComparer.OrdinalIgnoreCase)
+                         .Skip(Math.Max(0, archiveCount)))
+            {
+                archiveFile.Delete();
+            }
+        }
+
+        private static int DeleteManagedLogFiles(string logFilePath)
+        {
+            int deletedCount = 0;
+            foreach (string filePath in EnumerateManagedLogFiles(logFilePath))
+            {
+                if (!File.Exists(filePath))
                 {
                     continue;
                 }
 
-                string targetPath = GetArchiveLogFilePath(logFilePath, index + 1);
-                if (File.Exists(targetPath))
-                {
-                    File.Delete(targetPath);
-                }
-
-                File.Move(sourcePath, targetPath);
+                File.Delete(filePath);
+                deletedCount++;
             }
 
-            File.Move(logFilePath, GetArchiveLogFilePath(logFilePath, 1));
+            return deletedCount;
         }
 
-        private static string GetArchiveLogFilePath(string logFilePath, int index)
+        private static IEnumerable<string> EnumerateManagedLogFiles(string logFilePath)
         {
-            return $"{logFilePath}.{index}";
+            if (File.Exists(logFilePath))
+            {
+                yield return logFilePath;
+            }
+
+            foreach (string archivePath in EnumerateArchiveLogFiles(logFilePath))
+            {
+                yield return archivePath;
+            }
+        }
+
+        private static IEnumerable<string> EnumerateArchiveLogFiles(string logFilePath)
+        {
+            string? directory = Path.GetDirectoryName(logFilePath);
+            if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+            {
+                yield break;
+            }
+
+            string fileName = Path.GetFileNameWithoutExtension(logFilePath);
+            string extension = Path.GetExtension(logFilePath);
+            string timestampedPattern = $"^{Regex.Escape(fileName)}_\\d{{8}}_\\d{{6}}_\\d{{3}}(?:_\\d+)?{Regex.Escape(extension)}$";
+            string legacyPattern = $"^{Regex.Escape(Path.GetFileName(logFilePath))}\\.\\d+$";
+
+            foreach (string archivePath in Directory.EnumerateFiles(directory))
+            {
+                string archiveFileName = Path.GetFileName(archivePath);
+                if (Regex.IsMatch(archiveFileName, timestampedPattern, RegexOptions.CultureInvariant) ||
+                    Regex.IsMatch(archiveFileName, legacyPattern, RegexOptions.CultureInvariant))
+                {
+                    yield return archivePath;
+                }
+            }
         }
     }
 }

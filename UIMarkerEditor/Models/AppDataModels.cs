@@ -37,6 +37,12 @@ public enum StartupWayMarkAction
 
 public sealed class AppSettings
 {
+    public const int DefaultMaxBackupCount = 100;
+    public const int DefaultMaxBackupDays = 90;
+    public const int MinBackupCount = 1;
+    public const int MaxBackupCountLimit = 10000;
+    public const int MinBackupDays = 1;
+    public const int MaxBackupDaysLimit = 3650;
     public const int DefaultMaxLogFileSizeMb = 5;
     public const int DefaultMaxLogFileCount = 5;
     public const int MinLogFileSizeMb = 1;
@@ -44,8 +50,8 @@ public sealed class AppSettings
     public const int MinLogFileCount = 1;
     public const int MaxLogFileCountLimit = 20;
 
-    public int MaxBackupCount { get; set; } = 100;
-    public int MaxBackupDays { get; set; } = 90;
+    public int MaxBackupCount { get; set; } = DefaultMaxBackupCount;
+    public int MaxBackupDays { get; set; } = DefaultMaxBackupDays;
     public bool LimitBackupCount { get; set; } = true;
     public bool LimitBackupDays { get; set; } = true;
     public bool AutoBackupBeforeSave { get; set; } = true;

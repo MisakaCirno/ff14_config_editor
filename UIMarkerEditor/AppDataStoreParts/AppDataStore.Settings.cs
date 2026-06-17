@@ -14,7 +14,8 @@ public sealed partial class AppDataStore
         }
 
         AppSettings nextSettings = CloneSettings(settings);
-        NormalizeSettings(nextSettings);
+        NormalizeSettingsReferences(nextSettings);
+        ValidateSettingsForSave(nextSettings);
         EnsureDataDirectory();
         WriteJson(SettingsFilePath, nextSettings);
         Settings = nextSettings;
@@ -47,18 +48,27 @@ public sealed partial class AppDataStore
             }
         }
 
-        NormalizeSettings(Settings);
+        NormalizeSettingsForLoad(Settings);
     }
 
-    private static void NormalizeSettings(AppSettings settings)
+    private static void NormalizeSettingsForLoad(AppSettings settings)
     {
-        settings.WindowLayout ??= new WindowLayoutSettings();
-        settings.RecentFiles ??= [];
+        NormalizeSettingsReferences(settings);
         if (!Enum.IsDefined(settings.StartupWayMarkAction))
         {
             settings.StartupWayMarkAction = StartupWayMarkAction.None;
         }
 
+        settings.MaxBackupCount = NormalizeIntRange(
+            settings.MaxBackupCount,
+            AppSettings.MinBackupCount,
+            AppSettings.MaxBackupCountLimit,
+            AppSettings.DefaultMaxBackupCount);
+        settings.MaxBackupDays = NormalizeIntRange(
+            settings.MaxBackupDays,
+            AppSettings.MinBackupDays,
+            AppSettings.MaxBackupDaysLimit,
+            AppSettings.DefaultMaxBackupDays);
         settings.MaxLogFileSizeMb = NormalizeIntRange(
             settings.MaxLogFileSizeMb,
             AppSettings.MinLogFileSizeMb,
@@ -71,6 +81,12 @@ public sealed partial class AppDataStore
             AppSettings.DefaultMaxLogFileCount);
     }
 
+    private static void NormalizeSettingsReferences(AppSettings settings)
+    {
+        settings.WindowLayout ??= new WindowLayoutSettings();
+        settings.RecentFiles ??= [];
+    }
+
     private static int NormalizeIntRange(int value, int min, int max, int defaultValue)
     {
         if (value < min)
@@ -79,6 +95,26 @@ public sealed partial class AppDataStore
         }
 
         return Math.Min(value, max);
+    }
+
+    private static void ValidateSettingsForSave(AppSettings settings)
+    {
+        ValidateIntRange(settings.MaxBackupCount, "最多保留备份数量", AppSettings.MinBackupCount, AppSettings.MaxBackupCountLimit);
+        ValidateIntRange(settings.MaxBackupDays, "最多保留备份天数", AppSettings.MinBackupDays, AppSettings.MaxBackupDaysLimit);
+        ValidateIntRange(settings.MaxLogFileSizeMb, "日志文件大小", AppSettings.MinLogFileSizeMb, AppSettings.MaxLogFileSizeMbLimit);
+        ValidateIntRange(settings.MaxLogFileCount, "日志文件最多保存数量", AppSettings.MinLogFileCount, AppSettings.MaxLogFileCountLimit);
+        if (!Enum.IsDefined(settings.StartupWayMarkAction))
+        {
+            throw new InvalidOperationException("启动行为设置不是有效选项。");
+        }
+    }
+
+    private static void ValidateIntRange(int value, string displayName, int min, int max)
+    {
+        if (value < min || value > max)
+        {
+            throw new InvalidOperationException($"{displayName} 必须是 {min} 到 {max} 之间的整数。");
+        }
     }
 
     private static AppSettings CloneSettings(AppSettings settings)

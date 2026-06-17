@@ -208,30 +208,54 @@
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="120"/>
-                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Text="单个文件大小"
+                                <TextBlock Text="当前写入"
+                                           Style="{StaticResource SettingsFormLabelStyle}"/>
+                                <TextBox x:Name="CurrentLogFileName_TextBox"
+                                         Grid.Column="1"
+                                         Style="{StaticResource SettingsReadOnlyTextBoxStyle}"/>
+                                <Button Grid.Column="2"
+                                        Content="清理日志"
+                                        Style="{StaticResource DangerButtonStyle}"
+                                        Click="ClearLogs_Button_Click"/>
+
+                                <TextBlock Grid.Row="1"
+                                           Text="单个文件大小"
                                            Style="{StaticResource SettingsFormLabelStyle}"/>
                                 <TextBox x:Name="MaxLogFileSizeMb_TextBox"
-                                         Grid.Column="1"/>
-                                <TextBlock Text="MB 以内"
+                                         Grid.Row="1"
+                                         Grid.Column="1"
+                                         Width="120"
+                                         MaxLength="3"
+                                         HorizontalAlignment="Left"
+                                         PreviewTextInput="IntegerTextBox_PreviewTextInput"
+                                         DataObject.Pasting="IntegerTextBox_Pasting"/>
+                                <TextBlock Grid.Row="1"
                                            Grid.Column="2"
+                                           Text="MB 以内"
                                            Style="{StaticResource SettingsMutedTextStyle}"
                                            Margin="8,4,0,4"/>
 
-                                <TextBlock Grid.Row="1"
+                                <TextBlock Grid.Row="2"
                                            Text="最多保存数量"
                                            Style="{StaticResource SettingsFormLabelStyle}"/>
                                 <TextBox x:Name="MaxLogFileCount_TextBox"
-                                         Grid.Row="1"
-                                         Grid.Column="1"/>
-                                <TextBlock Grid.Row="1"
+                                         Grid.Row="2"
+                                         Grid.Column="1"
+                                         Width="120"
+                                         MaxLength="2"
+                                         HorizontalAlignment="Left"
+                                         PreviewTextInput="IntegerTextBox_PreviewTextInput"
+                                         DataObject.Pasting="IntegerTextBox_Pasting"/>
+                                <TextBlock Grid.Row="2"
                                            Grid.Column="2"
                                            Text="个文件（含当前日志）"
                                            Style="{StaticResource SettingsMutedTextStyle}"
@@ -326,7 +350,10 @@
                                           Checked="BackupLimit_CheckChanged"
                                           Unchecked="BackupLimit_CheckChanged"/>
                                 <TextBox x:Name="MaxBackupCount_TextBox"
-                                         Width="120"/>
+                                         Width="120"
+                                         MaxLength="5"
+                                         PreviewTextInput="IntegerTextBox_PreviewTextInput"
+                                         DataObject.Pasting="IntegerTextBox_Pasting"/>
                                 <TextBlock Text="个以内"
                                            Style="{StaticResource SettingsMutedTextStyle}"
                                            Margin="8,4,0,4"/>
@@ -340,7 +367,10 @@
                                           Checked="BackupLimit_CheckChanged"
                                           Unchecked="BackupLimit_CheckChanged"/>
                                 <TextBox x:Name="MaxBackupDays_TextBox"
-                                         Width="120"/>
+                                         Width="120"
+                                         MaxLength="4"
+                                         PreviewTextInput="IntegerTextBox_PreviewTextInput"
+                                         DataObject.Pasting="IntegerTextBox_Pasting"/>
                                 <TextBlock Text="天以内"
                                            Style="{StaticResource SettingsMutedTextStyle}"
                                            Margin="8,4,0,4"/>
