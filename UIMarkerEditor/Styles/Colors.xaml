@@ -1,0 +1,112 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#FFF7F7F7"/>
+    <SolidColorBrush x:Key="AppSurfaceBrush" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="AppSurfaceAltBrush" Color="#FFFDFDFD"/>
+    <SolidColorBrush x:Key="AppBorderBrush" Color="#FFE2E2E2"/>
+    <SolidColorBrush x:Key="AppBorderStrongBrush" Color="#FFC8C8C8"/>
+    <SolidColorBrush x:Key="AppTextBrush" Color="#FF1F1F1F"/>
+    <SolidColorBrush x:Key="AppMutedTextBrush" Color="#FF666666"/>
+    <SolidColorBrush x:Key="AppAccentBrush" Color="#FF355C73"/>
+    <SolidColorBrush x:Key="AppAccentHoverBrush" Color="#FF466F89"/>
+    <SolidColorBrush x:Key="AppAccentPressedBrush" Color="#FF263646"/>
+    <SolidColorBrush x:Key="AppControlHoverBrush" Color="#FFF2F2F2"/>
+    <SolidColorBrush x:Key="AppControlPressedBrush" Color="#FFE8E8E8"/>
+    <SolidColorBrush x:Key="AppSelectionBrush" Color="#FFC8DDEA"/>
+
+    <SolidColorBrush x:Key="AppPrimaryButtonBrush" Color="#FF0D6EFD"/>
+    <SolidColorBrush x:Key="AppPrimaryButtonForegroundBrush" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="AppPrimaryButtonBorderBrush" Color="#FF0D6EFD"/>
+    <SolidColorBrush x:Key="AppPrimaryButtonHoverBrush" Color="#FF0B5ED7"/>
+    <SolidColorBrush x:Key="AppPrimaryButtonHoverBorderBrush" Color="#FF0A58CA"/>
+    <SolidColorBrush x:Key="AppPrimaryButtonPressedBrush" Color="#FF0A58CA"/>
+    <SolidColorBrush x:Key="AppPrimaryButtonPressedBorderBrush" Color="#FF0A53BE"/>
+
+    <SolidColorBrush x:Key="AppSuccessButtonBrush" Color="#FF198754"/>
+    <SolidColorBrush x:Key="AppSuccessButtonForegroundBrush" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="AppSuccessButtonBorderBrush" Color="#FF198754"/>
+    <SolidColorBrush x:Key="AppSuccessButtonHoverBrush" Color="#FF157347"/>
+    <SolidColorBrush x:Key="AppSuccessButtonHoverBorderBrush" Color="#FF146C43"/>
+    <SolidColorBrush x:Key="AppSuccessButtonPressedBrush" Color="#FF146C43"/>
+    <SolidColorBrush x:Key="AppSuccessButtonPressedBorderBrush" Color="#FF13653F"/>
+
+    <SolidColorBrush x:Key="AppWarningButtonBrush" Color="#FFFFC107"/>
+    <SolidColorBrush x:Key="AppWarningButtonForegroundBrush" Color="#FF000000"/>
+    <SolidColorBrush x:Key="AppWarningButtonBorderBrush" Color="#FFFFC107"/>
+    <SolidColorBrush x:Key="AppWarningButtonHoverBrush" Color="#FFFFCA2C"/>
+    <SolidColorBrush x:Key="AppWarningButtonHoverBorderBrush" Color="#FFFFC720"/>
+    <SolidColorBrush x:Key="AppWarningButtonPressedBrush" Color="#FFFFCD39"/>
+    <SolidColorBrush x:Key="AppWarningButtonPressedBorderBrush" Color="#FFFFC720"/>
+
+    <SolidColorBrush x:Key="AppDangerButtonBrush" Color="#FFDC3545"/>
+    <SolidColorBrush x:Key="AppDangerButtonForegroundBrush" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="AppDangerButtonBorderBrush" Color="#FFDC3545"/>
+    <SolidColorBrush x:Key="AppDangerButtonHoverBrush" Color="#FFBB2D3B"/>
+    <SolidColorBrush x:Key="AppDangerButtonHoverBorderBrush" Color="#FFB02A37"/>
+    <SolidColorBrush x:Key="AppDangerButtonPressedBrush" Color="#FFB02A37"/>
+    <SolidColorBrush x:Key="AppDangerButtonPressedBorderBrush" Color="#FFA52834"/>
+
+    <SolidColorBrush x:Key="AppSecondaryButtonBrush" Color="#FF6C757D"/>
+    <SolidColorBrush x:Key="AppSecondaryButtonForegroundBrush" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="AppSecondaryButtonBorderBrush" Color="#FF6C757D"/>
+    <SolidColorBrush x:Key="AppSecondaryButtonHoverBrush" Color="#FF5C636A"/>
+    <SolidColorBrush x:Key="AppSecondaryButtonHoverBorderBrush" Color="#FF565E64"/>
+    <SolidColorBrush x:Key="AppSecondaryButtonPressedBrush" Color="#FF565E64"/>
+    <SolidColorBrush x:Key="AppSecondaryButtonPressedBorderBrush" Color="#FF51585E"/>
+
+    <SolidColorBrush x:Key="AppInfoButtonBrush" Color="#FF0DCAF0"/>
+    <SolidColorBrush x:Key="AppInfoButtonForegroundBrush" Color="#FF000000"/>
+    <SolidColorBrush x:Key="AppInfoButtonBorderBrush" Color="#FF0DCAF0"/>
+    <SolidColorBrush x:Key="AppInfoButtonHoverBrush" Color="#FF31D2F2"/>
+    <SolidColorBrush x:Key="AppInfoButtonHoverBorderBrush" Color="#FF25CFF2"/>
+    <SolidColorBrush x:Key="AppInfoButtonPressedBrush" Color="#FF3DD5F3"/>
+    <SolidColorBrush x:Key="AppInfoButtonPressedBorderBrush" Color="#FF25CFF2"/>
+
+    <SolidColorBrush x:Key="AppLightButtonBrush" Color="#FFF8F9FA"/>
+    <SolidColorBrush x:Key="AppLightButtonForegroundBrush" Color="#FF000000"/>
+    <SolidColorBrush x:Key="AppLightButtonBorderBrush" Color="#FFF8F9FA"/>
+    <SolidColorBrush x:Key="AppLightButtonHoverBrush" Color="#FFD3D4D5"/>
+    <SolidColorBrush x:Key="AppLightButtonHoverBorderBrush" Color="#FFC6C7C8"/>
+    <SolidColorBrush x:Key="AppLightButtonPressedBrush" Color="#FFC6C7C8"/>
+    <SolidColorBrush x:Key="AppLightButtonPressedBorderBrush" Color="#FFBABBBC"/>
+
+    <SolidColorBrush x:Key="AppDarkButtonBrush" Color="#FF212529"/>
+    <SolidColorBrush x:Key="AppDarkButtonForegroundBrush" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="AppDarkButtonBorderBrush" Color="#FF212529"/>
+    <SolidColorBrush x:Key="AppDarkButtonHoverBrush" Color="#FF1C1F23"/>
+    <SolidColorBrush x:Key="AppDarkButtonHoverBorderBrush" Color="#FF1A1E21"/>
+    <SolidColorBrush x:Key="AppDarkButtonPressedBrush" Color="#FF1A1E21"/>
+    <SolidColorBrush x:Key="AppDarkButtonPressedBorderBrush" Color="#FF191C1F"/>
+
+    <SolidColorBrush x:Key="AppOrangeButtonBrush" Color="#FFFD7E14"/>
+    <SolidColorBrush x:Key="AppOrangeButtonForegroundBrush" Color="#FF000000"/>
+    <SolidColorBrush x:Key="AppOrangeButtonBorderBrush" Color="#FFFD7E14"/>
+    <SolidColorBrush x:Key="AppOrangeButtonHoverBrush" Color="#FFE96F0C"/>
+    <SolidColorBrush x:Key="AppOrangeButtonHoverBorderBrush" Color="#FFD96808"/>
+    <SolidColorBrush x:Key="AppOrangeButtonPressedBrush" Color="#FFD96808"/>
+    <SolidColorBrush x:Key="AppOrangeButtonPressedBorderBrush" Color="#FFC95F05"/>
+
+    <SolidColorBrush x:Key="AppPurpleButtonBrush" Color="#FF6F42C1"/>
+    <SolidColorBrush x:Key="AppPurpleButtonForegroundBrush" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="AppPurpleButtonBorderBrush" Color="#FF6F42C1"/>
+    <SolidColorBrush x:Key="AppPurpleButtonHoverBrush" Color="#FF5E38A4"/>
+    <SolidColorBrush x:Key="AppPurpleButtonHoverBorderBrush" Color="#FF553394"/>
+    <SolidColorBrush x:Key="AppPurpleButtonPressedBrush" Color="#FF553394"/>
+    <SolidColorBrush x:Key="AppPurpleButtonPressedBorderBrush" Color="#FF4C2E85"/>
+
+    <SolidColorBrush x:Key="AppTealButtonBrush" Color="#FF20C997"/>
+    <SolidColorBrush x:Key="AppTealButtonForegroundBrush" Color="#FF000000"/>
+    <SolidColorBrush x:Key="AppTealButtonBorderBrush" Color="#FF20C997"/>
+    <SolidColorBrush x:Key="AppTealButtonHoverBrush" Color="#FF1BAE82"/>
+    <SolidColorBrush x:Key="AppTealButtonHoverBorderBrush" Color="#FF189E76"/>
+    <SolidColorBrush x:Key="AppTealButtonPressedBrush" Color="#FF189E76"/>
+    <SolidColorBrush x:Key="AppTealButtonPressedBorderBrush" Color="#FF158C69"/>
+
+    <SolidColorBrush x:Key="AppPinkButtonBrush" Color="#FFD63384"/>
+    <SolidColorBrush x:Key="AppPinkButtonForegroundBrush" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="AppPinkButtonBorderBrush" Color="#FFD63384"/>
+    <SolidColorBrush x:Key="AppPinkButtonHoverBrush" Color="#FFB52B70"/>
+    <SolidColorBrush x:Key="AppPinkButtonHoverBorderBrush" Color="#FFA82868"/>
+    <SolidColorBrush x:Key="AppPinkButtonPressedBrush" Color="#FFA82868"/>
+    <SolidColorBrush x:Key="AppPinkButtonPressedBorderBrush" Color="#FF99245F"/>
+</ResourceDictionary>

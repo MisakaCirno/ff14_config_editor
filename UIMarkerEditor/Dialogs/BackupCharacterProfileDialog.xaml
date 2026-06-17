@@ -76,6 +76,7 @@
             <Button Content="确定"
                     Width="82"
                     Margin="0,0,8,0"
+                    Style="{StaticResource PrimaryButtonStyle}"
                     IsDefault="True"
                     Click="Ok_Button_Click"/>
             <Button Content="取消"

@@ -55,7 +55,17 @@
                                 Background="{TemplateBinding Background}">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
-                                              RecognizesAccessKey="True"/>
+                                              TextElement.Foreground="{TemplateBinding Foreground}"
+                                              RecognizesAccessKey="True">
+                                <ContentPresenter.Resources>
+                                    <Style TargetType="{x:Type TextBlock}">
+                                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/>
+                                    </Style>
+                                    <Style TargetType="{x:Type AccessText}">
+                                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/>
+                                    </Style>
+                                </ContentPresenter.Resources>
+                            </ContentPresenter>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -80,7 +90,17 @@
                                 Background="{TemplateBinding Background}">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
-                                              RecognizesAccessKey="True"/>
+                                              TextElement.Foreground="{TemplateBinding Foreground}"
+                                              RecognizesAccessKey="True">
+                                <ContentPresenter.Resources>
+                                    <Style TargetType="{x:Type TextBlock}">
+                                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/>
+                                    </Style>
+                                    <Style TargetType="{x:Type AccessText}">
+                                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/>
+                                    </Style>
+                                </ContentPresenter.Resources>
+                            </ContentPresenter>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -252,7 +272,17 @@
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="3">
                             <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
+                                              VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}">
+                                <ContentPresenter.Resources>
+                                    <Style TargetType="{x:Type TextBlock}">
+                                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/>
+                                    </Style>
+                                    <Style TargetType="{x:Type AccessText}">
+                                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/>
+                                    </Style>
+                                </ContentPresenter.Resources>
+                            </ContentPresenter>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -374,7 +404,7 @@
                                 Click="MinimizeWindow_Button_Click">
                             <Path Width="10"
                                   Height="1"
-                                  Data="M 0 0 H 10"
+                                  Data="{StaticResource WindowMinimizeIconGeometry}"
                                   Stretch="Fill"
                                   Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                   StrokeThickness="1"/>
@@ -384,11 +414,13 @@
                                 ToolTip="最大化"
                                 Click="MaximizeRestoreWindow_Button_Click">
                             <Grid Width="10" Height="10">
-                                <Rectangle x:Name="MaximizeIcon_Rectangle"
-                                           Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                           StrokeThickness="1"/>
+                                <Path x:Name="MaximizeIcon_Path"
+                                      Data="{StaticResource WindowMaximizeIconGeometry}"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="1"
+                                      Fill="Transparent"/>
                                 <Path x:Name="RestoreIcon_Path"
-                                      Data="M 3 0 H 10 V 7 M 0 3 H 7 V 10 H 0 Z"
+                                      Data="{StaticResource WindowRestoreIconGeometry}"
                                       Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                       StrokeThickness="1"
                                       Fill="Transparent"
@@ -401,7 +433,7 @@
                                 Click="CloseWindow_Button_Click">
                             <Path Width="10"
                                   Height="10"
-                                  Data="M 0 0 L 10 10 M 10 0 L 0 10"
+                                  Data="{StaticResource WindowCloseIconGeometry}"
                                   Stretch="Fill"
                                   Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                   StrokeThickness="1"/>
@@ -430,9 +462,30 @@
                 </TabItem>
 
                 <TabItem Header="使用帮助">
-                    <Grid>
-                        <RichTextBox x:Name="Help_TextBox" IsReadOnly="True" AcceptsReturn="True" AcceptsTab="True"/>
-                    </Grid>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="18">
+                            <TextBlock Text="按钮样式展示（临时）"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Left"
+                                       Padding="0,0,0,10"/>
+                            <WrapPanel>
+                                <Button Content="默认按钮" Width="120"/>
+                                <Button Content="Primary" Width="120" Style="{StaticResource PrimaryButtonStyle}"/>
+                                <Button Content="Success" Width="120" Style="{StaticResource SuccessButtonStyle}"/>
+                                <Button Content="Warning" Width="120" Style="{StaticResource WarningButtonStyle}"/>
+                                <Button Content="Danger" Width="120" Style="{StaticResource DangerButtonStyle}"/>
+                                <Button Content="Secondary" Width="120" Style="{StaticResource SecondaryButtonStyle}"/>
+                                <Button Content="Info" Width="120" Style="{StaticResource InfoButtonStyle}"/>
+                                <Button Content="Light" Width="120" Style="{StaticResource LightButtonStyle}"/>
+                                <Button Content="Dark" Width="120" Style="{StaticResource DarkButtonStyle}"/>
+                                <Button Content="Orange" Width="120" Style="{StaticResource OrangeButtonStyle}"/>
+                                <Button Content="Purple" Width="120" Style="{StaticResource PurpleButtonStyle}"/>
+                                <Button Content="Teal" Width="120" Style="{StaticResource TealButtonStyle}"/>
+                                <Button Content="Pink" Width="120" Style="{StaticResource PinkButtonStyle}"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
             </TabControl>
 

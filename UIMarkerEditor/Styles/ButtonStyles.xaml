@@ -1,0 +1,262 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="ColoredButtonBaseStyle" TargetType="Button">
+        <Setter Property="Margin" Value="4"/>
+        <Setter Property="Padding" Value="7,3"/>
+        <Setter Property="MinHeight" Value="26"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="ButtonBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          Margin="{TemplateBinding Padding}"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"
+                                          RecognizesAccessKey="True">
+                            <ContentPresenter.Resources>
+                                <Style TargetType="{x:Type TextBlock}">
+                                    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/>
+                                </Style>
+                                <Style TargetType="{x:Type AccessText}">
+                                    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/>
+                                </Style>
+                            </ContentPresenter.Resources>
+                        </ContentPresenter>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.65"/>
+                            <Setter Property="Cursor" Value="Arrow"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource ColoredButtonBaseStyle}">
+        <Setter Property="Background" Value="{DynamicResource AppPrimaryButtonBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppPrimaryButtonForegroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppPrimaryButtonBorderBrush}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppPrimaryButtonHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppPrimaryButtonHoverBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppPrimaryButtonForegroundBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppPrimaryButtonPressedBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppPrimaryButtonPressedBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppPrimaryButtonForegroundBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="SuccessButtonStyle" TargetType="Button" BasedOn="{StaticResource ColoredButtonBaseStyle}">
+        <Setter Property="Background" Value="{DynamicResource AppSuccessButtonBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppSuccessButtonForegroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppSuccessButtonBorderBrush}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppSuccessButtonHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppSuccessButtonHoverBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppSuccessButtonForegroundBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppSuccessButtonPressedBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppSuccessButtonPressedBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppSuccessButtonForegroundBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="WarningButtonStyle" TargetType="Button" BasedOn="{StaticResource ColoredButtonBaseStyle}">
+        <Setter Property="Background" Value="{DynamicResource AppWarningButtonBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppWarningButtonForegroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppWarningButtonBorderBrush}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppWarningButtonHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppWarningButtonHoverBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppWarningButtonForegroundBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppWarningButtonPressedBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppWarningButtonPressedBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppWarningButtonForegroundBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource ColoredButtonBaseStyle}">
+        <Setter Property="Background" Value="{DynamicResource AppDangerButtonBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppDangerButtonForegroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppDangerButtonBorderBrush}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppDangerButtonHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppDangerButtonHoverBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppDangerButtonForegroundBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppDangerButtonPressedBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppDangerButtonPressedBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppDangerButtonForegroundBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource ColoredButtonBaseStyle}">
+        <Setter Property="Background" Value="{DynamicResource AppSecondaryButtonBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppSecondaryButtonForegroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppSecondaryButtonBorderBrush}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppSecondaryButtonHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppSecondaryButtonHoverBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppSecondaryButtonForegroundBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppSecondaryButtonPressedBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppSecondaryButtonPressedBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppSecondaryButtonForegroundBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="InfoButtonStyle" TargetType="Button" BasedOn="{StaticResource ColoredButtonBaseStyle}">
+        <Setter Property="Background" Value="{DynamicResource AppInfoButtonBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppInfoButtonForegroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppInfoButtonBorderBrush}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppInfoButtonHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppInfoButtonHoverBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppInfoButtonForegroundBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppInfoButtonPressedBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppInfoButtonPressedBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppInfoButtonForegroundBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="LightButtonStyle" TargetType="Button" BasedOn="{StaticResource ColoredButtonBaseStyle}">
+        <Setter Property="Background" Value="{DynamicResource AppLightButtonBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppLightButtonForegroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppLightButtonBorderBrush}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppLightButtonHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppLightButtonHoverBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppLightButtonForegroundBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppLightButtonPressedBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppLightButtonPressedBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppLightButtonForegroundBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="DarkButtonStyle" TargetType="Button" BasedOn="{StaticResource ColoredButtonBaseStyle}">
+        <Setter Property="Background" Value="{DynamicResource AppDarkButtonBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppDarkButtonForegroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppDarkButtonBorderBrush}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppDarkButtonHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppDarkButtonHoverBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppDarkButtonForegroundBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppDarkButtonPressedBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppDarkButtonPressedBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppDarkButtonForegroundBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="OrangeButtonStyle" TargetType="Button" BasedOn="{StaticResource ColoredButtonBaseStyle}">
+        <Setter Property="Background" Value="{DynamicResource AppOrangeButtonBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppOrangeButtonForegroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppOrangeButtonBorderBrush}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppOrangeButtonHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppOrangeButtonHoverBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppOrangeButtonForegroundBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppOrangeButtonPressedBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppOrangeButtonPressedBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppOrangeButtonForegroundBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="PurpleButtonStyle" TargetType="Button" BasedOn="{StaticResource ColoredButtonBaseStyle}">
+        <Setter Property="Background" Value="{DynamicResource AppPurpleButtonBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppPurpleButtonForegroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppPurpleButtonBorderBrush}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppPurpleButtonHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppPurpleButtonHoverBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppPurpleButtonForegroundBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppPurpleButtonPressedBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppPurpleButtonPressedBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppPurpleButtonForegroundBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="TealButtonStyle" TargetType="Button" BasedOn="{StaticResource ColoredButtonBaseStyle}">
+        <Setter Property="Background" Value="{DynamicResource AppTealButtonBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTealButtonForegroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppTealButtonBorderBrush}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppTealButtonHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppTealButtonHoverBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppTealButtonForegroundBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppTealButtonPressedBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppTealButtonPressedBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppTealButtonForegroundBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="PinkButtonStyle" TargetType="Button" BasedOn="{StaticResource ColoredButtonBaseStyle}">
+        <Setter Property="Background" Value="{DynamicResource AppPinkButtonBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppPinkButtonForegroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppPinkButtonBorderBrush}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppPinkButtonHoverBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppPinkButtonHoverBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppPinkButtonForegroundBrush}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppPinkButtonPressedBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AppPinkButtonPressedBorderBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppPinkButtonForegroundBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+</ResourceDictionary>

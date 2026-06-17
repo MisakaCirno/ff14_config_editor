@@ -47,7 +47,7 @@ namespace UIMarkerEditor
             if (!IsInitialized) return;
 
             bool isMaximized = WindowState == WindowState.Maximized;
-            MaximizeIcon_Rectangle.Visibility = isMaximized ? Visibility.Collapsed : Visibility.Visible;
+            MaximizeIcon_Path.Visibility = isMaximized ? Visibility.Collapsed : Visibility.Visible;
             RestoreIcon_Path.Visibility = isMaximized ? Visibility.Visible : Visibility.Collapsed;
             MaximizeRestoreWindow_Button.ToolTip = isMaximized ? "还原" : "最大化";
         }

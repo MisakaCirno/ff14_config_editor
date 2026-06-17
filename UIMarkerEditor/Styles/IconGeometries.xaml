@@ -1,0 +1,33 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <PathGeometry x:Key="WindowMinimizeIconGeometry"
+                  Figures="M 0 0 H 10"/>
+    <RectangleGeometry x:Key="WindowMaximizeIconGeometry"
+                       Rect="0,0,10,10"/>
+    <PathGeometry x:Key="WindowRestoreIconGeometry"
+                  Figures="M 3 0 H 10 V 7 M 0 3 H 7 V 10 H 0 Z"/>
+    <PathGeometry x:Key="WindowCloseIconGeometry"
+                  Figures="M 0 0 L 10 10 M 10 0 L 0 10"/>
+
+    <!-- Action icons adapted from Lucide Icons. See THIRD_PARTY_NOTICES.md. -->
+    <PathGeometry x:Key="ExternalLinkIconGeometry"
+                  Figures="M 15 3 H 21 V 9 M 10 14 L 21 3 M 18 13 V 19 A 2 2 0 0 1 16 21 H 5 A 2 2 0 0 1 3 19 V 8 A 2 2 0 0 1 5 6 H 11"/>
+    <GeometryGroup x:Key="WayMarkImportIconGeometry">
+        <RectangleGeometry Rect="8,2,8,4"
+                           RadiusX="1"
+                           RadiusY="1"/>
+        <PathGeometry Figures="M 11 14 H 21"/>
+        <PathGeometry Figures="M 16 4 H 18 A 2 2 0 0 1 20 6 V 7.344"/>
+        <PathGeometry Figures="M 17 18 L 21 14 L 17 10"/>
+        <PathGeometry Figures="M 8 4 H 6 A 2 2 0 0 0 4 6 V 20 A 2 2 0 0 0 6 22 H 18 A 2 2 0 0 0 19.793 20.887"/>
+    </GeometryGroup>
+    <GeometryGroup x:Key="WayMarkExportIconGeometry">
+        <RectangleGeometry Rect="8,2,8,4"
+                           RadiusX="1"
+                           RadiusY="1"/>
+        <PathGeometry Figures="M 8 4 H 6 A 2 2 0 0 0 4 6 V 20 A 2 2 0 0 0 6 22 H 18 A 2 2 0 0 0 20 20 V 18"/>
+        <PathGeometry Figures="M 16 4 H 18 A 2 2 0 0 1 20 6 V 10"/>
+        <PathGeometry Figures="M 21 14 H 11"/>
+        <PathGeometry Figures="M 15 10 L 11 14 L 15 18"/>
+    </GeometryGroup>
+</ResourceDictionary>

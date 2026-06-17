@@ -27,7 +27,17 @@
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="3">
                             <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
+                                              VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}">
+                                <ContentPresenter.Resources>
+                                    <Style TargetType="{x:Type TextBlock}">
+                                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/>
+                                    </Style>
+                                    <Style TargetType="{x:Type AccessText}">
+                                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/>
+                                    </Style>
+                                </ContentPresenter.Resources>
+                            </ContentPresenter>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -130,7 +140,22 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <Button x:Name="ShareWebsite_Button" Content="标点分享网站" Click="ShareWebsite_Button_Click" Grid.Column="0"/>
+                        <Button x:Name="ShareWebsite_Button" Click="ShareWebsite_Button_Click" Grid.Column="0">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Viewbox Width="16" Height="16" Margin="0,0,6,0">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="{StaticResource ExternalLinkIconGeometry}"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                              StrokeThickness="2"
+                                              StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round"
+                                              StrokeLineJoin="Round"
+                                              Fill="Transparent"/>
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Text="标点分享网站" Padding="0"/>
+                            </StackPanel>
+                        </Button>
                         <Button x:Name="MoveUp_Button" Content="↑" Click="MoveUp_Button_Click" Grid.Column="2"/>
                         <Button x:Name="MoveDown_Button" Content="↓" Click="MoveDown_Button_Click" Grid.Column="3"/>
                     </Grid>
@@ -238,9 +263,12 @@
                         </Grid>
                     </Grid>
 
-                    <TabControl Grid.Row="1" Margin="5">
+                    <TabControl Grid.Row="1"
+                                Margin="5"
+                                Style="{StaticResource WayMarkEditorTabControlStyle}"
+                                ItemContainerStyle="{StaticResource WayMarkEditorTabItemStyle}">
                         <TabItem Header="标点位置">
-                            <Grid x:Name="Edit2_Grid" >
+                            <Grid x:Name="Edit2_Grid">
                                 <Grid.Resources>
                                     <Style TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
                                         <Setter Property="Margin" Value="4"/>
@@ -350,6 +378,7 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
 
                                     <TextBlock Text="分布形状：" Grid.Column="0"/>
@@ -384,6 +413,7 @@
                                     </Grid>
 
                                     <Button x:Name="SetShapePos_Button" Content="设置点位置" Click="SetShapePos_Button_Click"
+                                            Style="{StaticResource PrimaryButtonStyle}"
                                             Grid.ColumnSpan="2" Grid.Row="7"/>
                                 </Grid>
                             </StackPanel>
@@ -396,9 +426,39 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <Button x:Name="Import_Button" Content="从剪贴板导入标点" Grid.Column="0" Click="Import_Button_Click"/>
+                        <Button x:Name="Import_Button" Grid.Column="0" Click="Import_Button_Click">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Viewbox Width="16" Height="16" Margin="0,0,6,0">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="{StaticResource WayMarkImportIconGeometry}"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                              StrokeThickness="2"
+                                              StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round"
+                                              StrokeLineJoin="Round"
+                                              Fill="Transparent"/>
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Text="从剪贴板导入标点" Padding="0"/>
+                            </StackPanel>
+                        </Button>
 
-                        <Button x:Name="Export_Button" Content="将标点导出至剪贴板" Grid.Column="1" Click="Export_Button_Click"/>
+                        <Button x:Name="Export_Button" Grid.Column="1" Click="Export_Button_Click">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Viewbox Width="16" Height="16" Margin="0,0,6,0">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="{StaticResource WayMarkExportIconGeometry}"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                              StrokeThickness="2"
+                                              StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round"
+                                              StrokeLineJoin="Round"
+                                              Fill="Transparent"/>
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Text="将标点导出至剪贴板" Padding="0"/>
+                            </StackPanel>
+                        </Button>
                     </Grid>
 
                     <StackPanel Grid.Row="3">

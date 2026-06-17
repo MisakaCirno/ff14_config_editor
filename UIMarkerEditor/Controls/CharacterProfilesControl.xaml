@@ -78,6 +78,7 @@
                                Margin="5"/>
                     <Button Content="新建备注"
                             MinWidth="110"
+                            Style="{StaticResource PrimaryButtonStyle}"
                             Click="NewCharacter_Button_Click"/>
                 </StackPanel>
 
@@ -121,9 +122,12 @@
                                  VerticalContentAlignment="Top"
                                  TextChanged="CharacterDetail_TextChanged"/>
                         <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="保存备注" Click="SaveCharacter_Button_Click"/>
+                            <Button Content="保存备注"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Click="SaveCharacter_Button_Click"/>
                             <Button x:Name="DeleteCharacter_Button"
                                     Content="删除备注"
+                                    Style="{StaticResource DangerButtonStyle}"
                                     Click="DeleteCharacter_Button_Click"/>
                         </StackPanel>
                     </Grid>

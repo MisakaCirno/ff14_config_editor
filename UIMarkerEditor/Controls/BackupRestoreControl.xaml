@@ -179,6 +179,7 @@
                             Click="RestoreBackupAs_Button_Click"/>
                     <Button x:Name="DeleteBackup_Button"
                             Content="删除备份"
+                            Style="{StaticResource DangerButtonStyle}"
                             Click="DeleteBackup_Button_Click"/>
                     <Button x:Name="OpenBackupDirectory_Button"
                             Content="打开备份目录"
