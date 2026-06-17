@@ -125,8 +125,8 @@ public sealed partial class AppDataStore
         }
 
         SaveBootstrap();
-        ConfigureLogger();
         LoadSettings();
+        ConfigureLogger();
         LoadCharacters();
         LoadServerList();
     }

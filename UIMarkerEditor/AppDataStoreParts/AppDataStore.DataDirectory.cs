@@ -87,8 +87,13 @@ public sealed partial class AppDataStore
 
     private void ConfigureLogger()
     {
-        AppLogger.SetLogFilePath(LogFilePath);
-        AppLogger.Info(AppLogCategory.General, $"日志文件路径：{LogFilePath}");
+        AppLogger.ConfigureFileLogging(
+            LogFilePath,
+            (long)Settings.MaxLogFileSizeMb * 1024 * 1024,
+            Settings.MaxLogFileCount);
+        AppLogger.Info(
+            AppLogCategory.General,
+            $"日志文件路径：{LogFilePath}，单个文件上限：{Settings.MaxLogFileSizeMb} MB，最多保留：{Settings.MaxLogFileCount} 个文件");
     }
 
     private void SaveBootstrap(bool allowOverwriteInvalid = false)
@@ -145,8 +150,7 @@ public sealed partial class AppDataStore
             settingsFileInvalid,
             charactersFileInvalid,
             [.. dataLoadWarnings],
-            new HashSet<string>(dataLoadWarningKeys),
-            AppLogger.LogFilePath);
+            new HashSet<string>(dataLoadWarningKeys));
     }
 
     private void RestoreAppDataState(AppDataStateSnapshot snapshot)
@@ -183,7 +187,7 @@ public sealed partial class AppDataStore
             dataLoadWarningKeys.Add(warningKey);
         }
 
-        AppLogger.SetLogFilePath(snapshot.LogFilePath);
+        ConfigureLogger();
     }
 
     private static List<CharacterProfile> CloneCharacterProfiles(IEnumerable<CharacterProfile> profiles)
@@ -254,7 +258,6 @@ public sealed partial class AppDataStore
         bool SettingsFileInvalid,
         bool CharactersFileInvalid,
         List<string> DataLoadWarnings,
-        HashSet<string> DataLoadWarningKeys,
-        string? LogFilePath);
+        HashSet<string> DataLoadWarningKeys);
 
 }

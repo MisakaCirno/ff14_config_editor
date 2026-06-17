@@ -18,6 +18,7 @@ public sealed partial class AppDataStore
         EnsureDataDirectory();
         WriteJson(SettingsFilePath, nextSettings);
         Settings = nextSettings;
+        ConfigureLogger();
     }
 
     public AppSettings CreateSettingsSnapshot()
@@ -57,6 +58,27 @@ public sealed partial class AppDataStore
         {
             settings.StartupWayMarkAction = StartupWayMarkAction.None;
         }
+
+        settings.MaxLogFileSizeMb = NormalizeIntRange(
+            settings.MaxLogFileSizeMb,
+            AppSettings.MinLogFileSizeMb,
+            AppSettings.MaxLogFileSizeMbLimit,
+            AppSettings.DefaultMaxLogFileSizeMb);
+        settings.MaxLogFileCount = NormalizeIntRange(
+            settings.MaxLogFileCount,
+            AppSettings.MinLogFileCount,
+            AppSettings.MaxLogFileCountLimit,
+            AppSettings.DefaultMaxLogFileCount);
+    }
+
+    private static int NormalizeIntRange(int value, int min, int max, int defaultValue)
+    {
+        if (value < min)
+        {
+            return defaultValue;
+        }
+
+        return Math.Min(value, max);
     }
 
     private static AppSettings CloneSettings(AppSettings settings)
@@ -68,6 +90,8 @@ public sealed partial class AppDataStore
             LimitBackupCount = settings.LimitBackupCount,
             LimitBackupDays = settings.LimitBackupDays,
             AutoBackupBeforeSave = settings.AutoBackupBeforeSave,
+            MaxLogFileSizeMb = settings.MaxLogFileSizeMb,
+            MaxLogFileCount = settings.MaxLogFileCount,
             UseWayMarkImageLabels = settings.UseWayMarkImageLabels,
             StartupWayMarkAction = settings.StartupWayMarkAction,
             LastMapDataManualRefreshAttempt = settings.LastMapDataManualRefreshAttempt,

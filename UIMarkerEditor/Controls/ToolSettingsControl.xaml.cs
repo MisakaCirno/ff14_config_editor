@@ -49,6 +49,8 @@ public partial class ToolSettingsControl : UserControl
         DataDirectory_TextBox.Text = appDataStore.DataDirectory;
         MaxBackupCount_TextBox.Text = appDataStore.Settings.MaxBackupCount.ToString(CultureInfo.InvariantCulture);
         MaxBackupDays_TextBox.Text = appDataStore.Settings.MaxBackupDays.ToString(CultureInfo.InvariantCulture);
+        MaxLogFileSizeMb_TextBox.Text = appDataStore.Settings.MaxLogFileSizeMb.ToString(CultureInfo.InvariantCulture);
+        MaxLogFileCount_TextBox.Text = appDataStore.Settings.MaxLogFileCount.ToString(CultureInfo.InvariantCulture);
         AutoBackup_CheckBox.IsChecked = appDataStore.Settings.AutoBackupBeforeSave;
         WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.UseWayMarkImageLabels;
         LimitBackupCount_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCount;
@@ -144,8 +146,22 @@ public partial class ToolSettingsControl : UserControl
         bool limitBackupDays = LimitBackupDays_CheckBox.IsChecked == true;
         int maxBackupCount = appDataStore.Settings.MaxBackupCount;
         int maxBackupDays = appDataStore.Settings.MaxBackupDays;
+        int maxLogFileSizeMb = appDataStore.Settings.MaxLogFileSizeMb;
+        int maxLogFileCount = appDataStore.Settings.MaxLogFileCount;
         if ((autoBackupBeforeSave && limitBackupCount && !TryReadPositiveInt(MaxBackupCount_TextBox, "最多保留备份数量", out maxBackupCount)) ||
-            (autoBackupBeforeSave && limitBackupDays && !TryReadPositiveInt(MaxBackupDays_TextBox, "最多保留天数", out maxBackupDays)))
+            (autoBackupBeforeSave && limitBackupDays && !TryReadPositiveInt(MaxBackupDays_TextBox, "最多保留天数", out maxBackupDays)) ||
+            !TryReadIntInRange(
+                MaxLogFileSizeMb_TextBox,
+                "日志文件大小",
+                AppSettings.MinLogFileSizeMb,
+                AppSettings.MaxLogFileSizeMbLimit,
+                out maxLogFileSizeMb) ||
+            !TryReadIntInRange(
+                MaxLogFileCount_TextBox,
+                "日志文件最多保存数量",
+                AppSettings.MinLogFileCount,
+                AppSettings.MaxLogFileCountLimit,
+                out maxLogFileCount))
         {
             return;
         }
@@ -173,6 +189,8 @@ public partial class ToolSettingsControl : UserControl
                 LimitBackupCount = limitBackupCount,
                 LimitBackupDays = limitBackupDays,
                 AutoBackupBeforeSave = autoBackupBeforeSave,
+                MaxLogFileSizeMb = maxLogFileSizeMb,
+                MaxLogFileCount = maxLogFileCount,
                 UseWayMarkImageLabels = WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected,
                 StartupWayMarkAction = ReadStartupWayMarkActionFromUi(),
                 LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
@@ -359,6 +377,8 @@ public partial class ToolSettingsControl : UserControl
             LimitBackupCount = appDataStore.Settings.LimitBackupCount,
             LimitBackupDays = appDataStore.Settings.LimitBackupDays,
             AutoBackupBeforeSave = appDataStore.Settings.AutoBackupBeforeSave,
+            MaxLogFileSizeMb = appDataStore.Settings.MaxLogFileSizeMb,
+            MaxLogFileCount = appDataStore.Settings.MaxLogFileCount,
             UseWayMarkImageLabels = appDataStore.Settings.UseWayMarkImageLabels,
             StartupWayMarkAction = appDataStore.Settings.StartupWayMarkAction,
             LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
@@ -423,6 +443,19 @@ public partial class ToolSettingsControl : UserControl
         }
 
         TryReadPositiveIntFailed(displayName);
+        return false;
+    }
+
+    private bool TryReadIntInRange(TextBox textBox, string displayName, int min, int max, out int value)
+    {
+        if (int.TryParse(textBox.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value) &&
+            value >= min &&
+            value <= max)
+        {
+            return true;
+        }
+
+        MessageBox.Show(ownerWindow, $"{displayName} 必须是 {min} 到 {max} 之间的整数。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
         return false;
     }
 

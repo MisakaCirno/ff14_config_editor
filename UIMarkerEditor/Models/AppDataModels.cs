@@ -37,11 +37,20 @@ public enum StartupWayMarkAction
 
 public sealed class AppSettings
 {
+    public const int DefaultMaxLogFileSizeMb = 5;
+    public const int DefaultMaxLogFileCount = 5;
+    public const int MinLogFileSizeMb = 1;
+    public const int MaxLogFileSizeMbLimit = 100;
+    public const int MinLogFileCount = 1;
+    public const int MaxLogFileCountLimit = 20;
+
     public int MaxBackupCount { get; set; } = 100;
     public int MaxBackupDays { get; set; } = 90;
     public bool LimitBackupCount { get; set; } = true;
     public bool LimitBackupDays { get; set; } = true;
     public bool AutoBackupBeforeSave { get; set; } = true;
+    public int MaxLogFileSizeMb { get; set; } = DefaultMaxLogFileSizeMb;
+    public int MaxLogFileCount { get; set; } = DefaultMaxLogFileCount;
     public bool UseWayMarkImageLabels { get; set; } = true;
     public StartupWayMarkAction StartupWayMarkAction { get; set; } = StartupWayMarkAction.None;
     public DateTime LastMapDataManualRefreshAttempt { get; set; } = DateTime.MinValue;
