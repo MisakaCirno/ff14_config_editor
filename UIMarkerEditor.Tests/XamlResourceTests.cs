@@ -16,6 +16,7 @@ public sealed class XamlResourceTests
         Exception? exception = RunOnStaThread(() =>
         {
             EnsureApplicationResources();
+            AssertButtonPadding();
             AssertColoredButtonForegroundPassesIntoTemplate();
 
             string testDirectory = Path.Combine(
@@ -61,6 +62,29 @@ public sealed class XamlResourceTests
         }
     }
 
+    private static void AssertButtonPadding()
+    {
+        Thickness expectedPadding = new(20, 5, 20, 5);
+        Button defaultButton = new()
+        {
+            Content = "Default",
+            Style = (Style)Application.Current.FindResource(typeof(Button))
+        };
+
+        Assert.Equal(expectedPadding, defaultButton.Padding);
+
+        foreach (string styleKey in GetColoredButtonStyleKeys())
+        {
+            Button button = new()
+            {
+                Content = "Check",
+                Style = (Style)Application.Current.FindResource(styleKey)
+            };
+
+            Assert.Equal(expectedPadding, button.Padding);
+        }
+    }
+
     private static void AssertButtonTextForeground(string buttonStyleKey, string foregroundBrushKey)
     {
         Button button = new()
@@ -83,6 +107,25 @@ public sealed class XamlResourceTests
 
         Assert.Equal(expectedBrush.Color, buttonBrush.Color);
         Assert.Equal(expectedBrush.Color, actualBrush.Color);
+    }
+
+    private static string[] GetColoredButtonStyleKeys()
+    {
+        return
+        [
+            "PrimaryButtonStyle",
+            "SuccessButtonStyle",
+            "WarningButtonStyle",
+            "DangerButtonStyle",
+            "SecondaryButtonStyle",
+            "InfoButtonStyle",
+            "LightButtonStyle",
+            "DarkButtonStyle",
+            "OrangeButtonStyle",
+            "PurpleButtonStyle",
+            "TealButtonStyle",
+            "PinkButtonStyle"
+        ];
     }
 
     private static void EnsureApplicationResources()
