@@ -1,6 +1,25 @@
 <UserControl x:Class="UIMarkerEditor.Controls.BackupRestoreControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="BackupFieldLabelStyle" TargetType="TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="5,8,5,2"/>
+        </Style>
+
+        <Style x:Key="BackupReadOnlyTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Margin" Value="5,0,5,4"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Background" Value="#FFF8F8F8"/>
+            <Setter Property="BorderBrush" Value="#FFBDBDBD"/>
+        </Style>
+    </UserControl.Resources>
+
     <Grid x:Name="BackupRoot_Grid" Margin="10">
         <Grid.ColumnDefinitions>
             <ColumnDefinition x:Name="BackupList_Column" Width="2*"/>
@@ -96,18 +115,18 @@
 
                             <StackPanel Grid.Column="0" Margin="0,0,4,0">
                                 <TextBlock Text="备份时间："
-                                           Style="{DynamicResource BackupFieldLabelStyle}"
+                                           Style="{StaticResource BackupFieldLabelStyle}"
                                            ToolTip="创建这个备份的本地时间。"/>
                                 <TextBox x:Name="BackupDetail_BackupTime_TextBox"
-                                         Style="{DynamicResource BackupReadOnlyTextBoxStyle}"/>
+                                         Style="{StaticResource BackupReadOnlyTextBoxStyle}"/>
                             </StackPanel>
 
                             <StackPanel Grid.Column="1" Margin="4,0,0,0">
                                 <TextBlock Text="角色备注："
-                                           Style="{DynamicResource BackupFieldLabelStyle}"
+                                           Style="{StaticResource BackupFieldLabelStyle}"
                                            ToolTip="根据文件 User ID 或目录 User ID 匹配到的本地角色备注。"/>
                                 <TextBox x:Name="BackupDetail_Character_TextBox"
-                                         Style="{DynamicResource BackupReadOnlyTextBoxStyle}"/>
+                                         Style="{StaticResource BackupReadOnlyTextBoxStyle}"/>
                             </StackPanel>
                         </Grid>
 
@@ -119,54 +138,54 @@
 
                             <StackPanel Grid.Column="0" Margin="0,0,4,0">
                                 <TextBlock Text="目录 User ID："
-                                           Style="{DynamicResource BackupFieldLabelStyle}"
+                                           Style="{StaticResource BackupFieldLabelStyle}"
                                            ToolTip="从 FFXIV_CHRxxxxxxxxxxxxxxxx 角色目录名中读取到的 User ID。"/>
                                 <TextBox x:Name="BackupDetail_FolderUserID_TextBox"
-                                         Style="{DynamicResource BackupReadOnlyTextBoxStyle}"/>
+                                         Style="{StaticResource BackupReadOnlyTextBoxStyle}"/>
                             </StackPanel>
 
                             <StackPanel Grid.Column="1" Margin="4,0,0,0">
                                 <TextBlock Text="文件 User ID："
-                                           Style="{DynamicResource BackupFieldLabelStyle}"
+                                           Style="{StaticResource BackupFieldLabelStyle}"
                                            ToolTip="从 UISAVE.DAT 文件内容中读取到的 User ID。"/>
                                 <TextBox x:Name="BackupDetail_FileUserID_TextBox"
-                                         Style="{DynamicResource BackupReadOnlyTextBoxStyle}"/>
+                                         Style="{StaticResource BackupReadOnlyTextBoxStyle}"/>
                             </StackPanel>
                         </Grid>
 
                         <TextBlock Text="地图标点快照："
-                                   Style="{DynamicResource BackupFieldLabelStyle}"
+                                   Style="{StaticResource BackupFieldLabelStyle}"
                                    ToolTip="按原文件中的标点槽位顺序逐条记录；只展示地图与启用标点数量，不包含具体坐标。"/>
                         <TextBox x:Name="BackupSnapshot_TextBox"
                                  MinHeight="140"
                                  AcceptsReturn="True"
                                  VerticalScrollBarVisibility="Auto"
                                  HorizontalScrollBarVisibility="Auto"
-                                 Style="{DynamicResource BackupReadOnlyTextBoxStyle}"/>
+                                 Style="{StaticResource BackupReadOnlyTextBoxStyle}"/>
 
                         <TextBlock Text="原文件路径："
-                                   Style="{DynamicResource BackupFieldLabelStyle}"
+                                   Style="{StaticResource BackupFieldLabelStyle}"
                                    ToolTip="备份创建时，原 UISAVE.DAT 文件所在的完整路径。"/>
                         <TextBox x:Name="BackupDetail_OriginalPath_TextBox"
-                                 Style="{DynamicResource BackupReadOnlyTextBoxStyle}"/>
+                                 Style="{StaticResource BackupReadOnlyTextBoxStyle}"/>
 
                         <TextBlock Text="备份文件路径："
-                                   Style="{DynamicResource BackupFieldLabelStyle}"
+                                   Style="{StaticResource BackupFieldLabelStyle}"
                                    ToolTip="这个备份保存的 UISAVE.DAT 文件完整路径。"/>
                         <TextBox x:Name="BackupDetail_BackupFile_TextBox"
-                                 Style="{DynamicResource BackupReadOnlyTextBoxStyle}"/>
+                                 Style="{StaticResource BackupReadOnlyTextBoxStyle}"/>
 
                         <TextBlock Text="文件大小："
-                                   Style="{DynamicResource BackupFieldLabelStyle}"
+                                   Style="{StaticResource BackupFieldLabelStyle}"
                                    ToolTip="备份创建时，原文件的字节大小。"/>
                         <TextBox x:Name="BackupDetail_SourceFileSize_TextBox"
-                                 Style="{DynamicResource BackupReadOnlyTextBoxStyle}"/>
+                                 Style="{StaticResource BackupReadOnlyTextBoxStyle}"/>
 
                         <TextBlock Text="SHA256："
-                                   Style="{DynamicResource BackupFieldLabelStyle}"
+                                   Style="{StaticResource BackupFieldLabelStyle}"
                                    ToolTip="备份创建时，原文件内容计算得到的 SHA256 摘要，用于辅助确认文件是否一致。"/>
                         <TextBox x:Name="BackupDetail_SourceSha256_TextBox"
-                                 Style="{DynamicResource BackupReadOnlyTextBoxStyle}"/>
+                                 Style="{StaticResource BackupReadOnlyTextBoxStyle}"/>
                     </StackPanel>
                 </ScrollViewer>
 
