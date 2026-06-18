@@ -165,7 +165,7 @@
                                        Style="{StaticResource SettingsSectionTitleStyle}"/>
                             <TextBlock Grid.Row="1"
                                        Grid.ColumnSpan="5"
-                                       Text="软件配置、角色备注、服务器列表缓存、地图数据缓存和 UISAVE.DAT 备份都会保存在这里；不改变游戏安装目录。"
+                                       Text="软件配置、角色备注、服务器列表缓存、地图数据缓存和 UISAVE.DAT 备份的保存位置。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
                             <TextBlock Grid.Row="2"
@@ -207,7 +207,7 @@
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
@@ -244,9 +244,9 @@
 
                             <Grid Margin="0,4,0,0">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120"/>
-                                    <ColumnDefinition Width="120"/>
                                     <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -292,16 +292,13 @@
                         <StackPanel>
                             <TextBlock Text="外观"
                                        Style="{StaticResource SettingsSectionTitleStyle}"/>
-                            <TextBlock Text="调整工具界面的显示方式，不影响保存到 UISAVE.DAT 的数据。"
-                                       Style="{StaticResource SettingsSectionDescriptionStyle}"/>
-
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="120"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <TextBlock Text="标点标签"
+                                <TextBlock Text="标点编辑显示形式"
                                            Style="{StaticResource SettingsFormLabelStyle}"/>
                                 <controls:SegmentedSwitchControl x:Name="WayMarkLabelDisplayMode_SegmentedSwitch"
                                                                  Grid.Column="1"

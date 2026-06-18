@@ -10,7 +10,7 @@
         mc:Ignorable="d"
         Title="FF14 标点预设编辑工具"
         Height="600" Width="1000"
-        MinHeight="600" MinWidth="850"
+        MinHeight="600" MinWidth="1000"
         Loaded="Window_Loaded"
         Closing="Window_Closing"
         StateChanged="Window_StateChanged"
@@ -332,14 +332,14 @@
                 BorderThickness="0,0,0,1"
                 CornerRadius="0"
                 Grid.IsSharedSizeScope="True">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" SharedSizeGroup="TitleBarSide"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto" SharedSizeGroup="TitleBarSide"/>
-                    </Grid.ColumnDefinitions>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="TitleBarSide"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="TitleBarSide"/>
+                </Grid.ColumnDefinitions>
 
-                    <TextBlock x:Name="TitleTextBlock"
+                <TextBlock x:Name="TitleTextBlock"
                                Grid.Column="1"
                                Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
                                Foreground="#FFF7FAFC"
@@ -351,141 +351,141 @@
                                TextTrimming="CharacterEllipsis"
                                IsHitTestVisible="False"/>
 
-                    <StackPanel Grid.Column="0"
+                <StackPanel Grid.Column="0"
                                 Orientation="Horizontal"
                                 VerticalAlignment="Center">
-                        <Image Source="Assets/Image/s_a.png"
+                    <Image Source="Assets/Image/s_a.png"
                                Margin="2"
                                VerticalAlignment="Center"
                                IsHitTestVisible="False"
                                RenderOptions.BitmapScalingMode="HighQuality"/>
-                        <Menu Background="Transparent"
+                    <Menu Background="Transparent"
                               BorderThickness="0"
                               VerticalAlignment="Center"
                               ItemContainerStyle="{StaticResource TitleBarMenuItemStyle}"
                               shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                            <MenuItem x:Name="File_MenuItem"
+                        <MenuItem x:Name="File_MenuItem"
                                       Header="文件"
                                       SubmenuOpened="File_MenuItem_SubmenuOpened">
-                                <MenuItem Header="读取"
+                            <MenuItem Header="读取"
                                           Style="{StaticResource TitleBarSubMenuItemStyle}"
                                           Command="{x:Static local:MainWindow.OpenWayMarkFileCommand}"
                                           CommandTarget="{Binding ElementName=RootWindow}"
                                           InputGestureText="Ctrl+O"/>
-                                <MenuItem x:Name="RecentFiles_MenuItem"
+                            <MenuItem x:Name="RecentFiles_MenuItem"
                                           Header="最近打开"
                                           Style="{StaticResource TitleBarSubMenuItemStyle}"/>
-                                <Separator/>
-                                <MenuItem Header="保存"
+                            <Separator/>
+                            <MenuItem Header="保存"
                                           Style="{StaticResource TitleBarSubMenuItemStyle}"
                                           Command="{x:Static local:MainWindow.SaveWayMarkFileCommand}"
                                           CommandTarget="{Binding ElementName=RootWindow}"
                                           InputGestureText="Ctrl+S"/>
-                                <MenuItem Header="重新加载"
+                            <MenuItem Header="重新加载"
                                           Style="{StaticResource TitleBarSubMenuItemStyle}"
                                           Command="{x:Static local:MainWindow.ReloadWayMarkFileCommand}"
                                           CommandTarget="{Binding ElementName=RootWindow}"
                                           InputGestureText="Ctrl+R"/>
-                                <Separator/>
-                                <MenuItem Header="退出"
+                            <Separator/>
+                            <MenuItem Header="退出"
                                           Style="{StaticResource TitleBarSubMenuItemStyle}"
                                           InputGestureText="Alt+F4"
                                           Click="ExitMenuItem_Click"/>
-                            </MenuItem>
-                        </Menu>
-                    </StackPanel>
+                        </MenuItem>
+                    </Menu>
+                </StackPanel>
 
-                    <StackPanel Grid.Column="2"
+                <StackPanel Grid.Column="2"
                                 Orientation="Horizontal"
                                 HorizontalAlignment="Right">
-                        <Button x:Name="MinimizeWindow_Button"
+                    <Button x:Name="MinimizeWindow_Button"
                                 Style="{StaticResource TitleBarButtonStyle}"
                                 ToolTip="最小化"
                                 Click="MinimizeWindow_Button_Click">
-                            <Path Width="10"
+                        <Path Width="10"
                                   Height="1"
                                   Data="{StaticResource WindowMinimizeIconGeometry}"
                                   Stretch="Fill"
                                   Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                   StrokeThickness="1"/>
-                        </Button>
-                        <Button x:Name="MaximizeRestoreWindow_Button"
+                    </Button>
+                    <Button x:Name="MaximizeRestoreWindow_Button"
                                 Style="{StaticResource TitleBarButtonStyle}"
                                 ToolTip="最大化"
                                 Click="MaximizeRestoreWindow_Button_Click">
-                            <Grid Width="10" Height="10">
-                                <Path x:Name="MaximizeIcon_Path"
+                        <Grid Width="10" Height="10">
+                            <Path x:Name="MaximizeIcon_Path"
                                       Data="{StaticResource WindowMaximizeIconGeometry}"
                                       Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                       StrokeThickness="1"
                                       Fill="Transparent"/>
-                                <Path x:Name="RestoreIcon_Path"
+                            <Path x:Name="RestoreIcon_Path"
                                       Data="{StaticResource WindowRestoreIconGeometry}"
                                       Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                       StrokeThickness="1"
                                       Fill="Transparent"
                                       Visibility="Collapsed"/>
-                            </Grid>
-                        </Button>
-                        <Button x:Name="CloseWindow_Button"
+                        </Grid>
+                    </Button>
+                    <Button x:Name="CloseWindow_Button"
                                 Style="{StaticResource TitleBarCloseButtonStyle}"
                                 ToolTip="关闭"
                                 Click="CloseWindow_Button_Click">
-                            <Path Width="10"
+                        <Path Width="10"
                                   Height="10"
                                   Data="{StaticResource WindowCloseIconGeometry}"
                                   Stretch="Fill"
                                   Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                   StrokeThickness="1"/>
-                        </Button>
-                    </StackPanel>
-                </Grid>
-            </Border>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
 
-            <TabControl x:Name="MainTab_Control"
+        <TabControl x:Name="MainTab_Control"
                         Grid.Row="1"
                         ItemContainerStyle="{StaticResource MainTabItemStyle}"
                         Style="{StaticResource MainTabControlStyle}">
-                <TabItem Header="标点编辑">
-                    <controls:WayMarkEditorControl x:Name="WayMarkEditor_Control"/>
-                </TabItem>
+            <TabItem Header="标点编辑">
+                <controls:WayMarkEditorControl x:Name="WayMarkEditor_Control"/>
+            </TabItem>
 
-                <TabItem Header="备份还原">
-                    <controls:BackupRestoreControl x:Name="BackupRestore_Control"/>
-                </TabItem>
+            <TabItem Header="备份还原">
+                <controls:BackupRestoreControl x:Name="BackupRestore_Control"/>
+            </TabItem>
 
-                <TabItem Header="角色备注">
-                    <controls:CharacterProfilesControl x:Name="CharacterProfiles_Control"/>
-                </TabItem>
+            <TabItem Header="角色备注">
+                <controls:CharacterProfilesControl x:Name="CharacterProfiles_Control"/>
+            </TabItem>
 
-                <TabItem Header="工具设置">
-                    <controls:ToolSettingsControl x:Name="ToolSettings_Control"/>
-                </TabItem>
+            <TabItem Header="工具设置">
+                <controls:ToolSettingsControl x:Name="ToolSettings_Control"/>
+            </TabItem>
 
-                <TabItem Header="使用帮助">
-                    <Grid Margin="18">
-                        <TextBlock Text="使用帮助内容整理中。"
+            <TabItem Header="使用帮助">
+                <Grid Margin="18">
+                    <TextBlock Text="使用帮助内容整理中。"
                                    Foreground="{StaticResource AppMutedTextBrush}"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center"/>
-                    </Grid>
-                </TabItem>
-            </TabControl>
+                </Grid>
+            </TabItem>
+        </TabControl>
 
-            <Border Grid.Row="2"
+        <Border Grid.Row="2"
                     Background="#FFEEF4F7"
                     BorderBrush="#FFD7E4EA"
                     BorderThickness="0,1,0,0">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="当前文件："
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="当前文件："
                                Foreground="{StaticResource AppMutedTextBrush}"
                                Padding="10,0,0,0"
                                VerticalAlignment="Center"/>
-                    <TextBlock x:Name="CurrentFileStatus_TextBlock"
+                <TextBlock x:Name="CurrentFileStatus_TextBlock"
                                Grid.Column="1"
                                Text="未加载 UISAVE 文件"
                                ToolTip="未加载 UISAVE 文件"
@@ -495,7 +495,7 @@
                                VerticalAlignment="Center"
                                TextAlignment="Left"
                                TextTrimming="CharacterEllipsis"/>
-                </Grid>
-            </Border>
+            </Grid>
+        </Border>
     </Grid>
 </Window>
