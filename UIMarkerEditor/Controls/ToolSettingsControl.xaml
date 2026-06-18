@@ -28,6 +28,7 @@
                      Background="Transparent"
                      BorderThickness="0"
                      ItemContainerStyle="{StaticResource SettingsNavigationItemStyle}"
+                     PreviewMouseLeftButtonDown="SettingsNavigation_ListBox_PreviewMouseLeftButtonDown"
                      SelectionChanged="SettingsNavigation_ListBox_SelectionChanged">
                 <ListBoxItem Content="配置路径" Tag="DataStorage_Section"/>
                 <ListBoxItem Content="日志" Tag="Log_Section"/>

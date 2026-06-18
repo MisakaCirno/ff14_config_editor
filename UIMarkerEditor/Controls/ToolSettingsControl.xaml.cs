@@ -4,15 +4,19 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace UIMarkerEditor.Controls;
 
 public partial class ToolSettingsControl : UserControl
 {
     private static readonly TimeSpan ManualRefreshCooldown = TimeSpan.FromMinutes(5);
+    private const double NavigationActivationThreshold = 24;
+    private const double ScrollBottomTolerance = 1;
     private AppDataStore? appDataStore;
     private Window? ownerWindow;
-    private bool isUpdatingNavigationFromScroll;
+    private bool isNavigatingFromNavigation;
+    private bool isSelectingNavigationItem;
     private Action refreshBackupList = () => { };
     private Action refreshCharacterList = () => { };
     private Action refreshServerListConsumers = () => { };
@@ -22,7 +26,7 @@ public partial class ToolSettingsControl : UserControl
     public ToolSettingsControl()
     {
         InitializeComponent();
-        SettingsNavigation_ListBox.SelectedIndex = 0;
+        SelectNavigationItemWithoutNavigation(SettingsNavigation_ListBox.Items.OfType<ListBoxItem>().FirstOrDefault());
     }
 
     public void Initialize(
@@ -69,28 +73,71 @@ public partial class ToolSettingsControl : UserControl
 
     private void SettingsNavigation_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (isUpdatingNavigationFromScroll) return;
-        if (SettingsNavigation_ListBox.SelectedItem is not ListBoxItem { Tag: string sectionName }) return;
-        if (FindName(sectionName) is not FrameworkElement section) return;
+        if (isSelectingNavigationItem) return;
+        if (SettingsNavigation_ListBox.SelectedItem is not ListBoxItem item) return;
 
-        section.BringIntoView();
+        NavigateToSettingsSection(item);
+    }
+
+    private void SettingsNavigation_ListBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source) return;
+        if (ItemsControl.ContainerFromElement(SettingsNavigation_ListBox, source) is not ListBoxItem item) return;
+        if (!ReferenceEquals(item, SettingsNavigation_ListBox.SelectedItem)) return;
+
+        NavigateToSettingsSection(item);
     }
 
     private void SettingsContent_ScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
+        if (isNavigatingFromNavigation) return;
+
         UpdateNavigationSelectionFromScroll();
+    }
+
+    private void NavigateToSettingsSection(ListBoxItem item)
+    {
+        if (item.Tag is not string sectionName) return;
+        if (FindName(sectionName) is not FrameworkElement section) return;
+
+        double sectionTop = section.TransformToAncestor(SettingsContent_ScrollViewer).Transform(new Point(0, 0)).Y;
+        double targetOffset = SettingsContent_ScrollViewer.VerticalOffset + sectionTop;
+        targetOffset = Math.Clamp(targetOffset, 0, SettingsContent_ScrollViewer.ScrollableHeight);
+
+        isNavigatingFromNavigation = true;
+        SettingsContent_ScrollViewer.ScrollToVerticalOffset(targetOffset);
+        SelectNavigationItemWithoutNavigation(item);
+
+        Dispatcher.BeginInvoke(
+            new Action(() => isNavigatingFromNavigation = false),
+            DispatcherPriority.Background);
     }
 
     private void UpdateNavigationSelectionFromScroll()
     {
+        ListBoxItem? activeItem = GetActiveNavigationItemFromScroll();
+        if (activeItem == null || ReferenceEquals(activeItem, SettingsNavigation_ListBox.SelectedItem)) return;
+
+        SelectNavigationItemWithoutNavigation(activeItem);
+    }
+
+    private ListBoxItem? GetActiveNavigationItemFromScroll()
+    {
+        ListBoxItem[] navigationItems = [.. SettingsNavigation_ListBox.Items.OfType<ListBoxItem>()];
+        if (SettingsContent_ScrollViewer.ScrollableHeight > 0 &&
+            SettingsContent_ScrollViewer.VerticalOffset >= SettingsContent_ScrollViewer.ScrollableHeight - ScrollBottomTolerance)
+        {
+            return navigationItems.LastOrDefault(HasMatchingSettingsSection);
+        }
+
         ListBoxItem? activeItem = null;
-        foreach (ListBoxItem item in SettingsNavigation_ListBox.Items.OfType<ListBoxItem>())
+        foreach (ListBoxItem item in navigationItems)
         {
             if (item.Tag is not string sectionName) continue;
             if (FindName(sectionName) is not FrameworkElement section) continue;
 
             double sectionTop = section.TransformToAncestor(SettingsContent_ScrollViewer).Transform(new Point(0, 0)).Y;
-            if (sectionTop <= 24)
+            if (sectionTop <= NavigationActivationThreshold)
             {
                 activeItem = item;
                 continue;
@@ -100,16 +147,26 @@ public partial class ToolSettingsControl : UserControl
             break;
         }
 
-        if (activeItem == null || ReferenceEquals(activeItem, SettingsNavigation_ListBox.SelectedItem)) return;
+        return activeItem;
+    }
 
-        isUpdatingNavigationFromScroll = true;
+    private bool HasMatchingSettingsSection(ListBoxItem item)
+    {
+        return item.Tag is string sectionName && FindName(sectionName) is FrameworkElement;
+    }
+
+    private void SelectNavigationItemWithoutNavigation(ListBoxItem? item)
+    {
+        if (item == null || ReferenceEquals(item, SettingsNavigation_ListBox.SelectedItem)) return;
+
+        isSelectingNavigationItem = true;
         try
         {
-            SettingsNavigation_ListBox.SelectedItem = activeItem;
+            SettingsNavigation_ListBox.SelectedItem = item;
         }
         finally
         {
-            isUpdatingNavigationFromScroll = false;
+            isSelectingNavigationItem = false;
         }
     }
 
