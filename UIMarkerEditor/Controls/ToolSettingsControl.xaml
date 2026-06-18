@@ -3,14 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:UIMarkerEditor.Controls">
     <UserControl.Resources>
-        <Style x:Key="SettingsSectionTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="HorizontalAlignment" Value="Left"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Margin" Value="0,0,0,8"/>
-        </Style>
-
         <Style x:Key="SettingsSubsectionTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
@@ -26,13 +18,33 @@
             <Setter Property="Margin" Value="0,0,0,12"/>
         </Style>
 
-        <Style x:Key="SettingsSectionBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="8"/>
+        <Style x:Key="SettingsSectionGroupBoxStyle" TargetType="{x:Type GroupBox}">
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}"/>
             <Setter Property="Padding" Value="14"/>
             <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type GroupBox}">
+                        <Border Background="{StaticResource AppSurfaceBrush}"
+                                BorderBrush="{StaticResource AppBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}"
+                                           Foreground="{TemplateBinding Foreground}"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           HorizontalAlignment="Left"
+                                           Padding="0"
+                                           Margin="0,0,0,8"/>
+
+                                <ContentPresenter ContentSource="Content"/>
+                            </StackPanel>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="SettingsFormLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
@@ -143,65 +155,57 @@
                           VerticalScrollBarVisibility="Auto"
                           ScrollChanged="SettingsContent_ScrollViewer_ScrollChanged">
                 <StackPanel>
-                    <Border x:Name="DataStorage_Section"
-                            Style="{StaticResource SettingsSectionBorderStyle}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.ColumnSpan="5"
-                                       Text="配置路径"
-                                       Style="{StaticResource SettingsSectionTitleStyle}"/>
-                            <TextBlock Grid.Row="1"
-                                       Grid.ColumnSpan="5"
-                                       Text="软件配置、角色备注、服务器列表缓存、地图数据缓存和 UISAVE.DAT 备份的保存位置。"
+                    <GroupBox x:Name="DataStorage_Section"
+                              Header="配置路径"
+                              Style="{StaticResource SettingsSectionGroupBoxStyle}">
+                        <StackPanel>
+                            <TextBlock Text="软件配置、角色备注、服务器列表缓存、地图数据缓存和 UISAVE.DAT 备份的保存位置。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
-                            <TextBlock Grid.Row="2"
-                                       Text="数据目录"
-                                       Style="{StaticResource SettingsFormLabelStyle}"/>
-                            <TextBox x:Name="DataDirectory_TextBox"
-                                     Grid.Row="2"
-                                     Grid.Column="1"
-                                     HorizontalContentAlignment="Left"
-                                     TextAlignment="Left"/>
-                            <Button Grid.Row="2"
-                                    Grid.Column="2"
-                                    Content="选择..."
-                                    Click="BrowseDataDirectory_Button_Click"/>
-                            <Button Grid.Row="2"
-                                    Grid.Column="3"
-                                    Content="恢复默认"
-                                    Click="ResetDataDirectory_Button_Click"/>
-                            <Button Grid.Row="2"
-                                    Grid.Column="4"
-                                    Content="打开已保存目录"
-                                    Click="OpenDataDirectory_Button_Click"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                            <TextBlock Grid.Row="3"
-                                       Grid.Column="1"
-                                       Grid.ColumnSpan="4"
-                                       Text="更换目录并保存时，可选择迁移现有工具数据，或只切换到一个新的空目录。"
-                                       Style="{StaticResource SettingsMutedTextStyle}"/>
-                        </Grid>
-                    </Border>
+                                <TextBlock Text="配置目录"
+                                           Style="{StaticResource SettingsFormLabelStyle}"/>
+                                <StackPanel Grid.Column="1">
+                                    <TextBox x:Name="DataDirectory_TextBox"
+                                             HorizontalContentAlignment="Left"
+                                             TextAlignment="Left"/>
+                                </StackPanel>
 
-                    <Border x:Name="Log_Section"
-                            Style="{StaticResource SettingsSectionBorderStyle}">
+                                <TextBlock Grid.Row="1"
+                                           Text="目录操作"
+                                           Style="{StaticResource SettingsFormLabelStyle}"/>
+                                <StackPanel Grid.Row="1"
+                                            Grid.Column="1"
+                                            Orientation="Horizontal"
+                                            Margin="0,4,0,0">
+                                    <Button Content="选择目录..."
+                                            Click="BrowseDataDirectory_Button_Click"/>
+                                    <Button Content="恢复默认目录"
+                                            Click="ResetDataDirectory_Button_Click"/>
+                                    <Button Content="打开当前目录"
+                                            Click="OpenDataDirectory_Button_Click"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="更换目录并保存时，可选择迁移现有工具数据，或只切换到一个新的空目录。"
+                                       Style="{StaticResource SettingsMutedTextStyle}"
+                                       Margin="100,4,0,4"/>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <GroupBox x:Name="Log_Section"
+                              Header="日志"
+                              Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="日志"
-                                       Style="{StaticResource SettingsSectionTitleStyle}"/>
                             <TextBlock Text="日志保存在配置路径下的 logs 目录，用于排查同步、读取和保存问题。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
@@ -285,37 +289,35 @@
                                            Margin="8,4,0,4"/>
                             </Grid>
                         </StackPanel>
-                    </Border>
+                    </GroupBox>
 
-                    <Border x:Name="Appearance_Section"
-                            Style="{StaticResource SettingsSectionBorderStyle}">
-                        <StackPanel>
-                            <TextBlock Text="外观"
-                                       Style="{StaticResource SettingsSectionTitleStyle}"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
+                    <GroupBox x:Name="Appearance_Section"
+                              Header="外观"
+                              Style="{StaticResource SettingsSectionGroupBoxStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
-                                <TextBlock Text="标点编辑显示形式"
-                                           Style="{StaticResource SettingsFormLabelStyle}"/>
+                            <TextBlock Text="标点编辑显示形式"
+                                       Style="{StaticResource SettingsFormLabelStyle}"/>
+                            <StackPanel Grid.Column="1"
+                                        Orientation="Horizontal">
                                 <controls:SegmentedSwitchControl x:Name="WayMarkLabelDisplayMode_SegmentedSwitch"
-                                                                 Grid.Column="1"
                                                                  LeftText="图片"
                                                                  LeftToolTip="使用项目图片显示 A/B/C/D 和 1/2/3/4 标点"
                                                                  RightText="文字"
                                                                  RightToolTip="使用 A点、B点 等文字显示"
                                                                  VerticalAlignment="Center"/>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
+                            </StackPanel>
+                        </Grid>
+                    </GroupBox>
 
-                    <Border x:Name="StartupBehavior_Section"
-                            Style="{StaticResource SettingsSectionBorderStyle}">
+                    <GroupBox x:Name="StartupBehavior_Section"
+                              Header="启动行为"
+                              Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="启动行为"
-                                       Style="{StaticResource SettingsSectionTitleStyle}"/>
                             <TextBlock Text="选择工具启动后是否自动处理标点文件；这些操作只会加载或选择文件，不会自动保存修改。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
@@ -331,13 +333,12 @@
                                          GroupName="StartupWayMarkAction"
                                          Content="启动时不做任何操作"/>
                         </StackPanel>
-                    </Border>
+                    </GroupBox>
 
-                    <Border x:Name="AutoBackup_Section"
-                            Style="{StaticResource SettingsSectionBorderStyle}">
+                    <GroupBox x:Name="AutoBackup_Section"
+                              Header="自动保存"
+                              Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="自动保存"
-                                       Style="{StaticResource SettingsSectionTitleStyle}"/>
                             <TextBlock Text="保存当前 UISAVE.DAT 前先创建工具备份；清理策略只影响工具生成的备份，不会删除游戏原始文件。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
@@ -396,13 +397,12 @@
                                            Margin="8,4,0,4"/>
                             </StackPanel>
                         </StackPanel>
-                    </Border>
+                    </GroupBox>
 
-                    <Border x:Name="OnlineData_Section"
-                            Style="{StaticResource SettingsSectionBorderStyle}">
+                    <GroupBox x:Name="OnlineData_Section"
+                              Header="数据同步"
+                              Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="数据同步"
-                                       Style="{StaticResource SettingsSectionTitleStyle}"/>
                             <TextBlock Text="地图名称和服务器列表会自动检查并缓存到本地；手动检查每类数据 5 分钟内只能触发一次。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
@@ -543,18 +543,16 @@
                                         Click="RefreshServerList_Button_Click"/>
                             </Grid>
                         </StackPanel>
-                    </Border>
+                    </GroupBox>
                 </StackPanel>
             </ScrollViewer>
 
-            <StackPanel Grid.Row="1"
-                        Orientation="Horizontal"
-                        HorizontalAlignment="Right"
-                        Margin="0,8,0,0">
-                <Button Content="保存设置"
-                        Style="{StaticResource PrimaryButtonStyle}"
-                        Click="SaveSettings_Button_Click"/>
-            </StackPanel>
+            <Button Grid.Row="1"
+                    Content="保存设置"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    HorizontalAlignment="Right"
+                    Margin="0,8,0,0"
+                    Click="SaveSettings_Button_Click"/>
         </Grid>
     </Grid>
 </UserControl>
