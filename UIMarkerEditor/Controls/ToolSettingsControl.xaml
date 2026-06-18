@@ -136,12 +136,12 @@
                      BorderThickness="0"
                      ItemContainerStyle="{StaticResource SettingsNavigationItemStyle}"
                      SelectionChanged="SettingsNavigation_ListBox_SelectionChanged">
-                <ListBoxItem Content="配置路径" Tag="DataStorage_Section" Style="{StaticResource SettingsNavigationItemStyle}"/>
-                <ListBoxItem Content="日志" Tag="Log_Section" Style="{StaticResource SettingsNavigationItemStyle}"/>
-                <ListBoxItem Content="外观" Tag="Appearance_Section" Style="{StaticResource SettingsNavigationItemStyle}"/>
-                <ListBoxItem Content="启动行为" Tag="StartupBehavior_Section" Style="{StaticResource SettingsNavigationItemStyle}"/>
-                <ListBoxItem Content="自动保存" Tag="AutoBackup_Section" Style="{StaticResource SettingsNavigationItemStyle}"/>
-                <ListBoxItem Content="数据同步" Tag="OnlineData_Section" Style="{StaticResource SettingsNavigationItemStyle}"/>
+                <ListBoxItem Content="配置路径" Tag="DataStorage_Section"/>
+                <ListBoxItem Content="日志" Tag="Log_Section"/>
+                <ListBoxItem Content="外观" Tag="Appearance_Section"/>
+                <ListBoxItem Content="启动行为" Tag="StartupBehavior_Section"/>
+                <ListBoxItem Content="自动保存" Tag="AutoBackup_Section"/>
+                <ListBoxItem Content="数据同步" Tag="OnlineData_Section"/>
             </ListBox>
         </Border>
 
