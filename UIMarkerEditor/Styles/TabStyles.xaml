@@ -90,11 +90,7 @@
     <SolidColorBrush x:Key="MainTabItem.Static.Background" Color="#00FFFFFF"/>
     <SolidColorBrush x:Key="MainTabItem.Static.Border" Color="#00FFFFFF"/>
     <SolidColorBrush x:Key="MainTabItem.MouseOver.Background" Color="#FFDDECF3"/>
-    <SolidColorBrush x:Key="MainTabItem.MouseOver.Border" Color="#00FFFFFF"/>
-    <SolidColorBrush x:Key="MainTabItem.Selected.Background" Color="#00FFFFFF"/>
     <SolidColorBrush x:Key="MainTabItem.Selected.Border" Color="#FF355C73"/>
-    <SolidColorBrush x:Key="MainTabItem.Disabled.Background" Color="#00FFFFFF"/>
-    <SolidColorBrush x:Key="MainTabItem.Disabled.Border" Color="#00FFFFFF"/>
 
     <Style x:Key="MainTabItemStyle" TargetType="{x:Type TabItem}">
         <Setter Property="FocusVisualStyle" Value="{StaticResource MainTabFocusVisual}"/>
