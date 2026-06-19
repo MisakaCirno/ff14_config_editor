@@ -36,7 +36,7 @@ namespace UIMarkerEditor
             List<string> warnings = appDataStore.ConsumeDataLoadWarnings();
             if (warnings.Count == 0) return;
 
-            MessageBox.Show(
+            AppMessageBox.Show(
                 this,
                 string.Join($"{Environment.NewLine}{Environment.NewLine}", warnings),
                 "本地数据读取提示",

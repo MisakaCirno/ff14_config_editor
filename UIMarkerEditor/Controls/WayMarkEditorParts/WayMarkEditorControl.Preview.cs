@@ -61,7 +61,7 @@ namespace UIMarkerEditor.Controls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"无法打开链接：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                AppMessageBox.Show($"无法打开链接：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

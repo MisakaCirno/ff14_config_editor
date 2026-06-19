@@ -20,7 +20,7 @@ namespace UIMarkerEditor
 
             if (!File.Exists(filePath))
             {
-                MessageBox.Show(this, "这个最近文件已经不存在。", "最近打开", MessageBoxButton.OK, MessageBoxImage.Information);
+                AppMessageBox.Show(this, "这个最近文件已经不存在。", "最近打开", MessageBoxButton.OK, MessageBoxImage.Information);
                 RefreshRecentFileMenu();
                 return;
             }

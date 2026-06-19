@@ -99,7 +99,7 @@ namespace UIMarkerEditor
                 return true;
             }
 
-            MessageBoxResult result = MessageBox.Show(
+            MessageBoxResult result = AppMessageBox.Show(
                 this,
                 "当前标点文件有未保存的修改。\n\n选择“是”保存修改，选择“否”放弃修改，选择“取消”继续编辑。",
                 "未保存的标点修改",

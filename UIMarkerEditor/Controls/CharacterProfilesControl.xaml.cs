@@ -89,7 +89,7 @@ public partial class CharacterProfilesControl : UserControl
     {
         if (appDataStore == null || !isCharacterDetailDirty) return true;
 
-        MessageBoxResult result = MessageBox.Show(
+        MessageBoxResult result = AppMessageBox.Show(
             ownerWindow,
             "当前角色备注有未保存的修改。\n\n选择“是”保存修改，选择“否”放弃修改，选择“取消”继续编辑。",
             "未保存的角色备注",
@@ -252,20 +252,20 @@ public partial class CharacterProfilesControl : UserControl
         savedUserID = userID;
         if (string.IsNullOrWhiteSpace(userID))
         {
-            MessageBox.Show(ownerWindow, "User ID 不能为空。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppMessageBox.Show(ownerWindow, "User ID 不能为空。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
 
         if (!IsValidUserID(userID))
         {
-            MessageBox.Show(ownerWindow, "User ID 必须是 16 位十六进制字符。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppMessageBox.Show(ownerWindow, "User ID 必须是 16 位十六进制字符。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
 
         (string DataCenter, string World)? selectedServer = GetSelectedServer();
         if (selectedServer == null)
         {
-            MessageBox.Show(ownerWindow, "请选择角色所在服务器。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppMessageBox.Show(ownerWindow, "请选择角色所在服务器。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
 
@@ -302,7 +302,7 @@ public partial class CharacterProfilesControl : UserControl
                 profile.UpdatedAt = previousUpdatedAt;
             }
 
-            MessageBox.Show(ownerWindow, $"保存角色备注失败：{ex.Message}", "角色备注保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppMessageBox.Show(ownerWindow, $"保存角色备注失败：{ex.Message}", "角色备注保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
 
@@ -317,7 +317,7 @@ public partial class CharacterProfilesControl : UserControl
 
         if (showSuccessMessage)
         {
-            MessageBox.Show(ownerWindow, "角色备注已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "角色备注已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         return true;
@@ -372,7 +372,7 @@ public partial class CharacterProfilesControl : UserControl
     private void DeleteCharacter_Button_Click(object sender, RoutedEventArgs e)
     {
         if (appDataStore == null || Character_DataGrid.SelectedItem is not CharacterProfile profile) return;
-        if (MessageBox.Show(ownerWindow, "确定要删除这个角色备注吗？备份文件不会被删除。", "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (AppMessageBox.Show(ownerWindow, "确定要删除这个角色备注吗？备份文件不会被删除。", "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
         {
             return;
         }
@@ -390,7 +390,7 @@ public partial class CharacterProfilesControl : UserControl
                 appDataStore.Characters.Insert(removedIndex, profile);
             }
 
-            MessageBox.Show(ownerWindow, $"删除角色备注失败：{ex.Message}", "角色备注保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppMessageBox.Show(ownerWindow, $"删除角色备注失败：{ex.Message}", "角色备注保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 

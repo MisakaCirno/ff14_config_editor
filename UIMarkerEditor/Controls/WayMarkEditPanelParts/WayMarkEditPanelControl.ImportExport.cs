@@ -27,21 +27,21 @@ namespace UIMarkerEditor.Controls
             {
                 if (currentWayMark is not WayMark currentMark)
                 {
-                    MessageBox.Show("请先选择一个要导入到的标点槽位。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    AppMessageBox.Show("请先选择一个要导入到的标点槽位。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 
                 string json = Clipboard.GetText();
                 if (string.IsNullOrWhiteSpace(json))
                 {
-                    MessageBox.Show("剪贴板内容为空。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    AppMessageBox.Show("剪贴板内容为空。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 
                 MarkerShare? markerShare = JsonSerializer.Deserialize<MarkerShare>(json);
                 if (markerShare == null)
                 {
-                    MessageBox.Show("无法解析剪贴板中的JSON数据。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    AppMessageBox.Show("无法解析剪贴板中的JSON数据。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
 
@@ -51,7 +51,7 @@ namespace UIMarkerEditor.Controls
                     out ValidatedMarkerShare importedMarker,
                     out string validationError))
                 {
-                    MessageBox.Show(validationError, "导入数据无效", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    AppMessageBox.Show(validationError, "导入数据无效", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -84,11 +84,11 @@ namespace UIMarkerEditor.Controls
                 // 强制更新UI（如果需要）
                 // 属性变更应该会自动通知UI
 
-                MessageBox.Show("导入成功！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                AppMessageBox.Show("导入成功！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"导入失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                AppMessageBox.Show($"导入失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -98,7 +98,7 @@ namespace UIMarkerEditor.Controls
             {
                 if (currentWayMark is not WayMark currentMark)
                 {
-                    MessageBox.Show("请先选择一个要导出的标点。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    AppMessageBox.Show("请先选择一个要导出的标点。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 
@@ -109,7 +109,7 @@ namespace UIMarkerEditor.Controls
                 try
                 {
                     Clipboard.SetText(json);
-                    MessageBox.Show("导出成功！\nJSON数据已复制到剪贴板。", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                    AppMessageBox.Show("导出成功！\nJSON数据已复制到剪贴板。", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 catch
                 {
@@ -136,7 +136,7 @@ namespace UIMarkerEditor.Controls
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"导出失败!\n{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                AppMessageBox.Show($"导出失败!\n{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

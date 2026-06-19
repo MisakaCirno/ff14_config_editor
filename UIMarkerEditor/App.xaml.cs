@@ -19,7 +19,7 @@ public partial class App : Application
         catch (Exception ex)
         {
             AppLogger.Error(AppLogCategory.IO, "工具启动失败", ex);
-            MessageBox.Show(
+            AppMessageBox.Show(
                 BuildStartupFailureMessage(ex),
                 "启动失败",
                 MessageBoxButton.OK,
@@ -37,7 +37,7 @@ public partial class App : Application
         ServerListLoadResult serverListLoadResult = await appDataStore.EnsureServerListAvailableAsync();
         if (!mapDataLoadResult.Success || !serverListLoadResult.Success)
         {
-            MessageBox.Show(
+            AppMessageBox.Show(
                 BuildRequiredOnlineDataFailureMessage(mapDataLoadResult, serverListLoadResult),
                 "在线数据加载失败",
                 MessageBoxButton.OK,
@@ -47,7 +47,7 @@ public partial class App : Application
         }
 
         if ((mapDataLoadResult.UsedCache || serverListLoadResult.UsedCache) &&
-            MessageBox.Show(
+            AppMessageBox.Show(
                 BuildCacheModeConfirmMessage(mapDataLoadResult, serverListLoadResult),
                 "使用本地缓存启动",
                 MessageBoxButton.YesNo,
@@ -62,7 +62,7 @@ public partial class App : Application
             string versionText = string.IsNullOrWhiteSpace(mapDataLoadResult.Version)
                 ? "未知版本"
                 : mapDataLoadResult.Version;
-            MessageBox.Show(
+            AppMessageBox.Show(
                 $"地图数据已更新到版本：{versionText}",
                 "地图数据更新完成",
                 MessageBoxButton.OK,

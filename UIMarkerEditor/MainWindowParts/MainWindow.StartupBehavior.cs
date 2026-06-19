@@ -40,7 +40,7 @@ namespace UIMarkerEditor
             string filePath = recentFiles[0];
             if (!File.Exists(filePath))
             {
-                MessageBox.Show(
+                AppMessageBox.Show(
                     this,
                     $"最近一次打开的标点文件已经不存在，已跳过启动自动加载。\n\n文件：{filePath}",
                     "启动自动加载",

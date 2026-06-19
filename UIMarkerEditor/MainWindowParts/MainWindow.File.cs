@@ -29,7 +29,7 @@ namespace UIMarkerEditor
                 // 强校验：必须是 UISAVE.dat（忽略大小写）
                 if (!string.Equals(System.IO.Path.GetFileName(filePath), "UISAVE.dat", StringComparison.OrdinalIgnoreCase))
                 {
-                    MessageBox.Show("只能选择名为 UISAVE.dat 的文件。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    AppMessageBox.Show("只能选择名为 UISAVE.dat 的文件。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -82,7 +82,7 @@ namespace UIMarkerEditor
             }
             else
             {
-                MessageBox.Show("请先加载一个UISAVE.DAT文件。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                AppMessageBox.Show("请先加载一个UISAVE.DAT文件。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
@@ -101,7 +101,7 @@ namespace UIMarkerEditor
                     catch (Exception ex)
                     {
                         AppLogger.Error(AppLogCategory.IO, $"保存前自动备份失败：{configUISave.FilePath}", ex);
-                        MessageBox.Show($"保存前自动备份失败，已取消保存。\n{ex.Message}", "备份失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                        AppMessageBox.Show($"保存前自动备份失败，已取消保存。\n{ex.Message}", "备份失败", MessageBoxButton.OK, MessageBoxImage.Error);
                         return false;
                     }
                 }
@@ -114,27 +114,27 @@ namespace UIMarkerEditor
                 catch (UISaveFormatException ex)
                 {
                     AppLogger.Error(AppLogCategory.UISaveFormat, $"保存 UISAVE.DAT 前结构校验失败：{configUISave.FilePath}", ex);
-                    MessageBox.Show(this, $"UISAVE.DAT 结构校验失败，已取消保存，原文件未写入。\n\n文件：{configUISave.FilePath}\n\n诊断信息：{ex.Message}", "保存失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                    AppMessageBox.Show(this, $"UISAVE.DAT 结构校验失败，已取消保存，原文件未写入。\n\n文件：{configUISave.FilePath}\n\n诊断信息：{ex.Message}", "保存失败", MessageBoxButton.OK, MessageBoxImage.Error);
                     return false;
                 }
                 catch (Exception ex)
                 {
                     AppLogger.Error(AppLogCategory.IO, $"保存 UISAVE.DAT 失败：{configUISave.FilePath}", ex);
-                    MessageBox.Show(this, $"保存 UISAVE.DAT 失败，原文件未确认写入完成。\n\n文件：{configUISave.FilePath}\n\n原因：{ex.Message}", "保存失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                    AppMessageBox.Show(this, $"保存 UISAVE.DAT 失败，原文件未确认写入完成。\n\n文件：{configUISave.FilePath}\n\n原因：{ex.Message}", "保存失败", MessageBoxButton.OK, MessageBoxImage.Error);
                     return false;
                 }
 
                 SetWayMarkDirty(false);
                 if (showSuccessMessage)
                 {
-                    MessageBox.Show("文件已保存。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    AppMessageBox.Show("文件已保存。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
 
                 return true;
             }
             else
             {
-                MessageBox.Show("请先加载一个UISAVE.DAT文件。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                AppMessageBox.Show("请先加载一个UISAVE.DAT文件。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return false;
             }
         }
@@ -150,14 +150,14 @@ namespace UIMarkerEditor
             catch (UISaveFormatException ex)
             {
                 AppLogger.Error(AppLogCategory.UISaveFormat, $"加载 UISAVE.DAT 格式失败：{filePath}", ex);
-                MessageBox.Show(this, $"这个 UISAVE.DAT 的结构与当前工具已知格式不一致，已取消加载，当前文件保持不变。\n\n文件：{filePath}\n\n诊断信息：{ex.Message}", "加载失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                AppMessageBox.Show(this, $"这个 UISAVE.DAT 的结构与当前工具已知格式不一致，已取消加载，当前文件保持不变。\n\n文件：{filePath}\n\n诊断信息：{ex.Message}", "加载失败", MessageBoxButton.OK, MessageBoxImage.Error);
                 CommandManager.InvalidateRequerySuggested();
                 return false;
             }
             catch (Exception ex)
             {
                 AppLogger.Error(AppLogCategory.IO, $"加载 UISAVE.DAT 失败：{filePath}", ex);
-                MessageBox.Show(this, $"无法加载 UISAVE.DAT 文件。\n\n文件：{filePath}\n\n原因：{ex.Message}", "加载失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                AppMessageBox.Show(this, $"无法加载 UISAVE.DAT 文件。\n\n文件：{filePath}\n\n原因：{ex.Message}", "加载失败", MessageBoxButton.OK, MessageBoxImage.Error);
                 CommandManager.InvalidateRequerySuggested();
                 return false;
             }
@@ -196,7 +196,7 @@ namespace UIMarkerEditor
             }
             else
             {
-                MessageBox.Show(this, "无法在这个 UISAVE.DAT 中找到可编辑的 FMARKER 标点数据，当前已加载文件保持不变。", "加载失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                AppMessageBox.Show(this, "无法在这个 UISAVE.DAT 中找到可编辑的 FMARKER 标点数据，当前已加载文件保持不变。", "加载失败", MessageBoxButton.OK, MessageBoxImage.Error);
                 CommandManager.InvalidateRequerySuggested();
                 return false;
             }

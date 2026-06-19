@@ -35,7 +35,7 @@ namespace UIMarkerEditor.Controls
         {
             if (WayMark_ListBox.SelectedItem is not WayMark selectedMark)
             {
-                MessageBox.Show("请先选择一个要移动的标点槽位。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                AppMessageBox.Show("请先选择一个要移动的标点槽位。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 

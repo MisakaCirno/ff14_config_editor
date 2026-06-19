@@ -25,7 +25,7 @@ namespace UIMarkerEditor.Controls
         {
             if (currentWayMark == null)
             {
-                MessageBox.Show("请先选择一个要设置的标点槽位。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                AppMessageBox.Show("请先选择一个要设置的标点槽位。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -39,7 +39,7 @@ namespace UIMarkerEditor.Controls
 
             if (distance <= 0)
             {
-                MessageBox.Show("与中心点间距必须大于 0。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                AppMessageBox.Show("与中心点间距必须大于 0。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -62,7 +62,7 @@ namespace UIMarkerEditor.Controls
             {
                 if (!TryCreateRawGamePosition(positions[i], out RawGamePosition rawPosition))
                 {
-                    MessageBox.Show("生成的坐标超出可保存范围，请检查中心点和距离。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    AppMessageBox.Show("生成的坐标超出可保存范围，请检查中心点和距离。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -96,14 +96,14 @@ namespace UIMarkerEditor.Controls
             {
                 if (!double.IsFinite(value))
                 {
-                    MessageBox.Show($"{displayName} 需要填写有限数字。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    AppMessageBox.Show($"{displayName} 需要填写有限数字。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return false;
                 }
 
                 return true;
             }
 
-            MessageBox.Show($"{displayName} 需要填写数字。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppMessageBox.Show($"{displayName} 需要填写数字。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
 

@@ -28,7 +28,7 @@ public partial class BackupCharacterProfileDialog : Window
     {
         if (string.IsNullOrWhiteSpace(World))
         {
-            MessageBox.Show(this, "请选择服务器。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppMessageBox.Show(this, "请选择服务器。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 

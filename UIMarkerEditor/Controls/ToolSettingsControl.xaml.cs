@@ -241,7 +241,7 @@ public partial class ToolSettingsControl : UserControl
             string requestedDataDirectory = DataDirectory_TextBox.Text.Trim();
             if (!string.Equals(requestedDataDirectory, appDataStore.DataDirectory, StringComparison.OrdinalIgnoreCase))
             {
-                MessageBoxResult migrateResult = MessageBox.Show(
+                MessageBoxResult migrateResult = AppMessageBox.Show(
                     ownerWindow,
                     "是否将现有配置、角色备注和备份迁移到新目录？\n选择“否”将只切换目录，不复制旧数据。",
                     "迁移配置目录",
@@ -278,11 +278,11 @@ public partial class ToolSettingsControl : UserControl
             refreshAppearance();
             refreshBackupList();
             refreshCharacterList();
-            MessageBox.Show(ownerWindow, "设置已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "设置已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ownerWindow, $"保存设置失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppMessageBox.Show(ownerWindow, $"保存设置失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -300,12 +300,12 @@ public partial class ToolSettingsControl : UserControl
         string directory = DataDirectory_TextBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(directory))
         {
-            MessageBox.Show(ownerWindow, "请先填写配置目录。", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "请先填写配置目录。", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         if (!Directory.Exists(directory))
         {
-            MessageBox.Show(ownerWindow, "当前配置目录不存在，请先选择一个已有目录或保存设置后再打开。", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "当前配置目录不存在，请先选择一个已有目录或保存设置后再打开。", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -315,7 +315,7 @@ public partial class ToolSettingsControl : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ownerWindow, $"打开当前目录失败：{ex.Message}", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppMessageBox.Show(ownerWindow, $"打开当前目录失败：{ex.Message}", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -323,7 +323,7 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null) return;
 
-        MessageBoxResult result = MessageBox.Show(
+        MessageBoxResult result = AppMessageBox.Show(
             ownerWindow,
             "确定要归档当前正在写入的日志文件，并切换到新的日志文件吗？",
             "归档当前日志",
@@ -337,15 +337,15 @@ public partial class ToolSettingsControl : UserControl
             UpdateCurrentLogFilePathText();
             if (string.IsNullOrWhiteSpace(archivePath))
             {
-                MessageBox.Show(ownerWindow, "当前日志文件尚未生成。", "归档当前日志", MessageBoxButton.OK, MessageBoxImage.Information);
+                AppMessageBox.Show(ownerWindow, "当前日志文件尚未生成。", "归档当前日志", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            MessageBox.Show(ownerWindow, $"当前日志已归档到：\n{archivePath}", "归档当前日志", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, $"当前日志已归档到：\n{archivePath}", "归档当前日志", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ownerWindow, $"归档当前日志失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppMessageBox.Show(ownerWindow, $"归档当前日志失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -353,7 +353,7 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null) return;
 
-        MessageBoxResult result = MessageBox.Show(
+        MessageBoxResult result = AppMessageBox.Show(
             ownerWindow,
             "确定要清理当前正在写入的日志文件吗？历史日志不会被删除。",
             "清理当前日志",
@@ -365,11 +365,11 @@ public partial class ToolSettingsControl : UserControl
         {
             int deletedCount = appDataStore.ClearCurrentLogFile();
             UpdateCurrentLogFilePathText();
-            MessageBox.Show(ownerWindow, $"已清理 {deletedCount} 个当前日志文件。", "清理当前日志", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, $"已清理 {deletedCount} 个当前日志文件。", "清理当前日志", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ownerWindow, $"清理当前日志失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppMessageBox.Show(ownerWindow, $"清理当前日志失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -377,7 +377,7 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null) return;
 
-        MessageBoxResult result = MessageBox.Show(
+        MessageBoxResult result = AppMessageBox.Show(
             ownerWindow,
             "确定要清理当前日志和所有历史日志吗？",
             "清理所有日志",
@@ -389,11 +389,11 @@ public partial class ToolSettingsControl : UserControl
         {
             int deletedCount = appDataStore.ClearLogFiles();
             UpdateCurrentLogFilePathText();
-            MessageBox.Show(ownerWindow, $"已清理 {deletedCount} 个日志文件。", "清理所有日志", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, $"已清理 {deletedCount} 个日志文件。", "清理所有日志", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ownerWindow, $"清理所有日志失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppMessageBox.Show(ownerWindow, $"清理所有日志失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -434,13 +434,13 @@ public partial class ToolSettingsControl : UserControl
             RefreshStatusFields();
             if (!result.Success)
             {
-                MessageBox.Show(ownerWindow, "地图数据检查更新失败，请稍后再试。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Warning);
+                AppMessageBox.Show(ownerWindow, "地图数据检查更新失败，请稍后再试。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             refreshMapDataConsumers();
             string versionText = string.IsNullOrWhiteSpace(result.Version) ? "未知版本" : result.Version;
-            MessageBox.Show(ownerWindow, $"地图数据已更新到：{versionText}", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, $"地图数据已更新到：{versionText}", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         finally
         {
@@ -471,12 +471,12 @@ public partial class ToolSettingsControl : UserControl
             RefreshStatusFields();
             if (!success)
             {
-                MessageBox.Show(ownerWindow, "服务器列表检查更新失败，已继续使用本地缓存。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Warning);
+                AppMessageBox.Show(ownerWindow, "服务器列表检查更新失败，已继续使用本地缓存。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             refreshServerListConsumers();
-            MessageBox.Show(ownerWindow, "服务器列表已更新。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "服务器列表已更新。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         finally
         {
@@ -535,7 +535,7 @@ public partial class ToolSettingsControl : UserControl
     private void ShowRefreshCooldownMessage(string dataName, TimeSpan waitTime)
     {
         int waitSeconds = Math.Max(1, (int)Math.Ceiling(waitTime.TotalSeconds));
-        MessageBox.Show(
+        AppMessageBox.Show(
             ownerWindow,
             $"{dataName}刚刚检查过，请约 {waitSeconds} 秒后再试。",
             "检查过于频繁",
@@ -577,11 +577,11 @@ public partial class ToolSettingsControl : UserControl
         }
         catch (InvalidOperationException ex)
         {
-            MessageBox.Show(ownerWindow, $"无法保存检查记录：{ex.Message}", "设置保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppMessageBox.Show(ownerWindow, $"无法保存检查记录：{ex.Message}", "设置保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         catch (AppDataStoreException ex)
         {
-            MessageBox.Show(ownerWindow, $"无法保存检查记录：{ex.Message}", "设置保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppMessageBox.Show(ownerWindow, $"无法保存检查记录：{ex.Message}", "设置保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -630,7 +630,7 @@ public partial class ToolSettingsControl : UserControl
             return true;
         }
 
-        MessageBox.Show(ownerWindow, $"{displayName} 必须是 {min} 到 {max} 之间的整数。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+        AppMessageBox.Show(ownerWindow, $"{displayName} 必须是 {min} 到 {max} 之间的整数。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
         return false;
     }
 

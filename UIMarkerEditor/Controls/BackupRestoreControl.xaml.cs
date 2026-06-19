@@ -141,14 +141,14 @@ public partial class BackupRestoreControl : UserControl
 
         if (Backup_DataGrid.SelectedItem is not BackupMetadata backup)
         {
-            MessageBox.Show(ownerWindow, "请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
         string userID = backup.EffectiveUserID;
         if (!IsValidUserID(userID))
         {
-            MessageBox.Show(ownerWindow, "这个备份没有可用于创建角色备注的 16 位 User ID。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppMessageBox.Show(ownerWindow, "这个备份没有可用于创建角色备注的 16 位 User ID。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -156,7 +156,7 @@ public partial class BackupRestoreControl : UserControl
             string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase));
         if (existingProfile != null && HasCharacterRemark(existingProfile))
         {
-            MessageBox.Show(ownerWindow, "这个备份对应的角色已经有备注。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "这个备份对应的角色已经有备注。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -200,7 +200,7 @@ public partial class BackupRestoreControl : UserControl
                 profile.UpdatedAt = previousUpdatedAt;
             }
 
-            MessageBox.Show(ownerWindow, $"保存角色备注失败：{ex.Message}", "角色备注保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppMessageBox.Show(ownerWindow, $"保存角色备注失败：{ex.Message}", "角色备注保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -208,7 +208,7 @@ public partial class BackupRestoreControl : UserControl
         refreshCharacterList();
         RefreshBackupList();
         Backup_DataGrid.SelectedItem = backupEntries.FirstOrDefault(entry => entry.Id == selectedBackupId);
-        MessageBox.Show(ownerWindow, "角色备注已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+        AppMessageBox.Show(ownerWindow, "角色备注已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void UpdateBackupDetail(BackupMetadata? backup)
@@ -271,7 +271,7 @@ public partial class BackupRestoreControl : UserControl
 
         if (Backup_DataGrid.SelectedItem is not BackupMetadata backup)
         {
-            MessageBox.Show(ownerWindow, "请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -281,7 +281,7 @@ public partial class BackupRestoreControl : UserControl
         }
 
         string warning = BuildRestoreWarning(backup, backup.OriginalFilePath);
-        if (MessageBox.Show(ownerWindow, warning, "确认还原备份", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (AppMessageBox.Show(ownerWindow, warning, "确认还原备份", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
         {
             return;
         }
@@ -304,11 +304,11 @@ public partial class BackupRestoreControl : UserControl
                 loadConfigFile(currentFilePath);
             }
 
-            MessageBox.Show(ownerWindow, "备份已还原到原文件路径。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "备份已还原到原文件路径。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ownerWindow, $"还原失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppMessageBox.Show(ownerWindow, $"还原失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -318,7 +318,7 @@ public partial class BackupRestoreControl : UserControl
 
         if (Backup_DataGrid.SelectedItem is not BackupMetadata backup)
         {
-            MessageBox.Show(ownerWindow, "请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -347,11 +347,11 @@ public partial class BackupRestoreControl : UserControl
                 loadConfigFile(getCurrentFilePath());
             }
 
-            MessageBox.Show(ownerWindow, "备份已还原到指定位置。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "备份已还原到指定位置。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ownerWindow, $"还原失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppMessageBox.Show(ownerWindow, $"还原失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -378,11 +378,11 @@ public partial class BackupRestoreControl : UserControl
 
         if (Backup_DataGrid.SelectedItem is not BackupMetadata backup)
         {
-            MessageBox.Show(ownerWindow, "请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
-        if (MessageBox.Show(ownerWindow, "确定要删除这个备份吗？", "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (AppMessageBox.Show(ownerWindow, "确定要删除这个备份吗？", "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
         {
             return;
         }
