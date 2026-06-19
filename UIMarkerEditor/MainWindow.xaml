@@ -399,12 +399,7 @@
             </TabItem>
 
             <TabItem Header="帮助与关于">
-                <Grid Margin="18">
-                    <TextBlock Text="使用帮助内容整理中。"
-                                   Foreground="{StaticResource AppMutedTextBrush}"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
-                </Grid>
+                <controls:HelpAboutControl/>
             </TabItem>
         </TabControl>
 
