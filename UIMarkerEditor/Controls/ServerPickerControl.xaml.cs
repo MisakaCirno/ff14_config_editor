@@ -17,6 +17,7 @@ public partial class ServerPickerControl : UserControl
     public ServerPickerControl()
     {
         InitializeComponent();
+        UpdateButtonText();
     }
 
     public void SetServerGroups(IEnumerable<ServerGroup> groups)
@@ -33,16 +34,31 @@ public partial class ServerPickerControl : UserControl
         SelectedDataCenter = dataCenter;
         SelectedWorld = world;
 
+        if (string.IsNullOrWhiteSpace(dataCenter) && string.IsNullOrWhiteSpace(world))
+        {
+            ServerArea_ListBox.SelectedItem = null;
+            ServerWorld_ListBox.ItemsSource = null;
+            ServerWorld_ListBox.SelectedItem = null;
+            UpdateButtonText();
+            suppressSelectionChanged = false;
+            return;
+        }
+
         ServerGroup? selectedGroup = serverGroups.FirstOrDefault(group =>
             string.Equals(group.DataCenter, dataCenter, StringComparison.OrdinalIgnoreCase));
         selectedGroup ??= serverGroups.FirstOrDefault(group =>
             group.Worlds.Any(candidateWorld => string.Equals(candidateWorld, world, StringComparison.OrdinalIgnoreCase)));
-        selectedGroup ??= serverGroups.FirstOrDefault();
 
         ServerArea_ListBox.SelectedItem = selectedGroup;
         ServerWorld_ListBox.ItemsSource = selectedGroup?.Worlds;
         ServerWorld_ListBox.SelectedItem = selectedGroup?.Worlds.FirstOrDefault(candidateWorld =>
             string.Equals(candidateWorld, world, StringComparison.OrdinalIgnoreCase));
+
+        if (selectedGroup == null || ServerWorld_ListBox.SelectedItem == null)
+        {
+            SelectedDataCenter = string.Empty;
+            SelectedWorld = string.Empty;
+        }
 
         UpdateButtonText();
         suppressSelectionChanged = false;
@@ -57,14 +73,33 @@ public partial class ServerPickerControl : UserControl
 
     private void UpdateButtonText()
     {
-        ServerPicker_TextBlock.Text = string.IsNullOrWhiteSpace(SelectedWorld)
-            ? "请选择服务器"
-            : $"{SelectedDataCenter} / {SelectedWorld}";
+        bool hasSelectedWorld = !string.IsNullOrWhiteSpace(SelectedWorld);
+        ServerPicker_TextBlock.Text = hasSelectedWorld
+            ? $"{SelectedDataCenter} / {SelectedWorld}"
+            : "请选择服务器";
+        ClearServer_Button.IsEnabled = hasSelectedWorld;
     }
 
     private void ServerPicker_Button_Click(object sender, RoutedEventArgs e)
     {
+        if (ServerArea_ListBox.SelectedItem == null)
+        {
+            ServerArea_ListBox.SelectedItem = serverGroups.FirstOrDefault();
+        }
+
         ServerPicker_Popup.IsOpen = true;
+    }
+
+    private void ClearServer_Button_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(SelectedDataCenter) && string.IsNullOrWhiteSpace(SelectedWorld))
+        {
+            return;
+        }
+
+        SelectServer(string.Empty, string.Empty);
+        ServerPicker_Popup.IsOpen = false;
+        SelectedServerChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void ServerArea_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)

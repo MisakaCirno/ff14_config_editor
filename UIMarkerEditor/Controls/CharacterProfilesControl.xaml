@@ -10,56 +10,88 @@
         </Grid.ColumnDefinitions>
 
         <GroupBox Grid.Column="0" Header="角色备注列表" Padding="5">
-            <DataGrid x:Name="Character_DataGrid"
-                      AutoGenerateColumns="False"
-                      CanUserAddRows="False"
-                      CanUserDeleteRows="False"
-                      CanUserReorderColumns="False"
-                      CanUserResizeRows="False"
-                      CanUserSortColumns="True"
-                      HeadersVisibility="Column"
-                      IsReadOnly="True"
-                      SelectionMode="Single"
-                      SelectionUnit="FullRow"
-                      SelectionChanged="Character_DataGrid_SelectionChanged"
-                      PreviewMouseRightButtonDown="Character_DataGrid_PreviewMouseRightButtonDown">
-                <DataGrid.ContextMenu>
-                    <ContextMenu Opened="Character_ContextMenu_Opened">
-                        <MenuItem x:Name="RefreshCharacters_MenuItem"
-                                  Header="刷新角色备注"
-                                  Click="RefreshCharacters_Button_Click"/>
-                        <Separator/>
-                        <MenuItem x:Name="NewCharacter_MenuItem"
-                                  Header="新建备注"
-                                  Click="NewCharacter_Button_Click"/>
-                        <MenuItem x:Name="DeleteCharacter_MenuItem"
-                                  Header="删除备注"
-                                  Click="DeleteCharacter_Button_Click"/>
-                    </ContextMenu>
-                </DataGrid.ContextMenu>
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="角色名"
-                                        Binding="{Binding CharacterName}"
-                                        SortMemberPath="CharacterName"
-                                        Width="SizeToCells"
-                                        MinWidth="70"/>
-                    <DataGridTextColumn Header="大区"
-                                        Binding="{Binding DataCenter}"
-                                        SortMemberPath="DataCenter"
-                                        Width="SizeToCells"
-                                        MinWidth="55"/>
-                    <DataGridTextColumn Header="服务器"
-                                        Binding="{Binding World}"
-                                        SortMemberPath="World"
-                                        Width="SizeToCells"
-                                        MinWidth="70"/>
-                    <DataGridTextColumn Header="User ID"
-                                        Binding="{Binding UserID}"
-                                        SortMemberPath="UserID"
-                                        Width="*"
-                                        MinWidth="75"/>
-                </DataGrid.Columns>
-            </DataGrid>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <DataGrid x:Name="Character_DataGrid"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          CanUserReorderColumns="False"
+                          CanUserResizeRows="False"
+                          CanUserSortColumns="True"
+                          HeadersVisibility="Column"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          SelectionUnit="FullRow"
+                          SelectionChanged="Character_DataGrid_SelectionChanged"
+                          PreviewMouseRightButtonDown="Character_DataGrid_PreviewMouseRightButtonDown">
+                    <DataGrid.ContextMenu>
+                        <ContextMenu Opened="Character_ContextMenu_Opened">
+                            <MenuItem x:Name="RefreshCharacters_MenuItem"
+                                      Header="刷新角色备注"
+                                      Click="RefreshCharacters_Button_Click"/>
+                            <Separator/>
+                            <MenuItem x:Name="NewCharacter_MenuItem"
+                                      Header="新建备注"
+                                      Click="NewCharacter_Button_Click"/>
+                            <MenuItem x:Name="DeleteCharacter_MenuItem"
+                                      Header="删除备注"
+                                      IsEnabled="False"
+                                      Click="DeleteCharacter_Button_Click"/>
+                        </ContextMenu>
+                    </DataGrid.ContextMenu>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="角色名"
+                                            Binding="{Binding CharacterName}"
+                                            SortMemberPath="CharacterName"
+                                            Width="SizeToCells"
+                                            MinWidth="70"/>
+                        <DataGridTextColumn Header="大区"
+                                            Binding="{Binding DataCenter}"
+                                            SortMemberPath="DataCenter"
+                                            Width="SizeToCells"
+                                            MinWidth="55"/>
+                        <DataGridTextColumn Header="服务器"
+                                            Binding="{Binding World}"
+                                            SortMemberPath="World"
+                                            Width="SizeToCells"
+                                            MinWidth="70"/>
+                        <DataGridTextColumn Header="User ID"
+                                            Binding="{Binding UserID}"
+                                            SortMemberPath="UserID"
+                                            Width="*"
+                                            MinWidth="75"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <StackPanel Grid.Row="1"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Margin="0,8,0,0">
+                    <Button Content="刷新"
+                            MinWidth="96"
+                            Height="32"
+                            Margin="0,0,8,0"
+                            Click="RefreshCharacters_Button_Click"/>
+                    <Button Content="新建备注"
+                            MinWidth="96"
+                            Height="32"
+                            Margin="0,0,8,0"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Click="NewCharacter_Button_Click"/>
+                    <Button x:Name="DeleteCharacterList_Button"
+                            Content="删除备注"
+                            MinWidth="96"
+                            Height="32"
+                            Margin="0"
+                            Style="{StaticResource DangerButtonStyle}"
+                            Click="DeleteCharacter_Button_Click"/>
+                </StackPanel>
+            </Grid>
         </GroupBox>
 
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>
@@ -72,14 +104,10 @@
                 <StackPanel x:Name="CharacterEmpty_Panel"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center">
-                    <TextBlock Text="请选择左侧角色备注，或新建一个备注。"
+                    <TextBlock Text="请选择左侧角色备注进行修改。"
                                TextWrapping="Wrap"
                                HorizontalAlignment="Center"
                                Margin="5"/>
-                    <Button Content="新建备注"
-                            MinWidth="110"
-                            Style="{StaticResource PrimaryButtonStyle}"
-                            Click="NewCharacter_Button_Click"/>
                 </StackPanel>
 
                 <ScrollViewer x:Name="CharacterDetail_ScrollViewer"
@@ -102,6 +130,7 @@
                         <TextBox x:Name="CharacterUserID_TextBox"
                                  Grid.Row="0"
                                  Grid.Column="1"
+                                 IsReadOnly="True"
                                  TextChanged="CharacterDetail_TextChanged"/>
                         <TextBlock Text="角色名：" Grid.Row="1"/>
                         <TextBox x:Name="CharacterName_TextBox"

@@ -113,23 +113,9 @@ namespace UIMarkerEditor.Controls
                 }
                 catch
                 {
-                    // 弹出窗口
-                    Window copyWindow = new()
-                    {
-                        Title = "复制标点数据",
-                        Width = 400,
-                        Height = 300,
-                        Content = new TextBox
-                        {
-                            Text = json,
-                            IsReadOnly = true,
-                            TextWrapping = TextWrapping.Wrap,
-                            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
-                        }
-                    };
-
-                    DialogOwnerHelper.ConfigureOwnedDialog(copyWindow, Window.GetWindow(this));
-                    copyWindow.ShowDialog();
+                    CopyWayMarkJsonDialog dialog = new(json);
+                    DialogOwnerHelper.ConfigureOwnedDialog(dialog, Window.GetWindow(this));
+                    dialog.ShowDialog();
                 }
             }
             catch (Exception ex)
