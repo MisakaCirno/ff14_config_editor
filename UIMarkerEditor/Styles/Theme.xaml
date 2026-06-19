@@ -8,6 +8,7 @@
         <ResourceDictionary Source="CollectionStyles.xaml"/>
         <ResourceDictionary Source="DataGridStyles.xaml"/>
         <ResourceDictionary Source="ButtonStyles.xaml"/>
+        <ResourceDictionary Source="WindowStyles.xaml"/>
         <ResourceDictionary Source="TabStyles.xaml"/>
     </ResourceDictionary.MergedDictionaries>
 </ResourceDictionary>

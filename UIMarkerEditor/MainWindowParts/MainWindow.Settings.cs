@@ -11,6 +11,7 @@ namespace UIMarkerEditor
         private void RefreshAppearanceSettings()
         {
             WayMarkEditor_Control.ApplyAppearanceSettings(appDataStore.Settings);
+            WayMarkFavorites_Control.ApplySettings(appDataStore.Settings);
         }
 
         private void RefreshServerListConsumers()
@@ -23,6 +24,7 @@ namespace UIMarkerEditor
         {
             UpdateDataVersionText();
             WayMarkEditor_Control.RefreshMapDataDisplay();
+            WayMarkFavorites_Control.RefreshMapDataDisplay();
             RefreshBackupList();
         }
     }

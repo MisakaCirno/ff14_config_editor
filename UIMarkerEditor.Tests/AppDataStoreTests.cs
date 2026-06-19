@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
 using FF14ConfigEditor;
+using FF14ConfigEditor.UISave;
 using UIMarkerEditor;
 
 namespace UIMarkerEditor.Tests;
@@ -169,18 +170,39 @@ public sealed class AppDataStoreTests : IDisposable
         {
             UseWayMarkImageLabels = false,
             StartupWayMarkAction = StartupWayMarkAction.LoadMostRecentFile,
+            WayMarkFavoriteSaveMode = WayMarkFavoriteSaveMode.Auto,
             MaxLogFileSizeMb = 13,
             MaxLogFileCount = 4,
-            LastServerListManualRefreshAttempt = new DateTime(2026, 6, 18, 8, 30, 0)
+            LastServerListManualRefreshAttempt = new DateTime(2026, 6, 18, 8, 30, 0),
+            WindowLayout = new WindowLayoutSettings
+            {
+                WayMarkFavoriteListRatio = 0.2,
+                WayMarkFavoriteEditorRatio = 0.5,
+                WayMarkFavoritePreviewRatio = 0.3,
+                WayMarkFavoritePickerLeft = 11,
+                WayMarkFavoritePickerTop = 22,
+                WayMarkFavoritePickerWidth = 777,
+                WayMarkFavoritePickerHeight = 555,
+                WayMarkFavoritePickerListRatio = 0.65
+            }
         });
 
         AppDataStore reloadedStore = CreateStore();
         reloadedStore.Initialize();
         Assert.False(reloadedStore.Settings.UseWayMarkImageLabels);
         Assert.Equal(StartupWayMarkAction.LoadMostRecentFile, reloadedStore.Settings.StartupWayMarkAction);
+        Assert.Equal(WayMarkFavoriteSaveMode.Auto, reloadedStore.Settings.WayMarkFavoriteSaveMode);
         Assert.Equal(13, reloadedStore.Settings.MaxLogFileSizeMb);
         Assert.Equal(4, reloadedStore.Settings.MaxLogFileCount);
         Assert.Equal(new DateTime(2026, 6, 18, 8, 30, 0), reloadedStore.Settings.LastServerListManualRefreshAttempt);
+        Assert.Equal(0.2, reloadedStore.Settings.WindowLayout.WayMarkFavoriteListRatio);
+        Assert.Equal(0.5, reloadedStore.Settings.WindowLayout.WayMarkFavoriteEditorRatio);
+        Assert.Equal(0.3, reloadedStore.Settings.WindowLayout.WayMarkFavoritePreviewRatio);
+        Assert.Equal(11, reloadedStore.Settings.WindowLayout.WayMarkFavoritePickerLeft);
+        Assert.Equal(22, reloadedStore.Settings.WindowLayout.WayMarkFavoritePickerTop);
+        Assert.Equal(777, reloadedStore.Settings.WindowLayout.WayMarkFavoritePickerWidth);
+        Assert.Equal(555, reloadedStore.Settings.WindowLayout.WayMarkFavoritePickerHeight);
+        Assert.Equal(0.65, reloadedStore.Settings.WindowLayout.WayMarkFavoritePickerListRatio);
     }
 
     [Fact]
@@ -719,6 +741,152 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.DoesNotContain(store.ServerList.Groups, group => group.DataCenter == "新大区");
     }
 
+    [Fact]
+    public void AddWayMarkFavorite_PersistsSnapshotAndDoesNotShareReferences()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        WayMark wayMark = CreateSampleWayMark(123);
+
+        WayMarkFavorite favorite = store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(wayMark), "测试收藏");
+        wayMark.RegionID = 456;
+        wayMark.A.X = 999999;
+
+        WayMarkFavorite savedFavorite = Assert.Single(store.WayMarkFavorites);
+        Assert.Equal(favorite.Id, savedFavorite.Id);
+        Assert.Equal("测试收藏", savedFavorite.CommentName);
+        Assert.Equal((ushort)123, savedFavorite.RegionID);
+        Assert.Equal(1000, savedFavorite.Marker.A.X);
+
+        AppDataStore reloadedStore = CreateStore();
+        reloadedStore.Initialize();
+        WayMarkFavorite reloadedFavorite = Assert.Single(reloadedStore.WayMarkFavorites);
+        Assert.Equal(favorite.Id, reloadedFavorite.Id);
+        Assert.Equal("测试收藏", reloadedFavorite.CommentName);
+        Assert.Equal((ushort)123, reloadedFavorite.RegionID);
+        Assert.Equal(1000, reloadedFavorite.Marker.A.X);
+    }
+
+    [Fact]
+    public void AddWayMarkFavorite_WhenFavoritesFileCannotBeWritten_DoesNotMutateFavoritesInMemory()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(123)), "旧收藏");
+        File.Delete(store.WayMarkFavoritesFilePath);
+        Directory.CreateDirectory(store.WayMarkFavoritesFilePath);
+
+        AppDataStoreException exception = Assert.Throws<AppDataStoreException>(() =>
+            store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(456)), "新收藏"));
+
+        Assert.Equal("写入本地 JSON 文件", exception.Operation);
+        WayMarkFavorite favorite = Assert.Single(store.WayMarkFavorites);
+        Assert.Equal("旧收藏", favorite.CommentName);
+        Assert.Equal((ushort)123, favorite.RegionID);
+    }
+
+    [Fact]
+    public void MoveWayMarkFavorite_PersistsOrder()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        WayMarkFavorite first = store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(101)), "第一项");
+        WayMarkFavorite second = store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(102)), "第二项");
+        WayMarkFavorite third = store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(103)), "第三项");
+
+        bool moved = store.MoveWayMarkFavorite(first.Id, -1);
+
+        Assert.True(moved);
+        Assert.Equal([third.Id, first.Id, second.Id], store.WayMarkFavorites.Select(favorite => favorite.Id));
+
+        AppDataStore reloadedStore = CreateStore();
+        reloadedStore.Initialize();
+        Assert.Equal([third.Id, first.Id, second.Id], reloadedStore.WayMarkFavorites.Select(favorite => favorite.Id));
+    }
+
+    [Fact]
+    public void MoveWayMarkFavorite_WhenFavoritesFileCannotBeWritten_DoesNotMutateFavoritesInMemory()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        WayMarkFavorite first = store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(101)), "第一项");
+        WayMarkFavorite second = store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(102)), "第二项");
+        string[] originalOrder = [.. store.WayMarkFavorites.Select(favorite => favorite.Id)];
+        File.Delete(store.WayMarkFavoritesFilePath);
+        Directory.CreateDirectory(store.WayMarkFavoritesFilePath);
+
+        AppDataStoreException exception = Assert.Throws<AppDataStoreException>(() =>
+            store.MoveWayMarkFavorite(first.Id, -1));
+
+        Assert.Equal("写入本地 JSON 文件", exception.Operation);
+        Assert.Equal(originalOrder, store.WayMarkFavorites.Select(favorite => favorite.Id));
+        Assert.Equal(second.Id, store.WayMarkFavorites[0].Id);
+        Assert.Equal(first.Id, store.WayMarkFavorites[1].Id);
+    }
+
+    [Fact]
+    public void SortWayMarkFavoritesByRegion_PersistsOrder()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(300)), "300");
+        store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(100)), "100");
+        store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(200)), "200");
+        store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(0)), "0");
+
+        bool sortedAscending = store.SortWayMarkFavoritesByRegion(ascending: true);
+
+        Assert.True(sortedAscending);
+        Assert.Equal(new ushort[] { 100, 200, 300, 0 }, store.WayMarkFavorites.Select(favorite => favorite.RegionID));
+
+        bool sortedDescending = store.SortWayMarkFavoritesByRegion(ascending: false);
+
+        Assert.True(sortedDescending);
+        Assert.Equal(new ushort[] { 300, 200, 100, 0 }, store.WayMarkFavorites.Select(favorite => favorite.RegionID));
+
+        AppDataStore reloadedStore = CreateStore();
+        reloadedStore.Initialize();
+        Assert.Equal(new ushort[] { 300, 200, 100, 0 }, reloadedStore.WayMarkFavorites.Select(favorite => favorite.RegionID));
+    }
+
+    [Fact]
+    public void SortWayMarkFavoritesByRegion_WhenFavoritesFileCannotBeWritten_DoesNotMutateFavoritesInMemory()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(300)), "300");
+        store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(100)), "100");
+        store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(200)), "200");
+        string[] originalOrder = [.. store.WayMarkFavorites.Select(favorite => favorite.Id)];
+        ushort[] originalRegions = [.. store.WayMarkFavorites.Select(favorite => favorite.RegionID)];
+        File.Delete(store.WayMarkFavoritesFilePath);
+        Directory.CreateDirectory(store.WayMarkFavoritesFilePath);
+
+        AppDataStoreException exception = Assert.Throws<AppDataStoreException>(() =>
+            store.SortWayMarkFavoritesByRegion(ascending: true));
+
+        Assert.Equal("\u5199\u5165\u672C\u5730 JSON \u6587\u4EF6", exception.Operation);
+        Assert.Equal(originalOrder, store.WayMarkFavorites.Select(favorite => favorite.Id));
+        Assert.Equal(originalRegions, store.WayMarkFavorites.Select(favorite => favorite.RegionID));
+    }
+    [Fact]
+    public void Initialize_WhenWayMarkFavoritesJsonInvalid_DoesNotOverwriteCorruptedFileAndBlocksSave()
+    {
+        string favoritesPath = Path.Combine(testDirectory, "Data", "waymark-favorites.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(favoritesPath)!);
+        File.WriteAllText(favoritesPath, "{ 损坏的 JSON");
+        AppDataStore store = CreateStore();
+
+        store.Initialize();
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(123)), "测试收藏"));
+        Assert.Contains("waymark-favorites.json 本次启动读取失败", exception.Message);
+        Assert.Equal("{ 损坏的 JSON", File.ReadAllText(favoritesPath));
+        Assert.Empty(store.WayMarkFavorites);
+        Assert.Contains(store.ConsumeDataLoadWarnings(), warning => warning.Contains("标点收藏无法读取"));
+    }
+
     private AppDataStore CreateStore()
     {
         return new AppDataStore(testDirectory);
@@ -768,6 +936,26 @@ public sealed class AppDataStoreTests : IDisposable
               }
             }
             """;
+    }
+
+
+    private static WayMark CreateSampleWayMark(ushort regionId)
+    {
+        WayMark wayMark = new()
+        {
+            RegionID = regionId,
+            timestamp = 123456,
+            unknown = 7
+        };
+        wayMark.A.X = 1000;
+        wayMark.A.Y = 2000;
+        wayMark.A.Z = 3000;
+        wayMark.B.X = 4000;
+        wayMark.B.Y = 5000;
+        wayMark.B.Z = 6000;
+        wayMark.AEnabled = true;
+        wayMark.BEnabled = true;
+        return wayMark;
     }
 
     private static byte[] CreateMinimalUISaveFile(ushort regionId)

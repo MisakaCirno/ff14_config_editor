@@ -382,6 +382,10 @@
                 <controls:WayMarkEditorControl x:Name="WayMarkEditor_Control"/>
             </TabItem>
 
+            <TabItem Header="标点收藏">
+                <controls:WayMarkFavoritesControl x:Name="WayMarkFavorites_Control"/>
+            </TabItem>
+
             <TabItem Header="备份还原">
                 <controls:BackupRestoreControl x:Name="BackupRestore_Control"/>
             </TabItem>

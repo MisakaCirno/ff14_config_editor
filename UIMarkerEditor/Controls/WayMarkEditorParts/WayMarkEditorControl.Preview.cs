@@ -28,19 +28,14 @@ namespace UIMarkerEditor.Controls
             if (WayMark_ListBox.SelectedItem is WayMark selectedMark)
             {
                 currentWayMark = selectedMark;
-                SetRegionSearchText(currentWayMark.RegionID);
+                WayMarkEditPanel_Control.SetWayMark(currentWayMark, GetLoadedRegionIds());
                 WayMarkPreview_Control.SetWayMark(currentWayMark);
-
-                Edit1_Grid.IsEnabled = true;
-                Edit2_Grid.IsEnabled = true;
             }
             else
             {
                 currentWayMark = null;
+                WayMarkEditPanel_Control.SetWayMark(null);
                 WayMarkPreview_Control.SetWayMark(null);
-
-                Edit1_Grid.IsEnabled = false;
-                Edit2_Grid.IsEnabled = false;
             }
 
             UpdateMoveButtonState();

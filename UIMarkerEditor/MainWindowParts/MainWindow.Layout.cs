@@ -12,6 +12,7 @@ namespace UIMarkerEditor
             ApplyWindowBounds(layout);
             ApplyWindowState(layout);
             WayMarkEditor_Control.ApplyLayoutSettings(layout);
+            WayMarkFavorites_Control.ApplyLayoutSettings(layout);
             BackupRestore_Control.ApplyLayoutSettings(layout);
             CharacterProfiles_Control.ApplyLayoutSettings(layout);
         }
@@ -47,6 +48,7 @@ namespace UIMarkerEditor
                 : nameof(WindowState.Normal);
 
             WayMarkEditor_Control.CaptureLayoutSettings(layout);
+            WayMarkFavorites_Control.CaptureLayoutSettings(layout);
             BackupRestore_Control.CaptureLayoutSettings(layout);
             CharacterProfiles_Control.CaptureLayoutSettings(layout);
 

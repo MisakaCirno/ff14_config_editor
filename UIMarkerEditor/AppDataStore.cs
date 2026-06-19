@@ -19,6 +19,7 @@ public sealed partial class AppDataStore
     private const string CharactersFileName = "characters.json";
     private const string ServersFileName = "servers.json";
     private const string MapDataCacheFileName = "mapdata.json";
+    private const string WayMarkFavoritesFileName = "waymark-favorites.json";
     private const string MetadataFileName = "metadata.json";
     private const string BackupDataFileName = "UISAVE.DAT";
     private const string LogFileName = "app.log";
@@ -38,6 +39,7 @@ public sealed partial class AppDataStore
     private bool bootstrapFileInvalid;
     private bool settingsFileInvalid;
     private bool charactersFileInvalid;
+    private bool wayMarkFavoritesFileInvalid;
 
     public string BootstrapDirectory { get; }
     public string BootstrapFilePath => Path.Combine(BootstrapDirectory, BootstrapFileName);
@@ -48,11 +50,13 @@ public sealed partial class AppDataStore
     public string CharactersFilePath => Path.Combine(DataDirectory, CharactersFileName);
     public string ServersFilePath => Path.Combine(DataDirectory, ServersFileName);
     public string MapDataCacheFilePath => Path.Combine(DataDirectory, MapDataCacheFileName);
+    public string WayMarkFavoritesFilePath => Path.Combine(DataDirectory, WayMarkFavoritesFileName);
     public string LogDirectory => Path.Combine(DataDirectory, "logs");
     public string LogFilePath => Path.Combine(LogDirectory, LogFileName);
 
     public AppSettings Settings { get; private set; } = new();
     public ObservableCollection<CharacterProfile> Characters { get; } = [];
+    public ObservableCollection<WayMarkFavorite> WayMarkFavorites { get; } = [];
     public ServerListCache ServerList { get; private set; } = new();
     public string MapDataVersion { get; private set; } = string.Empty;
     public DateTime MapDataLastUpdated { get; private set; } = DateTime.MinValue;
@@ -129,6 +133,7 @@ public sealed partial class AppDataStore
         LoadSettings();
         ConfigureLogger();
         LoadCharacters();
+        LoadWayMarkFavorites();
         LoadServerList();
     }
 

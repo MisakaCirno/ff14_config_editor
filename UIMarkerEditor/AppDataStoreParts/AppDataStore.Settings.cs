@@ -59,6 +59,11 @@ public sealed partial class AppDataStore
             settings.StartupWayMarkAction = StartupWayMarkAction.None;
         }
 
+        if (!Enum.IsDefined(settings.WayMarkFavoriteSaveMode))
+        {
+            settings.WayMarkFavoriteSaveMode = WayMarkFavoriteSaveMode.Manual;
+        }
+
         settings.MaxBackupCount = NormalizeIntRange(
             settings.MaxBackupCount,
             AppSettings.MinBackupCount,
@@ -107,6 +112,11 @@ public sealed partial class AppDataStore
         {
             throw new InvalidOperationException("启动行为设置不是有效选项。");
         }
+
+        if (!Enum.IsDefined(settings.WayMarkFavoriteSaveMode))
+        {
+            throw new InvalidOperationException("标点收藏保存方式不是有效选项。");
+        }
     }
 
     private static void ValidateIntRange(int value, string displayName, int min, int max)
@@ -130,6 +140,7 @@ public sealed partial class AppDataStore
             MaxLogFileCount = settings.MaxLogFileCount,
             UseWayMarkImageLabels = settings.UseWayMarkImageLabels,
             StartupWayMarkAction = settings.StartupWayMarkAction,
+            WayMarkFavoriteSaveMode = settings.WayMarkFavoriteSaveMode,
             LastMapDataManualRefreshAttempt = settings.LastMapDataManualRefreshAttempt,
             LastServerListManualRefreshAttempt = settings.LastServerListManualRefreshAttempt,
             WindowLayout = CloneWindowLayout(settings.WindowLayout),
@@ -154,6 +165,14 @@ public sealed partial class AppDataStore
             WayMarkListRatio = layout.WayMarkListRatio,
             WayMarkEditorRatio = layout.WayMarkEditorRatio,
             WayMarkPreviewRatio = layout.WayMarkPreviewRatio,
+            WayMarkFavoriteListRatio = layout.WayMarkFavoriteListRatio,
+            WayMarkFavoriteEditorRatio = layout.WayMarkFavoriteEditorRatio,
+            WayMarkFavoritePreviewRatio = layout.WayMarkFavoritePreviewRatio,
+            WayMarkFavoritePickerLeft = layout.WayMarkFavoritePickerLeft,
+            WayMarkFavoritePickerTop = layout.WayMarkFavoritePickerTop,
+            WayMarkFavoritePickerWidth = layout.WayMarkFavoritePickerWidth,
+            WayMarkFavoritePickerHeight = layout.WayMarkFavoritePickerHeight,
+            WayMarkFavoritePickerListRatio = layout.WayMarkFavoritePickerListRatio,
             BackupListRatio = layout.BackupListRatio,
             CharacterListRatio = layout.CharacterListRatio
         };

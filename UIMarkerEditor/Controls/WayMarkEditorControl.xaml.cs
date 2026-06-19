@@ -24,70 +24,24 @@ public partial class WayMarkEditorControl : UserControl
     private Point dragStartPoint;
     private WayMark? draggedWayMark;
     private int currentDropTargetIndex = -1;
-    private readonly ObservableCollection<MapData> regionOptions = [];
-    private ICollectionView? regionOptionsView;
-    private string regionFilterText = string.Empty;
-    private bool suppressRegionTextChanged;
-    private bool isSelectingRegionFromPopup;
-    private bool isClearingRegionText;
-    private readonly Dictionary<TextBox, CoordinateEditContext> coordinateEditContexts = [];
-    private readonly Dictionary<TextBox, string> coordinateAcceptedTexts = [];
-    private readonly HashSet<TextBox> coordinateTextChangeGuards = [];
-    private ToolTip? activeCoordinateInputTip;
-    private TextBox? activeCoordinateInputTipTarget;
-    private System.Windows.Threading.DispatcherTimer? activeCoordinateInputTipTimer;
+    private bool suppressWayMarkListDragUntilLeftButtonReleased;
+    private bool isWayMarkContextMenuOpen;
+    private bool isWatchingWayMarkListDragSuppressionRelease;
     private List<WayMark>? wayMarks;
-    private const int MinRawCoordinate = WayMarkCoordinateConverter.MinRawCoordinate;
-    private const int MaxRawCoordinate = WayMarkCoordinateConverter.MaxRawCoordinate;
-    private const int CoordinateScale = WayMarkCoordinateConverter.CoordinateScale;
-    private const int MaxCoordinateTextLength = 12;
-    private const string CoordinateInputTip =
-        "坐标格式：\n-2147483.648 到 2147483.647的数字，最多 3 位小数。\n不可输入其他字符。";
-
-    private readonly JsonSerializerOptions jsonOptions = new()
-    {
-        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-    };
-
-    private readonly List<string> PointShape =
-    [
-        "圆形八方",
-        "方形八方",
-    ];
-
-    private readonly List<string> PointOrder =
-    [
-        "A1B2C3D4",
-        "A2B3C4D1",
-    ];
-
-    private enum CoordinateAxis
-    {
-        X,
-        Y,
-        Z
-    }
-
-    private readonly record struct CoordinateEditContext(WayMarkPoint Point, CoordinateAxis Axis);
-
     public event EventHandler? WayMarksChanged;
 
     public WayMarkEditorControl()
     {
         InitializeComponent();
-        Edit1_Grid.IsEnabled = false;
-        Edit2_Grid.IsEnabled = false;
-        RegisterCoordinateTextBoxPasteHandlers();
-        AddHandler(PreviewMouseDownEvent, new MouseButtonEventHandler(Window_PreviewMouseDown), true);
-        AddHandler(PreviewKeyDownEvent, new KeyEventHandler(Window_PreviewKeyDown), true);
-        RefreshRegionOptions();
+        AddHandler(PreviewKeyDownEvent, new KeyEventHandler(WayMarkEditorControl_PreviewKeyDown), true);
+        Unloaded += (_, _) => StopWatchingWayMarkListDragSuppressionRelease();
+        WayMarkEditPanel_Control.WayMarkChanged += (_, _) =>
+        {
+            WayMark_ListBox.Items.Refresh();
+            UpdatePreview();
+            NotifyWayMarksChanged();
+        };
         UpdateMoveButtonState();
-
-        PointShape_ComboBox.ItemsSource = PointShape;
-        PointShape_ComboBox.SelectedIndex = 0;
-
-        PointOrder_ComboBox.ItemsSource = PointOrder;
-        PointOrder_ComboBox.SelectedIndex = 0;
     }
 
     public void UpdateDataVersionText(string mapDataVersion)
@@ -100,18 +54,14 @@ public partial class WayMarkEditorControl : UserControl
 
     public void RefreshMapDataDisplay()
     {
-        RefreshRegionOptions(wayMarks?.Select(mark => mark.RegionID));
+        WayMarkEditPanel_Control.RefreshMapDataDisplay(wayMarks?.Select(mark => mark.RegionID));
         WayMark_ListBox.Items.Refresh();
-        if (currentWayMark != null)
-        {
-            SetRegionSearchText(currentWayMark.RegionID);
-        }
     }
 
     public void SetWayMarks(List<WayMark> markerSection)
     {
         wayMarks = markerSection;
-        RefreshRegionOptions(markerSection.Select(mark => mark.RegionID));
+        WayMarkEditPanel_Control.RefreshMapDataDisplay(markerSection.Select(mark => mark.RegionID));
         WayMark_ListBox.ItemsSource = markerSection;
         UpdateMoveButtonState();
     }
@@ -121,6 +71,7 @@ public partial class WayMarkEditorControl : UserControl
         wayMarks = null;
         currentWayMark = null;
         WayMark_ListBox.ItemsSource = null;
+        WayMarkEditPanel_Control.SetWayMark(null);
         WayMarkPreview_Control.SetWayMark(null);
         UpdateMoveButtonState();
     }

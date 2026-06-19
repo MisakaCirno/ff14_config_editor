@@ -28,11 +28,72 @@ public sealed class MapDataCache
     public Dictionary<string, string> Instances { get; set; } = [];
 }
 
+public sealed class WayMarkFavoritesData
+{
+    public int Version { get; set; } = 1;
+    public List<WayMarkFavorite> Favorites { get; set; } = [];
+}
+
+public sealed class WayMarkFavorite
+{
+    public string Id { get; set; } = string.Empty;
+    public string CommentName { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+    public WayMarkSnapshot Marker { get; set; } = new();
+
+    [JsonIgnore]
+    public ushort RegionID => Marker.RegionID;
+
+    [JsonIgnore]
+    public string RegionDisplayName => $"{MapData.GetName(RegionID)}({RegionID})";
+
+    [JsonIgnore]
+    public string DisplayName => string.IsNullOrWhiteSpace(CommentName)
+        ? RegionDisplayName
+        : CommentName;
+
+    [JsonIgnore]
+    public int EnabledPointCount => WayMarkSnapshotConverter.CountEnabledPoints(Marker);
+
+    [JsonIgnore]
+    public string Summary => $"{RegionDisplayName}，启用 {EnabledPointCount} 个标点";
+}
+
+public sealed class WayMarkSnapshot
+{
+    public ushort RegionID { get; set; }
+    public byte EnableFlag { get; set; }
+    public byte Unknown { get; set; }
+    public int Timestamp { get; set; }
+    public WayMarkPointSnapshot A { get; set; } = new();
+    public WayMarkPointSnapshot B { get; set; } = new();
+    public WayMarkPointSnapshot C { get; set; } = new();
+    public WayMarkPointSnapshot D { get; set; } = new();
+    public WayMarkPointSnapshot One { get; set; } = new();
+    public WayMarkPointSnapshot Two { get; set; } = new();
+    public WayMarkPointSnapshot Three { get; set; } = new();
+    public WayMarkPointSnapshot Four { get; set; } = new();
+}
+
+public sealed class WayMarkPointSnapshot
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Z { get; set; }
+}
+
 public enum StartupWayMarkAction
 {
     None = 0,
     LoadMostRecentFile = 1,
     OpenFileDialog = 2
+}
+
+public enum WayMarkFavoriteSaveMode
+{
+    Manual = 0,
+    Auto = 1
 }
 
 public sealed class AppSettings
@@ -59,6 +120,7 @@ public sealed class AppSettings
     public int MaxLogFileCount { get; set; } = DefaultMaxLogFileCount;
     public bool UseWayMarkImageLabels { get; set; } = true;
     public StartupWayMarkAction StartupWayMarkAction { get; set; } = StartupWayMarkAction.None;
+    public WayMarkFavoriteSaveMode WayMarkFavoriteSaveMode { get; set; } = WayMarkFavoriteSaveMode.Manual;
     public DateTime LastMapDataManualRefreshAttempt { get; set; } = DateTime.MinValue;
     public DateTime LastServerListManualRefreshAttempt { get; set; } = DateTime.MinValue;
     public WindowLayoutSettings WindowLayout { get; set; } = new();
@@ -75,6 +137,14 @@ public sealed class WindowLayoutSettings
     public double WayMarkListRatio { get; set; } = 1d / 3d;
     public double WayMarkEditorRatio { get; set; } = 1d / 3d;
     public double WayMarkPreviewRatio { get; set; } = 1d / 3d;
+    public double WayMarkFavoriteListRatio { get; set; } = 1d / 3d;
+    public double WayMarkFavoriteEditorRatio { get; set; } = 1d / 3d;
+    public double WayMarkFavoritePreviewRatio { get; set; } = 1d / 3d;
+    public double WayMarkFavoritePickerLeft { get; set; }
+    public double WayMarkFavoritePickerTop { get; set; }
+    public double WayMarkFavoritePickerWidth { get; set; }
+    public double WayMarkFavoritePickerHeight { get; set; }
+    public double WayMarkFavoritePickerListRatio { get; set; } = 0.6;
     public double BackupListRatio { get; set; } = 0.4;
     public double CharacterListRatio { get; set; } = 0.4;
 }

@@ -5,57 +5,6 @@
              xmlns:controls="clr-namespace:UIMarkerEditor.Controls">
     <UserControl.Resources>
         <local:RegionIdToNameConverter x:Key="RegionIdToNameConverter"/>
-        <Style x:Key="RegionClearButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="#FFD01818"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="Normal"/>
-            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
-            <Setter Property="RenderTransform">
-                <Setter.Value>
-                    <ScaleTransform ScaleX="1" ScaleY="1"/>
-                </Setter.Value>
-            </Setter>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="ButtonBorder"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="3">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"
-                                              TextElement.Foreground="{TemplateBinding Foreground}">
-                                <ContentPresenter.Resources>
-                                    <Style TargetType="{x:Type TextBlock}">
-                                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/>
-                                    </Style>
-                                    <Style TargetType="{x:Type AccessText}">
-                                        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/>
-                                    </Style>
-                                </ContentPresenter.Resources>
-                            </ContentPresenter>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ButtonBorder" Property="Background" Value="#22D01818"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ButtonBorder" Property="Background" Value="#44D01818"/>
-                                <Setter Property="RenderTransform">
-                                    <Setter.Value>
-                                        <ScaleTransform ScaleX="0.92" ScaleY="0.92"/>
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </UserControl.Resources>
     <Grid x:Name="WayMarkRoot_Grid" Background="Transparent">
         <Grid.ColumnDefinitions>
@@ -86,10 +35,72 @@
                                  AllowDrop="True"
                                  SelectionChanged="WayMark_ListBox_SelectionChanged"
                                  PreviewMouseLeftButtonDown="WayMark_ListBox_PreviewMouseLeftButtonDown"
+                                 PreviewMouseLeftButtonUp="WayMark_ListBox_PreviewMouseLeftButtonUp"
+                                 PreviewMouseRightButtonDown="WayMark_ListBox_PreviewMouseRightButtonDown"
+                                 MouseDoubleClick="WayMark_ListBox_MouseDoubleClick"
                                  MouseMove="WayMark_ListBox_MouseMove"
                                  DragOver="WayMark_ListBox_DragOver"
                                  DragLeave="WayMark_ListBox_DragLeave"
                                  Drop="WayMark_ListBox_Drop">
+                    <ListBox.ContextMenu>
+                        <ContextMenu Opened="WayMarkContextMenu_Opened"
+                                     Closed="WayMarkContextMenu_Closed">
+                            <ContextMenu.Resources>
+                                <Style TargetType="{x:Type MenuItem}">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
+                                            <Setter Property="Opacity" Value="0.45"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ContextMenu.Resources>
+                            <MenuItem x:Name="CopyWayMark_MenuItem"
+                                      Header="复制标点"
+                                      InputGestureText="Ctrl+C"
+                                      Click="CopyWayMark_MenuItem_Click"/>
+                            <MenuItem x:Name="PasteWayMark_MenuItem"
+                                      Header="粘贴到此标点"
+                                      InputGestureText="Ctrl+V"
+                                      Click="PasteWayMark_MenuItem_Click"/>
+                            <Separator/>
+                            <MenuItem x:Name="MoveWayMarkUp_MenuItem"
+                                      Header="&#x4E0A;&#x79FB;"
+                                      Click="MoveUp_Button_Click"/>
+                            <MenuItem x:Name="MoveWayMarkDown_MenuItem"
+                                      Header="&#x4E0B;&#x79FB;"
+                                      Click="MoveDown_Button_Click"/>
+                            <Separator/>
+                            <MenuItem x:Name="FavoriteWayMark_MenuItem"
+                                      Header="收藏标点..."
+                                      Click="FavoriteWayMark_MenuItem_Click">
+                                <MenuItem.Icon>
+                                    <Viewbox Width="16" Height="16">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Data="{StaticResource FavoriteIconGeometry}"
+                                                  Fill="#FFFFC107"
+                                                  Stroke="{StaticResource AppAccentPressedBrush}"
+                                                  StrokeThickness="1.7"
+                                                  StrokeLineJoin="Round"/>
+                                        </Canvas>
+                                    </Viewbox>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem x:Name="ImportFavoriteWayMark_MenuItem"
+                                      Header="从收藏导入..."
+                                      Click="ImportFavoriteWayMark_MenuItem_Click"/>
+                            <Separator/>
+                            <MenuItem x:Name="SortWayMarks_MenuItem"
+                                      Header="&#x6392;&#x5E8F;&#x6807;&#x70B9;">
+                                <MenuItem x:Name="SortWayMarksByRegionAscending_MenuItem"
+                                          Header="&#x6309;&#x5730;&#x533A;&#x7F16;&#x53F7;&#x5347;&#x5E8F;"
+                                          Click="SortWayMarksByRegionAscending_MenuItem_Click"/>
+                                <MenuItem x:Name="SortWayMarksByRegionDescending_MenuItem"
+                                          Header="&#x6309;&#x5730;&#x533A;&#x7F16;&#x53F7;&#x964D;&#x5E8F;"
+                                          Click="SortWayMarksByRegionDescending_MenuItem_Click"/>
+                            </MenuItem>
+                        </ContextMenu>
+                    </ListBox.ContextMenu>
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding RegionID, Converter={StaticResource RegionIdToNameConverter}}">
@@ -165,309 +176,18 @@
 
         <Grid Grid.Column="2">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <Grid x:Name="Edit1_Grid" Grid.Row="0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+            <controls:WayMarkEditPanelControl x:Name="WayMarkEditPanel_Control"
+                                               ShowClipboardButtons="True"/>
 
-                <TextBlock Text="当前区域：" Grid.Column="0" />
-
-                <Grid x:Name="RegionSearch_Container"
-                              Grid.Column="1"
-                              Margin="4"
-                              MinHeight="26">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="22"/>
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.ColumnSpan="3"
-                                    Background="White"
-                                    BorderBrush="#FFABADB3"
-                                    BorderThickness="1"
-                                    CornerRadius="5"/>
-                    <TextBox x:Name="RegionSearch_TextBox"
-                                     Margin="0"
-                                     BorderThickness="0"
-                                     Background="Transparent"
-                                     Padding="4,2"
-                                     HorizontalContentAlignment="Left"
-                                     TextAlignment="Left"
-                                     VerticalContentAlignment="Center"
-                                     TextChanged="RegionSearch_TextBox_TextChanged"
-                                     GotFocus="RegionSearch_TextBox_GotFocus"
-                                     GotKeyboardFocus="RegionSearch_TextBox_GotKeyboardFocus"
-                                     LostKeyboardFocus="RegionSearch_TextBox_LostKeyboardFocus"
-                                     PreviewMouseLeftButtonDown="RegionSearch_TextBox_PreviewMouseLeftButtonDown"
-                                     PreviewKeyDown="RegionSearch_TextBox_PreviewKeyDown"/>
-                    <Button x:Name="RegionClear_Button"
-                                    Grid.Column="1"
-                                    Content="×"
-                                    Width="22"
-                                    Style="{StaticResource RegionClearButtonStyle}"
-                                    Margin="0"
-                                    Padding="0"
-                                    Focusable="False"
-                                    Visibility="Collapsed"
-                                    PreviewMouseLeftButtonDown="RegionClear_Button_PreviewMouseLeftButtonDown"
-                                    PreviewMouseLeftButtonUp="RegionClear_Button_PreviewMouseLeftButtonUp"
-                                    Click="RegionClear_Button_Click"/>
-                    <Button x:Name="RegionDropDown_Button"
-                                    Grid.Column="2"
-                                    Content="▼"
-                                    Background="Transparent"
-                                    BorderBrush="Transparent"
-                                    BorderThickness="0"
-                                    Margin="0"
-                                    Padding="0"
-                                    FontSize="10"
-                                    Focusable="False"
-                                    Click="RegionDropDown_Button_Click"/>
-                    <Popup x:Name="RegionSearch_Popup"
-                                   PlacementTarget="{Binding ElementName=RegionSearch_Container}"
-                                   Placement="Bottom"
-                                   StaysOpen="False"
-                                   AllowsTransparency="True"
-                                   Closed="RegionSearch_Popup_Closed">
-                        <Border Background="White"
-                                        BorderBrush="#FFABADB3"
-                                        BorderThickness="1"
-                                        MaxHeight="260"
-                                        Width="{Binding ActualWidth, ElementName=RegionSearch_Container}">
-                            <ListBox x:Name="RegionOptions_ListBox"
-                                             PreviewKeyDown="RegionOptions_ListBox_PreviewKeyDown"
-                                             PreviewMouseLeftButtonDown="RegionOptions_ListBox_PreviewMouseLeftButtonDown"
-                                             PreviewMouseLeftButtonUp="RegionOptions_ListBox_PreviewMouseLeftButtonUp">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding DisplayName}"
-                                                           HorizontalAlignment="Stretch"
-                                                           TextAlignment="Left"/>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                                <ListBox.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <VirtualizingStackPanel />
-                                    </ItemsPanelTemplate>
-                                </ListBox.ItemsPanel>
-                            </ListBox>
-                        </Border>
-                    </Popup>
-                </Grid>
-            </Grid>
-
-            <TabControl Grid.Row="1"
-                                Margin="5"
-                                Style="{StaticResource WayMarkEditorTabControlStyle}"
-                                ItemContainerStyle="{StaticResource WayMarkEditorTabItemStyle}">
-                <TabItem Header="标点位置">
-                    <Grid x:Name="Edit2_Grid">
-                        <Grid.Resources>
-                            <Style TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
-                                <Setter Property="Margin" Value="4"/>
-                                <Setter Property="Padding" Value="4,2"/>
-                                <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                                <Setter Property="VerticalContentAlignment" Value="Center"/>
-                                <EventSetter Event="GotKeyboardFocus" Handler="Coordinate_TextBox_GotKeyboardFocus"/>
-                                <EventSetter Event="LostKeyboardFocus" Handler="Coordinate_TextBox_LostKeyboardFocus"/>
-                                <EventSetter Event="PreviewKeyDown" Handler="Coordinate_TextBox_PreviewKeyDown"/>
-                                <EventSetter Event="PreviewTextInput" Handler="Coordinate_TextBox_PreviewTextInput"/>
-                                <EventSetter Event="TextChanged" Handler="Coordinate_TextBox_TextChanged"/>
-                            </Style>
-                        </Grid.Resources>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <TextBlock Text="标点" Grid.Column="0"/>
-                        <TextBlock Text="X坐标" Grid.Column="1"/>
-                        <TextBlock Text="Y坐标" Grid.Column="2"/>
-                        <TextBlock Text="Z坐标" Grid.Column="3"/>
-
-                        <CheckBox x:Name="A_CheckBox" Content="A点" IsChecked="{Binding SelectedItem.AEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="1"/>
-                        <TextBox x:Name="A_X_TextBox" Text="{Binding SelectedItem.A.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="1" Grid.Row="1"/>
-                        <TextBox x:Name="A_Y_TextBox" Text="{Binding SelectedItem.A.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="2" Grid.Row="1"/>
-                        <TextBox x:Name="A_Z_TextBox" Text="{Binding SelectedItem.A.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="3" Grid.Row="1"/>
-
-                        <CheckBox x:Name="B_CheckBox" Content="B点" IsChecked="{Binding SelectedItem.BEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="2"/>
-                        <TextBox x:Name="B_X_TextBox" Text="{Binding SelectedItem.B.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="1" Grid.Row="2"/>
-                        <TextBox x:Name="B_Y_TextBox" Text="{Binding SelectedItem.B.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="2" Grid.Row="2"/>
-                        <TextBox x:Name="B_Z_TextBox" Text="{Binding SelectedItem.B.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="3" Grid.Row="2"/>
-
-                        <CheckBox x:Name="C_CheckBox" Content="C点" IsChecked="{Binding SelectedItem.CEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="3"/>
-                        <TextBox x:Name="C_X_TextBox" Text="{Binding SelectedItem.C.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="1" Grid.Row="3"/>
-                        <TextBox x:Name="C_Y_TextBox" Text="{Binding SelectedItem.C.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="2" Grid.Row="3"/>
-                        <TextBox x:Name="C_Z_TextBox" Text="{Binding SelectedItem.C.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="3" Grid.Row="3"/>
-
-                        <CheckBox x:Name="D_CheckBox" Content="D点" IsChecked="{Binding SelectedItem.DEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="4"/>
-                        <TextBox x:Name="D_X_TextBox" Text="{Binding SelectedItem.D.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="1" Grid.Row="4"/>
-                        <TextBox x:Name="D_Y_TextBox" Text="{Binding SelectedItem.D.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="2" Grid.Row="4"/>
-                        <TextBox x:Name="D_Z_TextBox" Text="{Binding SelectedItem.D.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="3" Grid.Row="4"/>
-
-                        <CheckBox x:Name="One_CheckBox" Content="1点" IsChecked="{Binding SelectedItem.OneEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="5"/>
-                        <TextBox x:Name="One_X_TextBox" Text="{Binding SelectedItem.One.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="1" Grid.Row="5"/>
-                        <TextBox x:Name="One_Y_TextBox" Text="{Binding SelectedItem.One.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="2" Grid.Row="5"/>
-                        <TextBox x:Name="One_Z_TextBox" Text="{Binding SelectedItem.One.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="3" Grid.Row="5"/>
-
-                        <CheckBox x:Name="Two_CheckBox" Content="2点" IsChecked="{Binding SelectedItem.TwoEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="6"/>
-                        <TextBox x:Name="Two_X_TextBox" Text="{Binding SelectedItem.Two.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="1" Grid.Row="6"/>
-                        <TextBox x:Name="Two_Y_TextBox" Text="{Binding SelectedItem.Two.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="2" Grid.Row="6"/>
-                        <TextBox x:Name="Two_Z_TextBox" Text="{Binding SelectedItem.Two.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="3" Grid.Row="6"/>
-
-                        <CheckBox x:Name="Three_CheckBox" Content="3点" IsChecked="{Binding SelectedItem.ThreeEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="7"/>
-                        <TextBox x:Name="Three_X_TextBox" Text="{Binding SelectedItem.Three.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="1" Grid.Row="7"/>
-                        <TextBox x:Name="Three_Y_TextBox" Text="{Binding SelectedItem.Three.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="2" Grid.Row="7"/>
-                        <TextBox x:Name="Three_Z_TextBox" Text="{Binding SelectedItem.Three.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="3" Grid.Row="7"/>
-
-                        <CheckBox x:Name="Four_CheckBox" Content="4点" IsChecked="{Binding SelectedItem.FourEnabled, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Grid.Row="8"/>
-                        <TextBox x:Name="Four_X_TextBox" Text="{Binding SelectedItem.Four.FloatX, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="1" Grid.Row="8"/>
-                        <TextBox x:Name="Four_Y_TextBox" Text="{Binding SelectedItem.Four.FloatY, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="2" Grid.Row="8"/>
-                        <TextBox x:Name="Four_Z_TextBox" Text="{Binding SelectedItem.Four.FloatZ, ElementName=WayMark_ListBox, Mode=TwoWay, UpdateSourceTrigger=Explicit}" Grid.Column="3" Grid.Row="8"/>
-                    </Grid>
-                </TabItem>
-
-                <TabItem Header="形状调整">
-                    <TabItem.Resources>
-                        <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-                            <Setter Property="Margin" Value="4"/>
-                            <Setter Property="Padding" Value="6,3"/>
-                        </Style>
-                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                            <Setter Property="Margin" Value="4"/>
-                            <Setter Property="Padding" Value="4,2"/>
-                            <Setter Property="MinHeight" Value="26"/>
-                            <Setter Property="VerticalAlignment" Value="Center"/>
-                            <Setter Property="VerticalContentAlignment" Value="Center"/>
-                        </Style>
-                    </TabItem.Resources>
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Text="分布形状：" Grid.Column="0"/>
-                            <ComboBox x:Name="PointShape_ComboBox" Grid.Column="1"/>
-
-                            <TextBlock Text="标点顺序：" Grid.Column="0" Grid.Row="1"/>
-                            <ComboBox x:Name="PointOrder_ComboBox" Grid.Column="1" Grid.Row="1"/>
-
-                            <TextBlock Text="与中心点间距：" Grid.Column="0" Grid.Row="2"/>
-                            <TextBox x:Name="ShapeDistance_TextBox" Text="10" Grid.Column="1" Grid.Row="2"/>
-
-                            <TextBlock Text="中心点位置：" Grid.Row="3"/>
-                            <Grid Grid.Column="1" Grid.Row="3">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Text="X：" Grid.Column="0" Grid.Row="0"/>
-                                <TextBox x:Name="ShapeCenterX_TextBox" Text="0" Grid.Column="1" Grid.Row="0"/>
-
-                                <TextBlock Text="Y：" Grid.Column="0" Grid.Row="1"/>
-                                <TextBox x:Name="ShapeCenterY_TextBox" Text="0" Grid.Column="1" Grid.Row="1"/>
-
-                                <TextBlock Text="Z：" Grid.Column="0" Grid.Row="2"/>
-                                <TextBox x:Name="ShapeCenterZ_TextBox" Text="0" Grid.Column="1" Grid.Row="2"/>
-                            </Grid>
-
-                            <Button x:Name="SetShapePos_Button" Content="设置点位置" Click="SetShapePos_Button_Click"
-                                            Style="{StaticResource PrimaryButtonStyle}"
-                                            Grid.ColumnSpan="2" Grid.Row="7"/>
-                        </Grid>
-                    </StackPanel>
-                </TabItem>
-            </TabControl>
-
-            <Grid Grid.Row="2">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <Button x:Name="Import_Button" Grid.Column="0" Click="Import_Button_Click">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <Viewbox Width="16" Height="16" Margin="0,0,6,0">
-                            <Canvas Width="24" Height="24">
-                                <Path Data="{StaticResource WayMarkImportIconGeometry}"
-                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                              StrokeThickness="2"
-                                              StrokeStartLineCap="Round"
-                                              StrokeEndLineCap="Round"
-                                              StrokeLineJoin="Round"
-                                              Fill="Transparent"/>
-                            </Canvas>
-                        </Viewbox>
-                        <TextBlock Text="从剪贴板导入标点" Padding="0"/>
-                    </StackPanel>
-                </Button>
-
-                <Button x:Name="Export_Button" Grid.Column="1" Click="Export_Button_Click">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <Viewbox Width="16" Height="16" Margin="0,0,6,0">
-                            <Canvas Width="24" Height="24">
-                                <Path Data="{StaticResource WayMarkExportIconGeometry}"
-                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                              StrokeThickness="2"
-                                              StrokeStartLineCap="Round"
-                                              StrokeEndLineCap="Round"
-                                              StrokeLineJoin="Round"
-                                              Fill="Transparent"/>
-                            </Canvas>
-                        </Viewbox>
-                        <TextBlock Text="将标点导出至剪贴板" Padding="0"/>
-                    </StackPanel>
-                </Button>
-            </Grid>
-
-            <StackPanel Grid.Row="3">
+            <StackPanel Grid.Row="1">
                 <TextBlock Foreground="Red" FontWeight="Bold" Text="请【不要】在角色在线时编辑标点文件！"/>
                 <TextBlock Foreground="DarkGreen" FontWeight="Bold" Text="只能在【选角界面】或【关闭游戏时】编辑标点文件！"/>
             </StackPanel>
-
         </Grid>
-
         <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
 
         <controls:WayMarkPreviewControl x:Name="WayMarkPreview_Control" Grid.Column="4"/>

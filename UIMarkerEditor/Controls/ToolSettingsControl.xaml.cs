@@ -59,6 +59,7 @@ public partial class ToolSettingsControl : UserControl
         MaxLogFileCount_TextBox.Text = appDataStore.Settings.MaxLogFileCount.ToString(CultureInfo.InvariantCulture);
         AutoBackup_CheckBox.IsChecked = appDataStore.Settings.AutoBackupBeforeSave;
         WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.UseWayMarkImageLabels;
+        WayMarkFavoriteSaveMode_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.WayMarkFavoriteSaveMode == WayMarkFavoriteSaveMode.Manual;
         LimitBackupCount_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCount;
         LimitBackupDays_CheckBox.IsChecked = appDataStore.Settings.LimitBackupDays;
         ApplyStartupWayMarkActionToUi(appDataStore.Settings.StartupWayMarkAction);
@@ -261,6 +262,7 @@ public partial class ToolSettingsControl : UserControl
                 MaxLogFileSizeMb = maxLogFileSizeMb,
                 MaxLogFileCount = maxLogFileCount,
                 UseWayMarkImageLabels = WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected,
+                WayMarkFavoriteSaveMode = ReadWayMarkFavoriteSaveModeFromUi(),
                 StartupWayMarkAction = ReadStartupWayMarkActionFromUi(),
                 LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
                 LastServerListManualRefreshAttempt = appDataStore.Settings.LastServerListManualRefreshAttempt,
@@ -561,6 +563,7 @@ public partial class ToolSettingsControl : UserControl
             MaxLogFileSizeMb = appDataStore.Settings.MaxLogFileSizeMb,
             MaxLogFileCount = appDataStore.Settings.MaxLogFileCount,
             UseWayMarkImageLabels = appDataStore.Settings.UseWayMarkImageLabels,
+            WayMarkFavoriteSaveMode = appDataStore.Settings.WayMarkFavoriteSaveMode,
             StartupWayMarkAction = appDataStore.Settings.StartupWayMarkAction,
             LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
             LastServerListManualRefreshAttempt = appDataStore.Settings.LastServerListManualRefreshAttempt,
@@ -580,6 +583,13 @@ public partial class ToolSettingsControl : UserControl
         {
             MessageBox.Show(ownerWindow, $"无法保存检查记录：{ex.Message}", "设置保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    private WayMarkFavoriteSaveMode ReadWayMarkFavoriteSaveModeFromUi()
+    {
+        return WayMarkFavoriteSaveMode_SegmentedSwitch.IsLeftSelected
+            ? WayMarkFavoriteSaveMode.Manual
+            : WayMarkFavoriteSaveMode.Auto;
     }
 
     private void ApplyStartupWayMarkActionToUi(StartupWayMarkAction action)

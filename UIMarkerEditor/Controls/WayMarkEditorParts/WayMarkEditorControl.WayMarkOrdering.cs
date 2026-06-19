@@ -47,6 +47,47 @@ namespace UIMarkerEditor.Controls
             MoveWayMark(currentIndex, targetIndex);
         }
 
+        private void SortWayMarksByRegionAscending_MenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            SortWayMarksByRegion(ascending: true);
+        }
+
+        private void SortWayMarksByRegionDescending_MenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            SortWayMarksByRegion(ascending: false);
+        }
+
+        private void SortWayMarksByRegion(bool ascending)
+        {
+            List<WayMark>? marks = GetWayMarks();
+            if (marks == null || marks.Count <= 1) return;
+
+            WayMark? selectedMark = SelectedWayMark;
+            List<WayMark> sortedMarks = ascending
+                ? [.. marks
+                    .OrderBy(mark => WayMarkRegionSort.GetZeroLastBucket(mark.RegionID))
+                    .ThenBy(mark => mark.RegionID)]
+                : [.. marks
+                    .OrderBy(mark => WayMarkRegionSort.GetZeroLastBucket(mark.RegionID))
+                    .ThenByDescending(mark => mark.RegionID)];
+            if (marks.SequenceEqual(sortedMarks))
+            {
+                UpdateMoveButtonState();
+                return;
+            }
+
+            marks.Clear();
+            marks.AddRange(sortedMarks);
+            WayMark_ListBox.Items.Refresh();
+            if (selectedMark != null && marks.Contains(selectedMark))
+            {
+                WayMark_ListBox.SelectedItem = selectedMark;
+                WayMark_ListBox.ScrollIntoView(selectedMark);
+            }
+
+            UpdateMoveButtonState();
+            NotifyWayMarksChanged();
+        }
         private void MoveWayMark(int sourceIndex, int targetIndex)
         {
             List<WayMark>? wayMarks = GetWayMarks();
@@ -80,13 +121,24 @@ namespace UIMarkerEditor.Controls
         {
             int selectedIndex = WayMark_ListBox.SelectedIndex;
             int itemCount = WayMark_ListBox.Items.Count;
+            bool canMoveUp = selectedIndex > 0;
+            bool canMoveDown = selectedIndex >= 0 && selectedIndex < itemCount - 1;
 
-            MoveUp_Button.IsEnabled = selectedIndex > 0;
-            MoveDown_Button.IsEnabled = selectedIndex >= 0 && selectedIndex < itemCount - 1;
+            MoveUp_Button.IsEnabled = canMoveUp;
+            MoveDown_Button.IsEnabled = canMoveDown;
+            MoveWayMarkUp_MenuItem.IsEnabled = canMoveUp;
+            MoveWayMarkDown_MenuItem.IsEnabled = canMoveDown;
         }
 
         private void WayMark_ListBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (ShouldSuppressWayMarkListDrag())
+            {
+                ClearWayMarkDragState();
+                e.Handled = true;
+                return;
+            }
+
             dragStartPoint = e.GetPosition(null);
             draggedWayMark = null;
 
@@ -98,9 +150,29 @@ namespace UIMarkerEditor.Controls
             }
         }
 
+        private void WayMark_ListBox_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            EndWayMarkListDragSuppressionIfReleased();
+            draggedWayMark = null;
+            HideDragVisuals();
+        }
+
         private void WayMark_ListBox_MouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton != MouseButtonState.Pressed) return;
+            if (ShouldSuppressWayMarkListDrag())
+            {
+                ClearWayMarkDragState();
+                e.Handled = true;
+                return;
+            }
+
+            if (e.LeftButton != MouseButtonState.Pressed)
+            {
+                EndWayMarkListDragSuppressionIfReleased();
+                ClearWayMarkDragState();
+                return;
+            }
+
             if (draggedWayMark is not WayMark draggedMark) return;
 
             Point currentPosition = e.GetPosition(null);
@@ -111,10 +183,15 @@ namespace UIMarkerEditor.Controls
                 return;
             }
 
-            ShowDragPreview(draggedMark, e.GetPosition(WayMark_ListBox));
-            DragDrop.DoDragDrop(WayMark_ListBox, draggedMark, DragDropEffects.Move);
-            HideDragVisuals();
-            draggedWayMark = null;
+            try
+            {
+                ShowDragPreview(draggedMark, e.GetPosition(WayMark_ListBox));
+                DragDrop.DoDragDrop(WayMark_ListBox, draggedMark, DragDropEffects.Move);
+            }
+            finally
+            {
+                ClearWayMarkDragState();
+            }
         }
 
         private void WayMark_ListBox_DragOver(object sender, DragEventArgs e)
@@ -150,24 +227,30 @@ namespace UIMarkerEditor.Controls
 
         private void WayMark_ListBox_Drop(object sender, DragEventArgs e)
         {
-            if (e.Data.GetData(typeof(WayMark)) is not WayMark draggedMark) return;
-
-            List<WayMark>? wayMarks = GetWayMarks();
-            if (wayMarks == null) return;
-
-            int sourceIndex = wayMarks.IndexOf(draggedMark);
-            int targetIndex = currentDropTargetIndex >= 0
-                ? currentDropTargetIndex
-                : GetVisualDropTargetIndex(e.OriginalSource as DependencyObject, e.GetPosition(WayMark_ListBox), wayMarks.Count);
-            if (sourceIndex < 0 || targetIndex < 0) return;
-
-            if (sourceIndex < targetIndex)
+            try
             {
-                targetIndex--;
-            }
+                if (e.Data.GetData(typeof(WayMark)) is not WayMark draggedMark) return;
 
-            MoveWayMark(sourceIndex, targetIndex);
-            HideDragVisuals();
+                List<WayMark>? wayMarks = GetWayMarks();
+                if (wayMarks == null) return;
+
+                int sourceIndex = wayMarks.IndexOf(draggedMark);
+                int targetIndex = currentDropTargetIndex >= 0
+                    ? currentDropTargetIndex
+                    : GetVisualDropTargetIndex(e.OriginalSource as DependencyObject, e.GetPosition(WayMark_ListBox), wayMarks.Count);
+                if (sourceIndex < 0 || targetIndex < 0) return;
+
+                if (sourceIndex < targetIndex)
+                {
+                    targetIndex--;
+                }
+
+                MoveWayMark(sourceIndex, targetIndex);
+            }
+            finally
+            {
+                ClearWayMarkDragState();
+            }
         }
 
         private int GetVisualDropTargetIndex(DependencyObject? source, Point position, int itemCount)
@@ -242,5 +325,94 @@ namespace UIMarkerEditor.Controls
             DragPreview_Border.Visibility = Visibility.Collapsed;
         }
 
+        private void ClearWayMarkDragState()
+        {
+            draggedWayMark = null;
+            HideDragVisuals();
+
+            if (ReferenceEquals(Mouse.Captured, WayMark_ListBox) || WayMark_ListBox.IsMouseCaptureWithin)
+            {
+                Mouse.Capture(null);
+            }
+        }
+
+        private void SuppressWayMarkListDragUntilLeftButtonReleased()
+        {
+            ClearWayMarkDragState();
+
+            if (Mouse.LeftButton == MouseButtonState.Pressed)
+            {
+                suppressWayMarkListDragUntilLeftButtonReleased = true;
+                StartWatchingWayMarkListDragSuppressionRelease();
+                return;
+            }
+
+            EndWayMarkListDragSuppression();
+        }
+
+        private bool ShouldSuppressWayMarkListDrag()
+        {
+            if (isWayMarkContextMenuOpen)
+            {
+                return true;
+            }
+
+            if (!suppressWayMarkListDragUntilLeftButtonReleased)
+            {
+                return false;
+            }
+
+            if (Mouse.LeftButton == MouseButtonState.Released)
+            {
+                EndWayMarkListDragSuppression();
+                return false;
+            }
+
+            return true;
+        }
+
+        private void EndWayMarkListDragSuppressionIfReleased()
+        {
+            if (Mouse.LeftButton == MouseButtonState.Released)
+            {
+                EndWayMarkListDragSuppression();
+            }
+        }
+
+        private void EndWayMarkListDragSuppression()
+        {
+            suppressWayMarkListDragUntilLeftButtonReleased = false;
+            StopWatchingWayMarkListDragSuppressionRelease();
+        }
+
+        private void StartWatchingWayMarkListDragSuppressionRelease()
+        {
+            if (isWatchingWayMarkListDragSuppressionRelease)
+            {
+                return;
+            }
+
+            InputManager.Current.PostProcessInput += WayMarkInputManager_PostProcessInput;
+            isWatchingWayMarkListDragSuppressionRelease = true;
+        }
+
+        private void StopWatchingWayMarkListDragSuppressionRelease()
+        {
+            if (!isWatchingWayMarkListDragSuppressionRelease)
+            {
+                return;
+            }
+
+            InputManager.Current.PostProcessInput -= WayMarkInputManager_PostProcessInput;
+            isWatchingWayMarkListDragSuppressionRelease = false;
+        }
+
+        private void WayMarkInputManager_PostProcessInput(object sender, ProcessInputEventArgs e)
+        {
+            if (Mouse.LeftButton == MouseButtonState.Released)
+            {
+                EndWayMarkListDragSuppression();
+            }
+        }
     }
 }

@@ -40,6 +40,8 @@ public sealed partial class AppDataStore
             {
                 Settings = new AppSettings();
                 Characters.Clear();
+                WayMarkFavorites.Clear();
+                wayMarkFavoritesFileInvalid = false;
                 ServerList = new ServerListCache();
                 ClearMapDataCacheState();
             }
@@ -47,6 +49,7 @@ public sealed partial class AppDataStore
             EnsureDataDirectory();
             LoadSettings();
             LoadCharacters();
+            LoadWayMarkFavorites();
             LoadServerList();
             LoadMapDataCache();
             SaveBootstrap(allowOverwriteInvalid: true);
@@ -73,6 +76,11 @@ public sealed partial class AppDataStore
             if (!File.Exists(CharactersFilePath))
             {
                 WriteJson(CharactersFilePath, new List<CharacterProfile>());
+            }
+
+            if (!File.Exists(WayMarkFavoritesFilePath))
+            {
+                WriteJson(WayMarkFavoritesFilePath, new WayMarkFavoritesData());
             }
         }
         catch (AppDataStoreException)
@@ -188,6 +196,7 @@ public sealed partial class AppDataStore
             DataDirectory,
             CloneSettings(Settings),
             CloneCharacterProfiles(Characters),
+            CloneWayMarkFavorites(WayMarkFavorites),
             CloneServerList(ServerList),
             MapDataVersion,
             MapDataLastUpdated,
@@ -196,6 +205,7 @@ public sealed partial class AppDataStore
             bootstrapFileInvalid,
             settingsFileInvalid,
             charactersFileInvalid,
+            wayMarkFavoritesFileInvalid,
             [.. dataLoadWarnings],
             new HashSet<string>(dataLoadWarningKeys));
     }
@@ -208,6 +218,12 @@ public sealed partial class AppDataStore
         foreach (CharacterProfile profile in snapshot.Characters)
         {
             Characters.Add(CloneCharacterProfile(profile));
+        }
+
+        WayMarkFavorites.Clear();
+        foreach (WayMarkFavorite favorite in snapshot.WayMarkFavorites)
+        {
+            WayMarkFavorites.Add(WayMarkSnapshotConverter.CloneFavorite(favorite));
         }
 
         ServerList = CloneServerList(snapshot.ServerList);
@@ -226,6 +242,7 @@ public sealed partial class AppDataStore
         bootstrapFileInvalid = snapshot.BootstrapFileInvalid;
         settingsFileInvalid = snapshot.SettingsFileInvalid;
         charactersFileInvalid = snapshot.CharactersFileInvalid;
+        wayMarkFavoritesFileInvalid = snapshot.WayMarkFavoritesFileInvalid;
         dataLoadWarnings.Clear();
         dataLoadWarnings.AddRange(snapshot.DataLoadWarnings);
         dataLoadWarningKeys.Clear();
@@ -296,6 +313,7 @@ public sealed partial class AppDataStore
         string DataDirectory,
         AppSettings Settings,
         List<CharacterProfile> Characters,
+        List<WayMarkFavorite> WayMarkFavorites,
         ServerListCache ServerList,
         string MapDataVersion,
         DateTime MapDataLastUpdated,
@@ -304,6 +322,7 @@ public sealed partial class AppDataStore
         bool BootstrapFileInvalid,
         bool SettingsFileInvalid,
         bool CharactersFileInvalid,
+        bool WayMarkFavoritesFileInvalid,
         List<string> DataLoadWarnings,
         HashSet<string> DataLoadWarningKeys);
 

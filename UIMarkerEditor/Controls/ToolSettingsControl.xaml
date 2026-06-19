@@ -33,6 +33,7 @@
                 <ListBoxItem Content="配置路径" Tag="DataStorage_Section"/>
                 <ListBoxItem Content="日志" Tag="Log_Section"/>
                 <ListBoxItem Content="外观" Tag="Appearance_Section"/>
+                <ListBoxItem Content="标点收藏" Tag="WayMarkFavorites_Section"/>
                 <ListBoxItem Content="启动行为" Tag="StartupBehavior_Section"/>
                 <ListBoxItem Content="自动保存" Tag="AutoBackup_Section"/>
                 <ListBoxItem Content="数据同步" Tag="OnlineData_Section"/>
@@ -204,6 +205,30 @@
                                                                  RightText="文字"
                                                                  RightToolTip="使用 A点、B点 等文字显示"
                                                                  VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </GroupBox>
+                    <GroupBox x:Name="WayMarkFavorites_Section"
+                              Header="标点收藏"
+                              Style="{StaticResource SettingsSectionGroupBoxStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="保存方式"
+                                       Style="{StaticResource SettingsFormLabelStyle}"/>
+                            <StackPanel Grid.Column="1">
+                                <controls:SegmentedSwitchControl x:Name="WayMarkFavoriteSaveMode_SegmentedSwitch"
+                                                                 LeftText="手动保存"
+                                                                 LeftToolTip="编辑收藏后需要点击保存修改；切换收藏时会提示保存或放弃。"
+                                                                 RightText="自动保存"
+                                                                 RightToolTip="编辑收藏后自动写入收藏文件，并隐藏保存与放弃按钮。"
+                                                                 VerticalAlignment="Center"/>
+                                <TextBlock Text="手动保存更适合谨慎编辑；自动保存适合频繁整理收藏。"
+                                           Style="{StaticResource SettingsMutedTextStyle}"
+                                           Margin="0,4,0,0"/>
                             </StackPanel>
                         </Grid>
                     </GroupBox>
