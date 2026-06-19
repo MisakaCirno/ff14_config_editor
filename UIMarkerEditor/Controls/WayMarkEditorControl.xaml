@@ -151,7 +151,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <Button x:Name="ShareWebsite_Button" Click="ShareWebsite_Button_Click" Grid.Column="0">
+                <Button x:Name="ShareWebsite_Button" Click="ShareWebsite_Button_Click" Grid.Column="0" Style="{StaticResource InfoButtonStyle}">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                         <Viewbox Width="16" Height="16" Margin="0,0,6,0">
                             <Canvas Width="24" Height="24">
