@@ -23,10 +23,6 @@ public sealed partial class AppDataStore
     private const string MetadataFileName = "metadata.json";
     private const string BackupDataFileName = "UISAVE.DAT";
     private const string LogFileName = "app.log";
-    private const string ServerListSourceUrl = "https://ff.web.sdo.com/web8/index.html#/servers";
-    private const string ServerStatusApiUrl = "https://ff14act.web.sdo.com/api/serverStatus/getServerStatus";
-    private const string MapDataVersionUrl = "https://cdn.diemoe.net/files/ACT.DieMoe/Resources/MatchaData/data.version";
-    private const string MapDataInstanceUrl = "https://cdn.diemoe.net/files/ACT.DieMoe/Resources/MatchaData/instance.json";
 
     private readonly JsonSerializerOptions jsonOptions = new()
     {
@@ -61,8 +57,8 @@ public sealed partial class AppDataStore
     public string MapDataVersion { get; private set; } = string.Empty;
     public DateTime MapDataLastUpdated { get; private set; } = DateTime.MinValue;
     public DateTime MapDataLastSuccessfulSyncAt { get; private set; } = DateTime.MinValue;
-    public string MapDataVersionSourceUrl => MapDataVersionUrl;
-    public string MapDataContentSourceUrl => MapDataInstanceUrl;
+    public string MapDataVersionSourceUrl => ExternalLinks.MapDataVersion;
+    public string MapDataContentSourceUrl => ExternalLinks.MapDataInstance;
 
     public AppDataStore()
         : this(Path.Combine(

@@ -48,8 +48,7 @@ namespace UIMarkerEditor.Controls
 
         private void ShareWebsite_Button_Click(object sender, RoutedEventArgs e)
         {
-            // 打开网站：https://souma.diemoe.net/ff14-overlay-vue/#/zoneMacro?OVERLAY_WS=ws://127.0.0.1:10501/ws&lang=zhCn
-            string url = "https://souma.diemoe.net/ff14-overlay-vue/#/zoneMacro?OVERLAY_WS=ws://127.0.0.1:10501/ws&lang=zhCn";
+            string url = ExternalLinks.WayMarkSharePage;
 
             try
             {

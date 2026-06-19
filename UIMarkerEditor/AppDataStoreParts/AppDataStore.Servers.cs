@@ -22,7 +22,7 @@ public sealed partial class AppDataStore
             ["Accept"] = "application/json, text/plain, */*",
             ["Accept-Language"] = "zh-CN,zh;q=0.9",
             ["X-Requested-With"] = "XMLHttpRequest",
-            ["Referer"] = "https://ff.web.sdo.com/",
+            ["Referer"] = ExternalLinks.ServerListReferer,
             ["Pragma"] = "no-cache",
             ["Cache-Control"] = "no-cache"
         };
@@ -61,9 +61,9 @@ public sealed partial class AppDataStore
 
             if (groups.Count == 0)
             {
-                string html = await networkClient.GetStringAsync(ServerListSourceUrl, ServerListRequestTimeout);
+                string html = await networkClient.GetStringAsync(ExternalLinks.ServerListPage, ServerListRequestTimeout);
                 string combinedPageText = html;
-                foreach (Uri resourceUri in ExtractServerPageResourceUris(html, new Uri(ServerListSourceUrl)))
+                foreach (Uri resourceUri in ExtractServerPageResourceUris(html, new Uri(ExternalLinks.ServerListPage)))
                 {
                     try
                     {
@@ -87,7 +87,7 @@ public sealed partial class AppDataStore
 
             ServerListCache nextServerList = new()
             {
-                SourceUrl = ServerStatusApiUrl,
+                SourceUrl = ExternalLinks.ServerStatusApi,
                 LastUpdated = successfulSyncTime,
                 LastSuccessfulSyncAt = successfulSyncTime,
                 Groups = groups
@@ -190,7 +190,7 @@ public sealed partial class AppDataStore
     private async Task<string> GetServerStatusApiJsonAsync()
     {
         return await networkClient.GetStringAsync(
-            ServerStatusApiUrl,
+            ExternalLinks.ServerStatusApi,
             ServerListRequestTimeout,
             ServerStatusRequestHeaders);
     }

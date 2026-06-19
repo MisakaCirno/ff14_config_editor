@@ -30,7 +30,7 @@ public sealed partial class AppDataStore
         DateTime successfulSyncTime = DateTime.Now;
         try
         {
-            string remoteVersionContent = await networkClient.GetStringAsync(MapDataVersionUrl, MapDataRequestTimeout);
+            string remoteVersionContent = await networkClient.GetStringAsync(ExternalLinks.MapDataVersion, MapDataRequestTimeout);
             string remoteVersion = ParseMapDataVersion(remoteVersionContent);
             if (!forceRefresh &&
                 !string.IsNullOrWhiteSpace(remoteVersion) &&
@@ -46,7 +46,7 @@ public sealed partial class AppDataStore
                 return new MapDataLoadResult(true, false, remoteVersion, CacheAvailable: true);
             }
 
-            string instanceJson = await networkClient.GetStringAsync(MapDataInstanceUrl, MapDataRequestTimeout);
+            string instanceJson = await networkClient.GetStringAsync(ExternalLinks.MapDataInstance, MapDataRequestTimeout);
             Dictionary<ushort, string> mapNames = ParseMapNamesFromInstanceJson(instanceJson);
             if (mapNames.Count == 0)
             {
