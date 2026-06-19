@@ -6,6 +6,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <VersionPrefix>2.0.0</VersionPrefix>
+    <FileVersion>2.0.0.0</FileVersion>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <ApplicationIcon>000055_hr1(1).ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +22,10 @@
     <None Remove="Assets\Image\s_b.png" />
     <None Remove="Assets\Image\s_c.png" />
     <None Remove="Assets\Image\s_d.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="000055_hr1(1).ico" />
   </ItemGroup>
 
   <ItemGroup>
