@@ -1,4 +1,4 @@
-namespace FF14ConfigEditor.UISave
+﻿namespace FF14ConfigEditor.UISave
 {
     public class MarkerShare
     {

@@ -1,4 +1,4 @@
-namespace FF14ConfigEditor.UISave
+﻿namespace FF14ConfigEditor.UISave
 {
     public readonly record struct ValidatedMarkerShare(
         ushort RegionID,

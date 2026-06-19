@@ -1,4 +1,4 @@
-namespace FF14ConfigEditor.Tests;
+﻿namespace FF14ConfigEditor.Tests;
 
 internal sealed record ConfigStateSnapshot(
     string UserIDHex,

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using FF14ConfigEditor;
 
 namespace UIMarkerEditor;

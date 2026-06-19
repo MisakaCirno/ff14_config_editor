@@ -1,4 +1,4 @@
-using UIMarkerEditor;
+﻿using UIMarkerEditor;
 
 namespace UIMarkerEditor.Tests;
 

@@ -1,4 +1,4 @@
-using FF14ConfigEditor;
+﻿using FF14ConfigEditor;
 
 namespace FF14ConfigEditor.Tests;
 

@@ -1,4 +1,4 @@
-namespace UIMarkerEditor;
+﻿namespace UIMarkerEditor;
 
 internal static class WayMarkRegionSort
 {

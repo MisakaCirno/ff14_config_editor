@@ -1,4 +1,4 @@
-<UserControl x:Class="UIMarkerEditor.Controls.SegmentedSwitchControl"
+﻿<UserControl x:Class="UIMarkerEditor.Controls.SegmentedSwitchControl"
              x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">

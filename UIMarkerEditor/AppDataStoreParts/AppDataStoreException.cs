@@ -1,4 +1,4 @@
-namespace UIMarkerEditor;
+﻿namespace UIMarkerEditor;
 
 public sealed class AppDataStoreException : Exception
 {

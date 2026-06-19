@@ -1,4 +1,4 @@
-using FF14ConfigEditor.UISave;
+﻿using FF14ConfigEditor.UISave;
 
 namespace UIMarkerEditor;
 
