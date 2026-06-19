@@ -125,12 +125,10 @@ namespace UIMarkerEditor.Controls
                             IsReadOnly = true,
                             TextWrapping = TextWrapping.Wrap,
                             VerticalScrollBarVisibility = ScrollBarVisibility.Auto
-                        },
-                        // 设置窗口所有者和启动位置，确保弹出窗口在主窗口中央
-                        Owner = Window.GetWindow(this),
-                        WindowStartupLocation = WindowStartupLocation.CenterOwner
+                        }
                     };
 
+                    DialogOwnerHelper.ConfigureOwnedDialog(copyWindow, Window.GetWindow(this));
                     copyWindow.ShowDialog();
                 }
             }

@@ -162,7 +162,7 @@ public partial class BackupRestoreControl : UserControl
 
         BackupCharacterProfileDialog dialog = new(userID, appDataStore.ServerList.Groups, existingProfile)
         {
-            Owner = ownerWindow ?? Window.GetWindow(this)
+            Owner = DialogOwnerHelper.Resolve(ownerWindow ?? Window.GetWindow(this))
         };
 
         if (dialog.ShowDialog() != true) return;
@@ -330,7 +330,7 @@ public partial class BackupRestoreControl : UserControl
             InitialDirectory = Directory.Exists(backup.OriginalDirectory) ? backup.OriginalDirectory : null
         };
 
-        if (saveFileDialog.ShowDialog() != true) return;
+        if (DialogOwnerHelper.ShowCommonDialog(saveFileDialog, ownerWindow ?? Window.GetWindow(this)) != true) return;
 
         string targetFilePath = saveFileDialog.FileName;
         bool targetIsCurrentFile = IsCurrentFile(targetFilePath);

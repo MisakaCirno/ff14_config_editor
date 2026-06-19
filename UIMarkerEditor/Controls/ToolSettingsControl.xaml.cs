@@ -181,7 +181,7 @@ public partial class ToolSettingsControl : UserControl
             InitialDirectory = Directory.Exists(DataDirectory_TextBox.Text) ? DataDirectory_TextBox.Text : appDataStore.DataDirectory
         };
 
-        if (dialog.ShowDialog() == true)
+        if (DialogOwnerHelper.ShowCommonDialog(dialog, ownerWindow ?? Window.GetWindow(this)) == true)
         {
             DataDirectory_TextBox.Text = dialog.FolderName;
         }

@@ -12,11 +12,7 @@ public static class AppMessageBox
         MessageBoxImage icon = MessageBoxImage.None)
     {
         AppMessageBoxDialog dialog = new(messageBoxText, caption, button, icon);
-        if (owner != null)
-        {
-            dialog.Owner = owner;
-        }
-
+        DialogOwnerHelper.ConfigureOwnedDialog(dialog, owner);
         dialog.ShowDialog();
         return dialog.Result;
     }

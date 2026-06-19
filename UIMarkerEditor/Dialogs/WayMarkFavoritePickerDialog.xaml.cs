@@ -41,18 +41,8 @@ public partial class WayMarkFavoritePickerDialog : Window
             return;
         }
 
-        Rect savedBounds = new(
-            layout.WayMarkFavoritePickerLeft,
-            layout.WayMarkFavoritePickerTop,
-            Math.Max(layout.WayMarkFavoritePickerWidth, MinWidth),
-            Math.Max(layout.WayMarkFavoritePickerHeight, MinHeight));
-        if (!IsUsableWindowBounds(savedBounds)) return;
-
-        WindowStartupLocation = WindowStartupLocation.Manual;
-        Left = savedBounds.Left;
-        Top = savedBounds.Top;
-        Width = savedBounds.Width;
-        Height = savedBounds.Height;
+        Width = Math.Max(layout.WayMarkFavoritePickerWidth, MinWidth);
+        Height = Math.Max(layout.WayMarkFavoritePickerHeight, MinHeight);
     }
 
     public void CaptureLayoutSettings(WindowLayoutSettings layout)
@@ -83,17 +73,6 @@ public partial class WayMarkFavoritePickerDialog : Window
         return double.IsFinite(value) && value > 0;
     }
 
-    private static bool IsUsableWindowBounds(Rect bounds)
-    {
-        if (!double.IsFinite(bounds.Left) || !double.IsFinite(bounds.Top)) return false;
-
-        Rect virtualScreen = new(
-            SystemParameters.VirtualScreenLeft,
-            SystemParameters.VirtualScreenTop,
-            SystemParameters.VirtualScreenWidth,
-            SystemParameters.VirtualScreenHeight);
-        return virtualScreen.IntersectsWith(bounds);
-    }
 
     private void Favorites_DataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {

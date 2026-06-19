@@ -195,7 +195,7 @@ public partial class WayMarkEditorControl
         string regionDisplayName = $"{MapData.GetName(snapshot.RegionID)}({snapshot.RegionID})";
         WayMarkFavoriteNameDialog dialog = new(regionDisplayName, MapData.GetName(snapshot.RegionID))
         {
-            Owner = ownerWindow ?? Window.GetWindow(this)
+            Owner = DialogOwnerHelper.Resolve(ownerWindow ?? Window.GetWindow(this))
         };
         if (dialog.ShowDialog() != true) return;
 
@@ -230,7 +230,7 @@ public partial class WayMarkEditorControl
 
         WayMarkFavoritePickerDialog dialog = new(favorites)
         {
-            Owner = ownerWindow ?? Window.GetWindow(this)
+            Owner = DialogOwnerHelper.Resolve(ownerWindow ?? Window.GetWindow(this))
         };
         dialog.ApplyLayoutSettings(appDataStore.Settings.WindowLayout);
         bool? dialogResult = dialog.ShowDialog();

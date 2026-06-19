@@ -22,7 +22,7 @@ namespace UIMarkerEditor
                 Multiselect = false
             };
 
-            if (openFileDialog.ShowDialog() == true)
+            if (DialogOwnerHelper.ShowCommonDialog(openFileDialog, this) == true)
             {
                 string filePath = openFileDialog.FileName;
 
