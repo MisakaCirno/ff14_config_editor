@@ -10,7 +10,7 @@ namespace UIMarkerEditor.Controls;
 
 public partial class ToolSettingsControl : UserControl
 {
-    private static readonly TimeSpan ManualRefreshCooldown = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan ManualRefreshCooldown = TimeSpan.FromMinutes(1);
     private const double NavigationActivationThreshold = 24;
     private const double ScrollBottomTolerance = 1;
     private AppDataStore? appDataStore;
@@ -422,14 +422,8 @@ public partial class ToolSettingsControl : UserControl
         }
 
         SetManualRefreshButtonsEnabled(false);
-        DateTime attemptTime = DateTime.Now;
         try
         {
-            SaveSettingsPreservingEditableValues(settings =>
-            {
-                settings.LastMapDataManualRefreshAttempt = attemptTime;
-            });
-
             MapDataLoadResult result = await appDataStore.ForceRefreshMapDataAsync();
             RefreshStatusFields();
             if (!result.Success)
@@ -437,6 +431,11 @@ public partial class ToolSettingsControl : UserControl
                 AppMessageBox.Show(ownerWindow, "地图数据检查更新失败，请稍后再试。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
+            SaveSettingsPreservingEditableValues(settings =>
+            {
+                settings.LastMapDataManualRefreshAttempt = DateTime.Now;
+            });
 
             string versionText = string.IsNullOrWhiteSpace(result.Version) ? "未知版本" : result.Version;
             if (result.Updated)
@@ -465,14 +464,8 @@ public partial class ToolSettingsControl : UserControl
         }
 
         SetManualRefreshButtonsEnabled(false);
-        DateTime attemptTime = DateTime.Now;
         try
         {
-            SaveSettingsPreservingEditableValues(settings =>
-            {
-                settings.LastServerListManualRefreshAttempt = attemptTime;
-            });
-
             ServerListLoadResult result = await appDataStore.RefreshServerListAsync();
             RefreshStatusFields();
             if (!result.Success)
@@ -480,6 +473,11 @@ public partial class ToolSettingsControl : UserControl
                 AppMessageBox.Show(ownerWindow, "服务器列表检查更新失败，已继续使用本地缓存。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
+            SaveSettingsPreservingEditableValues(settings =>
+            {
+                settings.LastServerListManualRefreshAttempt = DateTime.Now;
+            });
 
             if (result.Updated)
             {
@@ -549,7 +547,7 @@ public partial class ToolSettingsControl : UserControl
         int waitSeconds = Math.Max(1, (int)Math.Ceiling(waitTime.TotalSeconds));
         AppMessageBox.Show(
             ownerWindow,
-            $"{dataName}刚刚检查过，请约 {waitSeconds} 秒后再试。",
+            $"为减轻服务器压力，{dataName} 1 分钟内只能检查一次。请约 {waitSeconds} 秒后再试。",
             "检查过于频繁",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
