@@ -14,6 +14,35 @@
             <Setter Property="Margin" Value="0,0,0,6"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
+        <Style x:Key="UsageSectionContainerStyle" TargetType="Border">
+            <Setter Property="Margin" Value="0,0,0,16"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style x:Key="UsageSectionAccentStyle" TargetType="Border">
+            <Setter Property="Width" Value="3"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="Background" Value="{StaticResource AppAccentBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+        </Style>
+        <Style x:Key="UsageSectionTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="Foreground" Value="{StaticResource AppAccentPressedBrush}"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style x:Key="UsageSectionBodyStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Foreground" Value="{StaticResource AppMutedTextBrush}"/>
+            <Setter Property="FontSize" Value="13.5"/>
+            <Setter Property="LineHeight" Value="24"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
     </UserControl.Resources>
 
     <Grid Margin="10">
@@ -24,18 +53,12 @@
         </Grid.ColumnDefinitions>
 
         <GroupBox Grid.Column="0" Header="使用说明" Padding="12">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <TextBlock x:Name="UsageInstructions_TextBlock"
-                           Text="这里预留使用说明内容，后续手动补充。"
-                           TextWrapping="Wrap"
-                           HorizontalAlignment="Stretch"
-                           VerticalAlignment="Top"
-                           FontSize="14"
-                           LineHeight="26"
-                           Foreground="{StaticResource AppMutedTextBrush}"/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="UsageInstructions_StackPanel"
+                            Margin="0,2,0,0"/>
             </ScrollViewer>
         </GroupBox>
-
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>
 
         <GroupBox Grid.Column="2" Header="关于" Padding="12">
