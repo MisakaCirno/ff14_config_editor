@@ -438,9 +438,15 @@ public partial class ToolSettingsControl : UserControl
                 return;
             }
 
-            refreshMapDataConsumers();
             string versionText = string.IsNullOrWhiteSpace(result.Version) ? "未知版本" : result.Version;
-            AppMessageBox.Show(ownerWindow, $"地图数据已更新到：{versionText}", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (result.Updated)
+            {
+                refreshMapDataConsumers();
+                AppMessageBox.Show(ownerWindow, $"地图数据已更新到：{versionText}", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            AppMessageBox.Show(ownerWindow, $"地图数据目前已是最新，无需更新。\n当前版本：{versionText}", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         finally
         {
@@ -467,16 +473,22 @@ public partial class ToolSettingsControl : UserControl
                 settings.LastServerListManualRefreshAttempt = attemptTime;
             });
 
-            bool success = await appDataStore.TrySyncServerListAsync();
+            ServerListLoadResult result = await appDataStore.RefreshServerListAsync();
             RefreshStatusFields();
-            if (!success)
+            if (!result.Success)
             {
                 AppMessageBox.Show(ownerWindow, "服务器列表检查更新失败，已继续使用本地缓存。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            refreshServerListConsumers();
-            AppMessageBox.Show(ownerWindow, "服务器列表已更新。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (result.Updated)
+            {
+                refreshServerListConsumers();
+                AppMessageBox.Show(ownerWindow, "服务器列表已更新。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            AppMessageBox.Show(ownerWindow, "服务器列表目前已是最新，无需更新。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         finally
         {

@@ -45,9 +45,14 @@ public sealed partial class AppDataStore
             : syncResult;
     }
 
+    public async Task<ServerListLoadResult> RefreshServerListAsync()
+    {
+        return await SyncServerListAsync();
+    }
+
     public async Task<bool> TrySyncServerListAsync()
     {
-        ServerListLoadResult result = await SyncServerListAsync();
+        ServerListLoadResult result = await RefreshServerListAsync();
         return result.Success;
     }
 
@@ -83,6 +88,20 @@ public sealed partial class AppDataStore
             if (groups.Count == 0)
             {
                 return CreateServerListSyncFailureResult();
+            }
+
+            if (HasValidServerListCache() && AreServerGroupsEqual(ServerList.Groups, groups))
+            {
+                ServerListCache checkedServerList = new()
+                {
+                    SourceUrl = ExternalLinks.ServerStatusApi,
+                    LastUpdated = ServerList.LastUpdated,
+                    LastSuccessfulSyncAt = successfulSyncTime,
+                    Groups = CloneServerGroups(ServerList.Groups)
+                };
+                SaveServerList(checkedServerList);
+                ServerList = checkedServerList;
+                return new ServerListLoadResult(true, false, CacheAvailable: true);
             }
 
             ServerListCache nextServerList = new()
@@ -159,6 +178,37 @@ public sealed partial class AppDataStore
     private static bool IsValidServerListCache(ServerListCache? serverList)
     {
         return serverList?.Groups?.Count > 0 && serverList.LastUpdated > DateTime.MinValue;
+    }
+
+    private static bool AreServerGroupsEqual(IReadOnlyList<ServerGroup> first, IReadOnlyList<ServerGroup> second)
+    {
+        if (first.Count != second.Count) return false;
+
+        for (int groupIndex = 0; groupIndex < first.Count; groupIndex++)
+        {
+            ServerGroup firstGroup = first[groupIndex];
+            ServerGroup secondGroup = second[groupIndex];
+            if (!string.Equals(firstGroup.DataCenter, secondGroup.DataCenter, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (!firstGroup.Worlds.SequenceEqual(secondGroup.Worlds, StringComparer.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static List<ServerGroup> CloneServerGroups(IEnumerable<ServerGroup> groups)
+    {
+        return [.. groups.Select(group => new ServerGroup
+        {
+            DataCenter = group.DataCenter,
+            Worlds = [.. group.Worlds]
+        })];
     }
 
     private static List<Uri> ExtractServerPageResourceUris(string html, Uri baseUri)

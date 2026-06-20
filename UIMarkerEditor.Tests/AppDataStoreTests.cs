@@ -503,6 +503,32 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task ForceRefreshMapDataAsync_WhenRemoteVersionMatchesCache_ReturnsLatestWithoutDownloadingInstances()
+    {
+        DateTime originalSuccessfulSyncAt = new(2026, 6, 18, 9, 30, 0);
+        WriteMapDataCache(568, "同版本手动缓存副本", "same-version", originalSuccessfulSyncAt);
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddResponse(MapDataVersionUrl, "build_version=same-version");
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+
+        MapDataLoadResult result = await store.ForceRefreshMapDataAsync();
+
+        Assert.True(result.Success);
+        Assert.False(result.Updated);
+        Assert.False(result.UsedCache);
+        Assert.True(result.CacheAvailable);
+        Assert.Equal("same-version", result.Version);
+        Assert.Equal("同版本手动缓存副本", MapData.GetName(568));
+        Assert.DoesNotContain(networkClient.Requests, request => request.Url == MapDataInstanceUrl);
+        Assert.True(store.MapDataLastSuccessfulSyncAt > originalSuccessfulSyncAt);
+
+        string savedCacheText = File.ReadAllText(store.MapDataCacheFilePath);
+        MapDataCache savedCache = JsonSerializer.Deserialize<MapDataCache>(savedCacheText)!;
+        Assert.True(savedCache.LastSuccessfulSyncAt > originalSuccessfulSyncAt);
+    }
+
+    [Fact]
     public async Task EnsureMapDataAvailableAsync_WhenNetworkFailsAndNoCache_ReturnsFailure()
     {
         FakeAppDataNetworkClient networkClient = new();
@@ -592,6 +618,61 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Contains(networkClient.Requests, request =>
             request.Url == ServerStatusApiUrl &&
             request.Headers.ContainsKey("X-Requested-With"));
+    }
+
+    [Fact]
+    public async Task RefreshServerListAsync_WhenRemoteGroupsMatchCache_ReturnsLatestWithoutUpdatingContent()
+    {
+        DateTime originalUpdatedAt = new(2026, 6, 18, 8, 0, 0);
+        DateTime originalSuccessfulSyncAt = new(2026, 6, 18, 8, 30, 0);
+        WriteServerCache(new ServerListCache
+        {
+            SourceUrl = "测试缓存",
+            LastUpdated = originalUpdatedAt,
+            LastSuccessfulSyncAt = originalSuccessfulSyncAt,
+            Groups =
+            [
+                new ServerGroup
+                {
+                    DataCenter = "测试大区",
+                    Worlds = ["测试服务器"]
+                }
+            ]
+        });
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddResponse(
+            ServerStatusApiUrl,
+            """
+            {
+              "IsSuccess": true,
+              "Data": [
+                {
+                  "AreaName": "测试大区",
+                  "Group": [
+                    { "name": "测试服务器" }
+                  ]
+                }
+              ]
+            }
+            """);
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+
+        ServerListLoadResult result = await store.RefreshServerListAsync();
+
+        Assert.True(result.Success);
+        Assert.False(result.Updated);
+        Assert.False(result.UsedCache);
+        Assert.True(result.CacheAvailable);
+        Assert.Equal(originalUpdatedAt, store.ServerList.LastUpdated);
+        Assert.True(store.ServerList.LastSuccessfulSyncAt > originalSuccessfulSyncAt);
+        Assert.Equal("测试大区", store.ServerList.Groups[0].DataCenter);
+        Assert.Equal(["测试服务器"], store.ServerList.Groups[0].Worlds);
+
+        string savedCacheText = File.ReadAllText(store.ServersFilePath);
+        ServerListCache savedCache = JsonSerializer.Deserialize<ServerListCache>(savedCacheText)!;
+        Assert.Equal(originalUpdatedAt, savedCache.LastUpdated);
+        Assert.True(savedCache.LastSuccessfulSyncAt > originalSuccessfulSyncAt);
     }
 
     [Fact]

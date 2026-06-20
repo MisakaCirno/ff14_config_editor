@@ -17,23 +17,22 @@ public sealed partial class AppDataStore
 
     public async Task<MapDataLoadResult> EnsureMapDataAvailableAsync()
     {
-        return await LoadMapDataAsync(forceRefresh: false, allowCacheFallback: true);
+        return await LoadMapDataAsync(allowCacheFallback: true);
     }
 
     public async Task<MapDataLoadResult> ForceRefreshMapDataAsync()
     {
-        return await LoadMapDataAsync(forceRefresh: true, allowCacheFallback: false);
+        return await LoadMapDataAsync(allowCacheFallback: false);
     }
 
-    private async Task<MapDataLoadResult> LoadMapDataAsync(bool forceRefresh, bool allowCacheFallback)
+    private async Task<MapDataLoadResult> LoadMapDataAsync(bool allowCacheFallback)
     {
         DateTime successfulSyncTime = DateTime.Now;
         try
         {
             string remoteVersionContent = await networkClient.GetStringAsync(ExternalLinks.MapDataVersion, MapDataRequestTimeout);
             string remoteVersion = ParseMapDataVersion(remoteVersionContent);
-            if (!forceRefresh &&
-                !string.IsNullOrWhiteSpace(remoteVersion) &&
+            if (!string.IsNullOrWhiteSpace(remoteVersion) &&
                 TryReadMapDataCache(out MapDataCache cachedMapData) &&
                 string.Equals(remoteVersion, cachedMapData.Version, StringComparison.OrdinalIgnoreCase))
             {
