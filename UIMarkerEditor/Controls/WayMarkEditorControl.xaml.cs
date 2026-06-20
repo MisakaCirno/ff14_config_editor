@@ -44,6 +44,33 @@ public partial class WayMarkEditorControl : UserControl
         UpdateMoveButtonState();
     }
 
+    public void SetLoadingOverlayVisible(bool isVisible)
+    {
+        LoadingOverlay_Grid.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        bool isContentEnabled = !isVisible;
+        WayMark_ListBox.IsEnabled = isContentEnabled;
+        ShareWebsite_Button.IsEnabled = isContentEnabled;
+        MoveUp_Button.IsEnabled = isContentEnabled;
+        MoveDown_Button.IsEnabled = isContentEnabled;
+        WayMarkEditPanel_Control.IsEnabled = isContentEnabled;
+        WayMarkPreview_Control.IsEnabled = isContentEnabled;
+
+        if (isVisible)
+        {
+            if (WayMark_ListBox.ContextMenu != null)
+            {
+                WayMark_ListBox.ContextMenu.IsOpen = false;
+            }
+
+            Keyboard.ClearFocus();
+            LoadingOverlay_Grid.Focus();
+        }
+        else
+        {
+            UpdateMoveButtonState();
+        }
+    }
+
     public void UpdateDataVersionText(string mapDataVersion)
     {
         string versionText = string.IsNullOrWhiteSpace(mapDataVersion)

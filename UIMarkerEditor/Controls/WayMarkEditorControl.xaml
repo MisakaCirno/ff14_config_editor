@@ -192,5 +192,31 @@
         <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
 
         <controls:WayMarkPreviewControl x:Name="WayMarkPreview_Control" Grid.Column="4"/>
+
+        <Grid x:Name="LoadingOverlay_Grid"
+              Grid.ColumnSpan="5"
+              Panel.ZIndex="10"
+              Background="#99FFFFFF"
+              Focusable="True"
+              Visibility="Collapsed">
+            <Border HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Width="260"
+                    Padding="18"
+                    Background="#F8FFFFFF"
+                    BorderBrush="{StaticResource AppBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                <StackPanel>
+                    <TextBlock Text="正在读取标点文件..."
+                               HorizontalAlignment="Center"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource AppTextBrush}"/>
+                    <ProgressBar Height="6"
+                                 Margin="0,14,0,0"
+                                 IsIndeterminate="True"/>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

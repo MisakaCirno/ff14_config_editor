@@ -30,7 +30,7 @@ namespace UIMarkerEditor
                 return;
             }
 
-            LoadConfigFile(filePath);
+            LoadConfigFileWithOverlay(filePath);
         }
 
         private void ClearRecentFiles_MenuItem_Click(object sender, RoutedEventArgs e)

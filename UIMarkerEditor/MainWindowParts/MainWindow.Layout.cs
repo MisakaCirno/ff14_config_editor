@@ -26,6 +26,7 @@ namespace UIMarkerEditor
                 return;
             }
 
+            StopCurrentFileChangeMonitor();
             SaveLayoutSettings();
         }
 

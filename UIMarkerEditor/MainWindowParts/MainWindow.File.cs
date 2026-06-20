@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using FF14ConfigEditor;
 using FF14ConfigEditor.UISave;
 
@@ -9,8 +10,15 @@ namespace UIMarkerEditor
 {
     public partial class MainWindow
     {
+        private bool isWayMarkFileLoading;
+
         private void OpenWayMarkFile()
         {
+            if (isWayMarkFileLoading)
+            {
+                return;
+            }
+
             // 打开文件对话框，只允许选择 UISAVE.dat
             Microsoft.Win32.OpenFileDialog openFileDialog = new()
             {
@@ -38,7 +46,7 @@ namespace UIMarkerEditor
                     return;
                 }
 
-                LoadConfigFile(filePath);
+                LoadConfigFileWithOverlay(filePath);
             }
         }
 
@@ -59,7 +67,7 @@ namespace UIMarkerEditor
 
         private void CurrentWayMarkFileCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
-            e.CanExecute = HasLoadedWayMarkFile();
+            e.CanExecute = HasLoadedWayMarkFile() && !isWayMarkFileLoading;
             e.Handled = true;
         }
 
@@ -78,7 +86,7 @@ namespace UIMarkerEditor
                     return;
                 }
 
-                LoadConfigFile(currentFilePath);
+                LoadConfigFileWithOverlay(currentFilePath);
             }
             else
             {
@@ -88,9 +96,19 @@ namespace UIMarkerEditor
 
         private bool SaveWayMarkFile(bool showSuccessMessage = true)
         {
+            if (isWayMarkFileLoading)
+            {
+                return false;
+            }
+
             // 保存修改后的UISAVE.DAT文件
             if (configUISave != null)
             {
+                if (!ConfirmOverwriteExternallyChangedWayMarkFile())
+                {
+                    return false;
+                }
+
                 if (appDataStore.Settings.AutoBackupBeforeSave)
                 {
                     try
@@ -110,6 +128,7 @@ namespace UIMarkerEditor
                 try
                 {
                     configUISave.Save();
+                    RefreshLoadedFileSnapshot();
                 }
                 catch (UISaveFormatException ex)
                 {
@@ -139,6 +158,42 @@ namespace UIMarkerEditor
             }
         }
 
+        private async void LoadConfigFileWithOverlay(string filePath)
+        {
+            try
+            {
+                await LoadConfigFileWithOverlayAsync(filePath);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error(AppLogCategory.IO, $"加载 UISAVE.DAT 时更新界面状态失败：{filePath}", ex);
+                AppMessageBox.Show(this, $"加载 UISAVE.DAT 时更新界面状态失败。\n\n文件：{filePath}\n\n原因：{ex.Message}", "加载失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task<bool> LoadConfigFileWithOverlayAsync(string filePath)
+        {
+            if (isWayMarkFileLoading)
+            {
+                return false;
+            }
+
+            isWayMarkFileLoading = true;
+            CommandManager.InvalidateRequerySuggested();
+
+            try
+            {
+                WayMarkEditor_Control.SetLoadingOverlayVisible(true);
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                return LoadConfigFile(filePath);
+            }
+            finally
+            {
+                WayMarkEditor_Control.SetLoadingOverlayVisible(false);
+                isWayMarkFileLoading = false;
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
         private bool LoadConfigFile(string filePath)
         {
             // 使用 ConfigUISave 类加载文件
@@ -169,6 +224,7 @@ namespace UIMarkerEditor
                 configUISave = loadedConfig;
                 RegisterLoadedCharacter(loadedConfig, filePath);
                 UpdateCurrentFileStatus(filePath);
+                StartCurrentFileChangeMonitor(filePath);
                 appDataStore.AddRecentFile(filePath);
                 RefreshRecentFileMenu();
                 List<WayMark> wayMarks = markerSection.WayMarks;

@@ -64,6 +64,7 @@ namespace UIMarkerEditor
             WayMarkEditor_Control.Initialize(appDataStore, this, () => WayMarkFavorites_Control.RefreshFavorites());
             WayMarkFavorites_Control.Initialize(appDataStore, this);
             AddDeveloperToolsTab();
+            InitializeCurrentFileChangeMonitor();
             WayMarkEditor_Control.WayMarksChanged += (_, _) => MarkWayMarkDirty();
             Title = DefaultWindowTitle;
             ApplySavedLayoutSettings();
@@ -79,7 +80,7 @@ namespace UIMarkerEditor
                 appDataStore,
                 this,
                 () => currentFilePath,
-                filePath => LoadConfigFile(filePath),
+                filePath => LoadConfigFileWithOverlay(filePath),
                 ConfirmSaveOrDiscardWayMarkChanges,
                 ConfirmSaveOrDiscardCharacterChanges,
                 RefreshCharacterList);

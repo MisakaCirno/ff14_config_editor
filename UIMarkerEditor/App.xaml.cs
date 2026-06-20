@@ -8,9 +8,32 @@ namespace UIMarkerEditor;
 /// </summary>
 public partial class App : Application
 {
+    private SingleInstanceService? singleInstanceService;
+    private bool activateMainWindowWhenReady;
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        singleInstanceService = SingleInstanceService.Create();
+        if (!singleInstanceService.IsFirstInstance)
+        {
+            if (!SingleInstanceService.NotifyFirstInstance())
+            {
+                AppMessageBox.Show(
+                    "FF14 标点预设编辑工具已经在运行，请使用已打开的窗口。",
+                    "工具已在运行",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+
+            Shutdown();
+            return;
+        }
+
+        singleInstanceService.StartActivationListener(
+            RequestMainWindowActivation,
+            ex => AppLogger.Warning(AppLogCategory.IO, "处理二次启动唤起请求失败", ex));
 
         try
         {
@@ -26,6 +49,13 @@ public partial class App : Application
                 MessageBoxImage.Error);
             Shutdown();
         }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        singleInstanceService?.Dispose();
+        singleInstanceService = null;
+        base.OnExit(e);
     }
 
     private async Task StartApplicationAsync()
@@ -72,6 +102,44 @@ public partial class App : Application
         MainWindow mainWindow = new(appDataStore);
         MainWindow = mainWindow;
         mainWindow.Show();
+
+        if (activateMainWindowWhenReady)
+        {
+            activateMainWindowWhenReady = false;
+            ActivateWindow(mainWindow);
+        }
+    }
+
+    private void RequestMainWindowActivation()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (MainWindow == null)
+            {
+                activateMainWindowWhenReady = true;
+                return;
+            }
+
+            ActivateWindow(MainWindow);
+        });
+    }
+
+    private static void ActivateWindow(Window window)
+    {
+        if (!window.IsVisible)
+        {
+            window.Show();
+        }
+
+        if (window.WindowState == WindowState.Minimized)
+        {
+            window.WindowState = WindowState.Normal;
+        }
+
+        window.Activate();
+        window.Topmost = true;
+        window.Topmost = false;
+        window.Focus();
     }
 
     private static string BuildStartupFailureMessage(Exception exception)

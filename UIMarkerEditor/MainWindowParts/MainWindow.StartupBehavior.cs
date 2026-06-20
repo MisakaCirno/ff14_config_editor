@@ -50,7 +50,7 @@ namespace UIMarkerEditor
                 return;
             }
 
-            LoadConfigFile(filePath);
+            LoadConfigFileWithOverlay(filePath);
         }
     }
 }
