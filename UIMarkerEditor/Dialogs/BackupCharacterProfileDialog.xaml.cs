@@ -26,6 +26,19 @@ public partial class BackupCharacterProfileDialog : Window
     {
     }
 
+    public BackupCharacterProfileDialog(
+        CharacterProfile existingProfile,
+        IEnumerable<ServerGroup> serverGroups)
+        : this(
+            existingProfile.UserID,
+            serverGroups,
+            existingProfile,
+            canEditUserID: false,
+            title: "编辑角色备注",
+            hint: "编辑选中备份对应的角色备注。")
+    {
+    }
+
     public BackupCharacterProfileDialog(IEnumerable<ServerGroup> serverGroups)
         : this(
             string.Empty,

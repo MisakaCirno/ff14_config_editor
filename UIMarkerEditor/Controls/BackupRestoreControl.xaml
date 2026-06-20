@@ -40,6 +40,7 @@
                       SelectionMode="Single"
                       SelectionUnit="FullRow"
                       SelectionChanged="Backup_DataGrid_SelectionChanged"
+                      MouseDoubleClick="Backup_DataGrid_MouseDoubleClick"
                       PreviewMouseRightButtonDown="Backup_DataGrid_PreviewMouseRightButtonDown">
                 <DataGrid.ContextMenu>
                     <ContextMenu Opened="Backup_ContextMenu_Opened">
@@ -60,9 +61,9 @@
                                   Header="打开备份目录"
                                   Click="OpenBackupDirectory_Button_Click"/>
                         <Separator/>
-                        <MenuItem x:Name="CreateCharacterFromBackup_MenuItem"
+                        <MenuItem x:Name="OpenCharacterProfileFromBackup_MenuItem"
                                   Header="为此备份创建角色备注..."
-                                  Click="CreateCharacterFromBackup_MenuItem_Click"/>
+                                  Click="OpenCharacterProfileFromBackup_MenuItem_Click"/>
                     </ContextMenu>
                 </DataGrid.ContextMenu>
                 <DataGrid.Columns>

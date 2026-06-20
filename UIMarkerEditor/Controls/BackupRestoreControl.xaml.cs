@@ -112,6 +112,19 @@ public partial class BackupRestoreControl : UserControl
         Backup_DataGrid.SelectedItem = null;
     }
 
+    private void Backup_DataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject) is not DataGridRow row ||
+            row.Item is not BackupMetadata backup)
+        {
+            return;
+        }
+
+        Backup_DataGrid.SelectedItem = backup;
+        e.Handled = true;
+        OpenCharacterProfileForBackup(backup);
+    }
+
     private void Backup_ContextMenu_Opened(object sender, RoutedEventArgs e)
     {
         BackupMetadata? backup = Backup_DataGrid.SelectedItem as BackupMetadata;
@@ -119,27 +132,31 @@ public partial class BackupRestoreControl : UserControl
         bool hasBackupDirectory = backup != null && Directory.Exists(backup.BackupDirectory);
         bool hasValidUserID = backup != null && IsValidUserID(backup.EffectiveUserID);
         bool alreadyHasCharacterProfile = hasValidUserID && HasCharacterProfile(backup!.EffectiveUserID);
-        bool canCreateCharacter = hasValidUserID && !alreadyHasCharacterProfile;
 
         RestoreBackup_MenuItem.IsEnabled = hasBackup;
         RestoreBackupAs_MenuItem.IsEnabled = hasBackup;
         DeleteBackup_MenuItem.IsEnabled = hasBackup;
         OpenBackupDirectory_MenuItem.IsEnabled = hasBackupDirectory;
-        CreateCharacterFromBackup_MenuItem.IsEnabled = canCreateCharacter;
-        CreateCharacterFromBackup_MenuItem.Header = backup == null
+        OpenCharacterProfileFromBackup_MenuItem.IsEnabled = hasValidUserID;
+        OpenCharacterProfileFromBackup_MenuItem.Header = backup == null
             ? "为此备份创建角色备注..."
             : alreadyHasCharacterProfile
-                ? "已有角色备注"
+                ? "编辑角色备注..."
                 : hasValidUserID
                     ? "为此备份创建角色备注..."
                     : "无法创建角色备注";
     }
 
-    private void CreateCharacterFromBackup_MenuItem_Click(object sender, RoutedEventArgs e)
+    private void OpenCharacterProfileFromBackup_MenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        OpenCharacterProfileForBackup(Backup_DataGrid.SelectedItem as BackupMetadata);
+    }
+
+    private void OpenCharacterProfileForBackup(BackupMetadata? backup)
     {
         if (appDataStore == null || !confirmSaveOrDiscardCharacterChanges()) return;
 
-        if (Backup_DataGrid.SelectedItem is not BackupMetadata backup)
+        if (backup == null)
         {
             AppMessageBox.Show(ownerWindow, "请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
@@ -154,19 +171,21 @@ public partial class BackupRestoreControl : UserControl
 
         CharacterProfile? existingProfile = appDataStore.Characters.FirstOrDefault(character =>
             string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase));
-        if (existingProfile != null && HasCharacterRemark(existingProfile))
-        {
-            AppMessageBox.Show(ownerWindow, "这个备份对应的角色已经有备注。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        BackupCharacterProfileDialog dialog = new(userID, appDataStore.ServerList.Groups, existingProfile)
-        {
-            Owner = DialogOwnerHelper.Resolve(ownerWindow ?? Window.GetWindow(this))
-        };
+        BackupCharacterProfileDialog dialog = existingProfile != null && HasCharacterRemark(existingProfile)
+            ? new BackupCharacterProfileDialog(existingProfile, appDataStore.ServerList.Groups)
+            : new BackupCharacterProfileDialog(userID, appDataStore.ServerList.Groups, existingProfile);
+        DialogOwnerHelper.ConfigureOwnedDialog(dialog, ownerWindow ?? Window.GetWindow(this));
 
         if (dialog.ShowDialog() != true) return;
 
+        SaveCharacterProfileForBackup(backup, dialog);
+    }
+
+    private void SaveCharacterProfileForBackup(BackupMetadata backup, BackupCharacterProfileDialog dialog)
+    {
+        if (appDataStore == null) return;
+
+        string userID = backup.EffectiveUserID;
         bool isNewProfile = !appDataStore.Characters.Any(character =>
             string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase));
         CharacterProfile profile = appDataStore.GetOrCreateCharacter(userID);
