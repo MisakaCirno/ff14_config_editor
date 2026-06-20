@@ -322,11 +322,14 @@
                               Header="数据同步"
                               Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="地图名称和服务器列表会自动检查并缓存到本地；手动检查每类数据 5 分钟内只能触发一次。"
+                            <TextBlock Text="启动工具时会先确认地图数据和服务器列表可用；在线检查失败但已有缓存时会提示是否使用缓存启动，没有可用缓存则无法启动。手动检查每类数据 5 分钟内只能触发一次。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
                             <TextBlock Text="地图数据"
                                        Style="{StaticResource SettingsSubsectionTitleStyle}"/>
+                            <TextBlock Text="自动检查：每次启动会读取远端版本；版本与本地缓存一致时只记录检查时间，版本变化或缓存不可用时才下载完整地图数据。"
+                                       Style="{StaticResource SettingsMutedTextStyle}"
+                                       Margin="0,-4,0,10"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="120"/>
@@ -406,6 +409,9 @@
 
                             <TextBlock Text="服务器列表"
                                        Style="{StaticResource SettingsSubsectionTitleStyle}"/>
+                            <TextBlock Text="自动检查：启动时无可用缓存会立即同步；已有缓存时每 7 天最多自动同步一次。在线同步失败但缓存可用时，会继续使用本地缓存。"
+                                       Style="{StaticResource SettingsMutedTextStyle}"
+                                       Margin="0,-4,0,10"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="120"/>
