@@ -271,12 +271,7 @@ namespace UIMarkerEditor
                 UpdateWindowTitle();
                 CreateAutomaticBackupAfterLoad(filePath);
 
-                // 输出所有的enableFlag和regionID以供调试
-                foreach (WayMark mark in wayMarks)
-                {
-                    // enableFlag 再用二进制显示
-                    AppLogger.Debug(AppLogCategory.UI, $"RegionID: {mark.RegionID} -> EnableFlag: {mark.enableFlag} ({Convert.ToString(mark.enableFlag, 2).PadLeft(8, '0')})");
-                }
+                AppLogger.Info(AppLogCategory.UI, $"已读取 UISAVE.DAT：{filePath}，可编辑标点槽位 {wayMarks.Count} 个。");
             }
             else
             {

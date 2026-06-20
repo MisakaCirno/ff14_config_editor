@@ -43,10 +43,27 @@ public sealed class AppLoggerTests : IDisposable
             new InvalidOperationException("测试异常"));
 
         string logText = File.ReadAllText(logPath);
-        Assert.Contains("[Warning]", logText);
-        Assert.Contains("[UISaveWarning]", logText);
+        Assert.Contains("| 警告 |", logText);
+        Assert.Contains("| UISAVE 警告 |", logText);
         Assert.Contains("测试警告", logText);
-        Assert.Contains("InvalidOperationException: 测试异常", logText);
+        Assert.Contains("异常：InvalidOperationException：测试异常", logText);
+    }
+
+    [Fact]
+    public void Debug_WhenMinimumLevelIsInfo_DoesNotWriteDebugNoise()
+    {
+        string logPath = Path.Combine(testDirectory, "logs", "app.log");
+        AppLogger.LogToConsole = false;
+        AppLogger.LogToDebug = false;
+        AppLogger.MinimumLevel = AppLogLevel.Info;
+        AppLogger.ConfigureFileLogging(logPath, 1024 * 1024, 3);
+
+        AppLogger.Debug(AppLogCategory.General, "调试明细");
+        AppLogger.Info(AppLogCategory.General, "玩家可读信息");
+
+        string logText = File.ReadAllText(logPath);
+        Assert.DoesNotContain("调试明细", logText);
+        Assert.Contains("玩家可读信息", logText);
     }
 
     [Fact]

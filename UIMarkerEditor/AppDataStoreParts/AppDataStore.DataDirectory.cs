@@ -101,7 +101,7 @@ public sealed partial class AppDataStore
             Settings.MaxLogFileCount);
         AppLogger.Info(
             AppLogCategory.General,
-            $"日志文件路径：{LogFilePath}，单个文件上限：{Settings.MaxLogFileSizeMb} MB，最多保留：{Settings.MaxLogFileCount} 个文件");
+            $"日志已启用：{LogFilePath}；单个文件上限 {Settings.MaxLogFileSizeMb} MB，最多保留 {Settings.MaxLogFileCount} 个文件。");
     }
 
     public int ClearLogFiles()

@@ -37,7 +37,7 @@ namespace FF14ConfigEditor
 
         public static bool LogToConsole { get; set; }
         public static bool LogToDebug { get; set; } = true;
-        public static AppLogLevel MinimumLevel { get; set; } = AppLogLevel.Debug;
+        public static AppLogLevel MinimumLevel { get; set; } = AppLogLevel.Info;
         public static string? LogFilePath { get; private set; }
         public static long MaxLogFileBytes
         {
@@ -185,13 +185,39 @@ namespace FF14ConfigEditor
             string message,
             Exception? exception)
         {
-            string line = $"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss.fff zzz} [{level}] [{category}] {message}";
+            string line = $"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss.fff zzz} | {GetLevelDisplayName(level)} | {GetCategoryDisplayName(category)} | {message}";
             if (exception == null)
             {
                 return line;
             }
 
-            return $"{line} | {exception.GetType().Name}: {exception.Message}";
+            return $"{line} | 异常：{exception.GetType().Name}：{exception.Message}";
+        }
+
+        private static string GetLevelDisplayName(AppLogLevel level)
+        {
+            return level switch
+            {
+                AppLogLevel.Debug => "调试",
+                AppLogLevel.Info => "信息",
+                AppLogLevel.Warning => "警告",
+                AppLogLevel.Error => "错误",
+                _ => level.ToString()
+            };
+        }
+
+        private static string GetCategoryDisplayName(AppLogCategory category)
+        {
+            return category switch
+            {
+                AppLogCategory.General => "常规",
+                AppLogCategory.UISaveFormat => "UISAVE 格式",
+                AppLogCategory.UISaveUnknownPreserved => "UISAVE 未知数据",
+                AppLogCategory.UISaveWarning => "UISAVE 警告",
+                AppLogCategory.UI => "界面",
+                AppLogCategory.IO => "文件",
+                _ => category.ToString()
+            };
         }
 
         private static void WriteFileLog(string logLine)
