@@ -186,6 +186,7 @@
             <StackPanel Grid.Row="1">
                 <TextBlock Foreground="Red" FontWeight="Bold" Text="请【不要】在角色在线时编辑标点文件！"/>
                 <TextBlock Foreground="DarkGreen" FontWeight="Bold" Text="只能在【选角界面】或【关闭游戏时】编辑标点文件！"/>
+                <TextBlock Foreground="Blue" FontWeight="Bold" Text="务必【备份】自己的标点文件！"/>
             </StackPanel>
         </Grid>
         <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
