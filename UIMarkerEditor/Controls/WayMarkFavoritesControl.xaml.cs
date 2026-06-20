@@ -53,6 +53,8 @@ public partial class WayMarkFavoritesControl : UserControl
 
     public void ApplySettings(AppSettings settings)
     {
+        WayMarkEditPanel_Control.ApplyAppearanceSettings(settings);
+
         bool nextAutoSaveMode = settings.WayMarkFavoriteSaveMode == WayMarkFavoriteSaveMode.Auto;
         if (isAutoSaveMode == nextAutoSaveMode)
         {
