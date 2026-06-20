@@ -30,7 +30,7 @@
                      ItemContainerStyle="{StaticResource SettingsNavigationItemStyle}"
                      PreviewMouseLeftButtonDown="SettingsNavigation_ListBox_PreviewMouseLeftButtonDown"
                      SelectionChanged="SettingsNavigation_ListBox_SelectionChanged">
-                <ListBoxItem Content="配置路径" Tag="DataStorage_Section"/>
+                <ListBoxItem Content="工具数据目录" Tag="DataStorage_Section"/>
                 <ListBoxItem Content="文件打开" Tag="FileOpen_Section"/>
                 <ListBoxItem Content="日志" Tag="Log_Section"/>
                 <ListBoxItem Content="外观" Tag="Appearance_Section"/>
@@ -52,10 +52,10 @@
                           ScrollChanged="SettingsContent_ScrollViewer_ScrollChanged">
                 <StackPanel>
                     <GroupBox x:Name="DataStorage_Section"
-                              Header="配置路径"
+                              Header="工具数据目录"
                               Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="软件配置、角色备注、服务器列表缓存、地图数据缓存和 UISAVE.DAT 备份的保存位置。"
+                            <TextBlock Text="工具设置、角色备注、服务器列表缓存、地图数据缓存和 UISAVE.DAT 备份的保存位置。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
                             <Grid>
@@ -68,7 +68,7 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Text="配置目录"
+                                <TextBlock Text="数据目录"
                                            Style="{StaticResource SettingsFormLabelStyle}"/>
                                 <StackPanel Grid.Column="1">
                                     <TextBox x:Name="DataDirectory_TextBox"
@@ -122,7 +122,7 @@
                               Header="日志"
                               Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="日志保存在配置路径下的 logs 目录，用于排查同步、读取和保存问题。"
+                            <TextBlock Text="日志保存在工具数据目录下的 logs 目录，用于排查同步、读取和保存问题。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
                             <Grid>

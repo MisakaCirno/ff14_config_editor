@@ -178,7 +178,7 @@ public partial class ToolSettingsControl : UserControl
 
         Microsoft.Win32.OpenFolderDialog dialog = new()
         {
-            Title = "选择配置目录",
+            Title = "选择工具数据目录",
             InitialDirectory = Directory.Exists(DataDirectory_TextBox.Text) ? DataDirectory_TextBox.Text : appDataStore.DataDirectory
         };
 
@@ -244,8 +244,8 @@ public partial class ToolSettingsControl : UserControl
             {
                 MessageBoxResult migrateResult = AppMessageBox.Show(
                     ownerWindow,
-                    "是否将现有配置、角色备注和备份迁移到新目录？\n选择“否”将只切换目录，不复制旧数据。",
-                    "迁移配置目录",
+                    "是否将现有工具设置、角色备注和备份迁移到新目录？\n选择“否”将只切换目录，不复制旧数据。",
+                    "迁移工具数据目录",
                     MessageBoxButton.YesNoCancel,
                     MessageBoxImage.Question);
                 if (migrateResult == MessageBoxResult.Cancel) return;
@@ -302,12 +302,12 @@ public partial class ToolSettingsControl : UserControl
         string directory = DataDirectory_TextBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(directory))
         {
-            AppMessageBox.Show(ownerWindow, "请先填写配置目录。", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "请先填写工具数据目录。", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         if (!Directory.Exists(directory))
         {
-            AppMessageBox.Show(ownerWindow, "当前配置目录不存在，请先选择一个已有目录或保存设置后再打开。", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "当前工具数据目录不存在，请先选择一个已有目录或保存设置后再打开。", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
