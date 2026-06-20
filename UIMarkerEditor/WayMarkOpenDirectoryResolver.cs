@@ -10,28 +10,37 @@ internal static class WayMarkOpenDirectoryResolver
 {
     private const string CharacterFolderPrefix = "FFXIV_CHR";
     private const string GameConfigFolderName = "FINAL FANTASY XIV - A Realm Reborn";
-    private const string WayMarkFileName = "UISAVE.DAT";
 
-    public static string? Resolve(WayMarkOpenDirectoryMode mode, IEnumerable<string> recentFiles)
-    {
-        return Resolve(mode, recentFiles, CreateDefaultCandidateRoots());
-    }
-
-    internal static string? Resolve(
+    public static string? Resolve(
         WayMarkOpenDirectoryMode mode,
-        IEnumerable<string> recentFiles,
-        IEnumerable<string> candidateRoots)
+        string gameCharacterRootDirectory,
+        IEnumerable<string> recentFiles)
     {
-        if (mode == WayMarkOpenDirectoryMode.GameCharacterDirectory)
+        if (mode == WayMarkOpenDirectoryMode.GameCharacterDirectory &&
+            TryNormalizeExistingDirectory(gameCharacterRootDirectory, out string? directory))
         {
-            string? gameCharacterRootDirectory = FindGameCharacterRootDirectory(recentFiles, candidateRoots);
-            if (!string.IsNullOrWhiteSpace(gameCharacterRootDirectory))
-            {
-                return gameCharacterRootDirectory;
-            }
+            return directory;
         }
 
         return FindLastOpenedDirectory(recentFiles);
+    }
+
+    public static string? AutoDetectGameCharacterRootDirectory()
+    {
+        return AutoDetectGameCharacterRootDirectory(CreateDefaultCandidateRoots());
+    }
+
+    internal static string? AutoDetectGameCharacterRootDirectory(IEnumerable<string> candidateRoots)
+    {
+        foreach (string candidateRoot in candidateRoots)
+        {
+            if (IsGameCharacterRootDirectory(candidateRoot))
+            {
+                return Path.GetFullPath(candidateRoot);
+            }
+        }
+
+        return null;
     }
 
     private static IEnumerable<string> CreateDefaultCandidateRoots()
@@ -211,8 +220,12 @@ internal static class WayMarkOpenDirectoryResolver
     {
         try
         {
-            return drive.IsReady &&
-                (drive.DriveType == DriveType.Fixed || drive.DriveType == DriveType.Removable);
+            if (drive.DriveType != DriveType.Fixed && drive.DriveType != DriveType.Removable)
+            {
+                return false;
+            }
+
+            return drive.IsReady;
         }
         catch (IOException)
         {
@@ -282,25 +295,28 @@ internal static class WayMarkOpenDirectoryResolver
             : Path.Combine(gameDirectory, "My Games", GameConfigFolderName);
     }
 
-    private static string? FindGameCharacterRootDirectory(IEnumerable<string> recentFiles, IEnumerable<string> candidateRoots)
+    private static bool TryNormalizeExistingDirectory(string directory, out string? normalizedDirectory)
     {
-        foreach (string candidateRoot in candidateRoots)
+        normalizedDirectory = null;
+        if (string.IsNullOrWhiteSpace(directory))
         {
-            if (IsGameCharacterRootDirectory(candidateRoot))
-            {
-                return Path.GetFullPath(candidateRoot);
-            }
+            return false;
         }
 
-        foreach (string recentFile in recentFiles)
+        try
         {
-            if (TryGetGameCharacterRootFromWayMarkFile(recentFile, out string? rootDirectory))
+            if (!Directory.Exists(directory))
             {
-                return rootDirectory;
+                return false;
             }
-        }
 
-        return null;
+            normalizedDirectory = Path.GetFullPath(directory);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
     }
 
     private static bool IsGameCharacterRootDirectory(string rootDirectory)
@@ -314,37 +330,6 @@ internal static class WayMarkOpenDirectoryResolver
         {
             return false;
         }
-    }
-
-    private static bool TryGetGameCharacterRootFromWayMarkFile(string filePath, out string? rootDirectory)
-    {
-        rootDirectory = null;
-        if (string.IsNullOrWhiteSpace(filePath) ||
-            !string.Equals(Path.GetFileName(filePath), WayMarkFileName, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        DirectoryInfo? characterDirectory;
-        try
-        {
-            characterDirectory = Directory.GetParent(filePath);
-        }
-        catch (Exception ex) when (ex is IOException or ArgumentException or NotSupportedException)
-        {
-            return false;
-        }
-
-        if (characterDirectory == null ||
-            !characterDirectory.Name.StartsWith(CharacterFolderPrefix, StringComparison.OrdinalIgnoreCase) ||
-            characterDirectory.Parent == null ||
-            !Directory.Exists(characterDirectory.Parent.FullName))
-        {
-            return false;
-        }
-
-        rootDirectory = Path.GetFullPath(characterDirectory.Parent.FullName);
-        return true;
     }
 
     private static string? FindLastOpenedDirectory(IEnumerable<string> recentFiles)

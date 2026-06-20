@@ -30,6 +30,7 @@ public sealed partial class AppDataStore
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
     private readonly IAppDataNetworkClient networkClient;
+    private readonly Func<string?> wayMarkGameCharacterRootDirectoryDetector;
     private readonly List<string> dataLoadWarnings = [];
     private readonly HashSet<string> dataLoadWarningKeys = [];
     private bool bootstrapFileInvalid;
@@ -72,7 +73,15 @@ public sealed partial class AppDataStore
     {
     }
 
-    internal AppDataStore(string bootstrapDirectory, IAppDataNetworkClient networkClient)
+    internal AppDataStore(string bootstrapDirectory, Func<string?> wayMarkGameCharacterRootDirectoryDetector)
+        : this(bootstrapDirectory, new HttpAppDataNetworkClient(), wayMarkGameCharacterRootDirectoryDetector)
+    {
+    }
+
+    internal AppDataStore(
+        string bootstrapDirectory,
+        IAppDataNetworkClient networkClient,
+        Func<string?>? wayMarkGameCharacterRootDirectoryDetector = null)
     {
         if (string.IsNullOrWhiteSpace(bootstrapDirectory))
         {
@@ -80,6 +89,7 @@ public sealed partial class AppDataStore
         }
 
         this.networkClient = networkClient ?? throw new ArgumentNullException(nameof(networkClient));
+        this.wayMarkGameCharacterRootDirectoryDetector = wayMarkGameCharacterRootDirectoryDetector ?? WayMarkOpenDirectoryResolver.AutoDetectGameCharacterRootDirectory;
         BootstrapDirectory = Path.GetFullPath(bootstrapDirectory);
         DataDirectory = DefaultDataDirectory;
     }
@@ -127,6 +137,7 @@ public sealed partial class AppDataStore
 
         SaveBootstrap();
         LoadSettings();
+        InitializeWayMarkGameCharacterRootDirectory();
         ConfigureLogger();
         LoadCharacters();
         LoadWayMarkFavorites();

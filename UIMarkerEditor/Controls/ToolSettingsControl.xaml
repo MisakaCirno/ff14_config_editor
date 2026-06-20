@@ -107,14 +107,30 @@
 
                             <RadioButton x:Name="OpenDirectoryGameCharacter_RadioButton"
                                          GroupName="WayMarkOpenDirectoryMode"
-                                         Content="游戏角色目录（自动）"
-                                         Margin="0,0,0,8"/>
-                            <TextBlock Text="优先定位游戏安装目录下的 game\My Games\FINAL FANTASY XIV - A Realm Reborn，让你自行选择 FFXIV_CHR... 角色文件夹；找不到时使用上一次打开的路径。"
+                                         Content="游戏角色目录"
+                                         Margin="0,0,0,8"
+                                         Checked="OpenDirectoryMode_RadioButton_Checked"/>
+                            <TextBlock Text="首次启动会尝试自动填入游戏安装目录下的 game\My Games\FINAL FANTASY XIV - A Realm Reborn；之后可手动修改。"
                                        Style="{StaticResource SettingsMutedTextStyle}"
-                                       Margin="22,-4,0,10"/>
+                                       Margin="22,-4,0,8"/>
+                            <Grid Margin="22,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="WayMarkGameCharacterRootDirectory_TextBox"
+                                         HorizontalContentAlignment="Left"
+                                         TextAlignment="Left"/>
+                                <Button x:Name="BrowseWayMarkGameCharacterRootDirectory_Button"
+                                        Grid.Column="1"
+                                        Content="选择目录..."
+                                        Margin="8,0,0,0"
+                                        Click="BrowseWayMarkGameCharacterRootDirectory_Button_Click"/>
+                            </Grid>
                             <RadioButton x:Name="OpenDirectoryLastOpened_RadioButton"
                                          GroupName="WayMarkOpenDirectoryMode"
-                                         Content="上一次打开的路径"/>
+                                         Content="上一次打开的路径"
+                                         Checked="OpenDirectoryMode_RadioButton_Checked"/>
                         </StackPanel>
                     </GroupBox>
 

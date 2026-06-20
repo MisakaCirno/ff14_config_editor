@@ -32,6 +32,7 @@ namespace UIMarkerEditor
 
             string? initialDirectory = WayMarkOpenDirectoryResolver.Resolve(
                 appDataStore.Settings.WayMarkOpenDirectoryMode,
+                appDataStore.Settings.WayMarkGameCharacterRootDirectory,
                 appDataStore.GetRecentFiles());
             if (!string.IsNullOrWhiteSpace(initialDirectory))
             {

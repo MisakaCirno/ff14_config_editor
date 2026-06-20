@@ -20,34 +20,26 @@ public sealed class WayMarkOpenDirectoryResolverTests : IDisposable
     }
 
     [Fact]
-    public void Resolve_GameCharacterMode_UsesDetectedCharacterRootDirectory()
+    public void AutoDetectGameCharacterRootDirectory_UsesDetectedCharacterRootDirectory()
     {
         string gameConfigRoot = Path.Combine(testDirectory, "game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
         Directory.CreateDirectory(Path.Combine(gameConfigRoot, "FFXIV_CHR0123456789ABCDEF"));
 
-        string? directory = WayMarkOpenDirectoryResolver.Resolve(
-            WayMarkOpenDirectoryMode.GameCharacterDirectory,
-            [],
-            [gameConfigRoot]);
+        string? directory = WayMarkOpenDirectoryResolver.AutoDetectGameCharacterRootDirectory([gameConfigRoot]);
 
         Assert.Equal(Path.GetFullPath(gameConfigRoot), directory);
     }
 
     [Fact]
-    public void Resolve_GameCharacterMode_DoesNotChooseASpecificCharacterDirectory()
+    public void AutoDetectGameCharacterRootDirectory_DoesNotChooseASpecificCharacterDirectory()
     {
         string gameConfigRoot = Path.Combine(testDirectory, "game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
         string oldCharacterDirectory = Path.Combine(gameConfigRoot, "FFXIV_CHR0000000000000001");
         string newCharacterDirectory = Path.Combine(gameConfigRoot, "FFXIV_CHR0000000000000002");
         Directory.CreateDirectory(oldCharacterDirectory);
         Directory.CreateDirectory(newCharacterDirectory);
-        File.WriteAllText(Path.Combine(oldCharacterDirectory, "UISAVE.DAT"), string.Empty);
-        File.WriteAllText(Path.Combine(newCharacterDirectory, "UISAVE.DAT"), string.Empty);
 
-        string? directory = WayMarkOpenDirectoryResolver.Resolve(
-            WayMarkOpenDirectoryMode.GameCharacterDirectory,
-            [],
-            [gameConfigRoot]);
+        string? directory = WayMarkOpenDirectoryResolver.AutoDetectGameCharacterRootDirectory([gameConfigRoot]);
 
         Assert.Equal(Path.GetFullPath(gameConfigRoot), directory);
         Assert.NotEqual(Path.GetFullPath(oldCharacterDirectory), directory);
@@ -55,24 +47,21 @@ public sealed class WayMarkOpenDirectoryResolverTests : IDisposable
     }
 
     [Fact]
-    public void Resolve_GameCharacterMode_CanInferRootDirectoryFromRecentWayMarkFile()
+    public void Resolve_GameCharacterMode_UsesSavedDirectory()
     {
         string gameConfigRoot = Path.Combine(testDirectory, "game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
-        string characterDirectory = Path.Combine(gameConfigRoot, "FFXIV_CHR0123456789ABCDEF");
-        Directory.CreateDirectory(characterDirectory);
-        string recentFile = Path.Combine(characterDirectory, "UISAVE.DAT");
-        File.WriteAllText(recentFile, string.Empty);
+        Directory.CreateDirectory(gameConfigRoot);
 
         string? directory = WayMarkOpenDirectoryResolver.Resolve(
             WayMarkOpenDirectoryMode.GameCharacterDirectory,
-            [recentFile],
+            gameConfigRoot,
             []);
 
         Assert.Equal(Path.GetFullPath(gameConfigRoot), directory);
     }
 
     [Fact]
-    public void Resolve_GameCharacterMode_FallsBackToLastOpenedDirectory()
+    public void Resolve_GameCharacterMode_FallsBackToLastOpenedDirectoryWhenSavedDirectoryMissing()
     {
         string lastOpenedDirectory = Path.Combine(testDirectory, "ManualPick");
         Directory.CreateDirectory(lastOpenedDirectory);
@@ -81,8 +70,8 @@ public sealed class WayMarkOpenDirectoryResolverTests : IDisposable
 
         string? directory = WayMarkOpenDirectoryResolver.Resolve(
             WayMarkOpenDirectoryMode.GameCharacterDirectory,
-            [recentFile],
-            []);
+            string.Empty,
+            [recentFile]);
 
         Assert.Equal(Path.GetFullPath(lastOpenedDirectory), directory);
     }
@@ -104,9 +93,7 @@ public sealed class WayMarkOpenDirectoryResolverTests : IDisposable
     public void Resolve_LastOpenedMode_PrefersRecentFileDirectory()
     {
         string gameConfigRoot = Path.Combine(testDirectory, "game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
-        string characterDirectory = Path.Combine(gameConfigRoot, "FFXIV_CHR0123456789ABCDEF");
-        Directory.CreateDirectory(characterDirectory);
-        File.WriteAllText(Path.Combine(characterDirectory, "UISAVE.DAT"), string.Empty);
+        Directory.CreateDirectory(gameConfigRoot);
         string lastOpenedDirectory = Path.Combine(testDirectory, "LastOpened");
         Directory.CreateDirectory(lastOpenedDirectory);
         string recentFile = Path.Combine(lastOpenedDirectory, "UISAVE.DAT");
@@ -114,8 +101,8 @@ public sealed class WayMarkOpenDirectoryResolverTests : IDisposable
 
         string? directory = WayMarkOpenDirectoryResolver.Resolve(
             WayMarkOpenDirectoryMode.LastOpenedPath,
-            [recentFile],
-            [gameConfigRoot]);
+            gameConfigRoot,
+            [recentFile]);
 
         Assert.Equal(Path.GetFullPath(lastOpenedDirectory), directory);
     }

@@ -129,6 +129,8 @@ public sealed class AppSettings
     public StartupWayMarkAction StartupWayMarkAction { get; set; } = StartupWayMarkAction.None;
     public WayMarkFavoriteSaveMode WayMarkFavoriteSaveMode { get; set; } = WayMarkFavoriteSaveMode.Manual;
     public WayMarkOpenDirectoryMode WayMarkOpenDirectoryMode { get; set; } = WayMarkOpenDirectoryMode.GameCharacterDirectory;
+    public string WayMarkGameCharacterRootDirectory { get; set; } = string.Empty;
+    public bool WayMarkGameCharacterRootDirectoryAutoDetectAttempted { get; set; } = false;
     public DateTime LastMapDataManualRefreshAttempt { get; set; } = DateTime.MinValue;
     public DateTime LastServerListManualRefreshAttempt { get; set; } = DateTime.MinValue;
     public WindowLayoutSettings WindowLayout { get; set; } = new();
