@@ -31,6 +31,7 @@
                      PreviewMouseLeftButtonDown="SettingsNavigation_ListBox_PreviewMouseLeftButtonDown"
                      SelectionChanged="SettingsNavigation_ListBox_SelectionChanged">
                 <ListBoxItem Content="配置路径" Tag="DataStorage_Section"/>
+                <ListBoxItem Content="文件打开" Tag="FileOpen_Section"/>
                 <ListBoxItem Content="日志" Tag="Log_Section"/>
                 <ListBoxItem Content="外观" Tag="Appearance_Section"/>
                 <ListBoxItem Content="标点收藏" Tag="WayMarkFavorites_Section"/>
@@ -94,6 +95,26 @@
                             <TextBlock Text="更换目录并保存时，可选择迁移现有工具数据，或只切换到一个新的空目录。"
                                        Style="{StaticResource SettingsMutedTextStyle}"
                                        Margin="100,4,0,4"/>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <GroupBox x:Name="FileOpen_Section"
+                              Header="文件打开"
+                              Style="{StaticResource SettingsSectionGroupBoxStyle}">
+                        <StackPanel>
+                            <TextBlock Text="选择打开 UISAVE.DAT 时，文件选择器默认进入的位置。"
+                                       Style="{StaticResource SettingsSectionDescriptionStyle}"/>
+
+                            <RadioButton x:Name="OpenDirectoryGameCharacter_RadioButton"
+                                         GroupName="WayMarkOpenDirectoryMode"
+                                         Content="游戏角色目录（自动）"
+                                         Margin="0,0,0,8"/>
+                            <TextBlock Text="优先定位包含 UISAVE.DAT 的 FFXIV_CHR... 角色目录；找不到时使用上一次打开的路径。"
+                                       Style="{StaticResource SettingsMutedTextStyle}"
+                                       Margin="22,-4,0,10"/>
+                            <RadioButton x:Name="OpenDirectoryLastOpened_RadioButton"
+                                         GroupName="WayMarkOpenDirectoryMode"
+                                         Content="上一次打开的路径"/>
                         </StackPanel>
                     </GroupBox>
 

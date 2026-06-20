@@ -171,6 +171,7 @@ public sealed class AppDataStoreTests : IDisposable
             UseWayMarkImageLabels = false,
             StartupWayMarkAction = StartupWayMarkAction.LoadMostRecentFile,
             WayMarkFavoriteSaveMode = WayMarkFavoriteSaveMode.Auto,
+            WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.LastOpenedPath,
             MaxLogFileSizeMb = 13,
             MaxLogFileCount = 4,
             LastServerListManualRefreshAttempt = new DateTime(2026, 6, 18, 8, 30, 0),
@@ -192,6 +193,7 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(reloadedStore.Settings.UseWayMarkImageLabels);
         Assert.Equal(StartupWayMarkAction.LoadMostRecentFile, reloadedStore.Settings.StartupWayMarkAction);
         Assert.Equal(WayMarkFavoriteSaveMode.Auto, reloadedStore.Settings.WayMarkFavoriteSaveMode);
+        Assert.Equal(WayMarkOpenDirectoryMode.LastOpenedPath, reloadedStore.Settings.WayMarkOpenDirectoryMode);
         Assert.Equal(13, reloadedStore.Settings.MaxLogFileSizeMb);
         Assert.Equal(4, reloadedStore.Settings.MaxLogFileCount);
         Assert.Equal(new DateTime(2026, 6, 18, 8, 30, 0), reloadedStore.Settings.LastServerListManualRefreshAttempt);

@@ -30,6 +30,14 @@ namespace UIMarkerEditor
                 Multiselect = false
             };
 
+            string? initialDirectory = WayMarkOpenDirectoryResolver.Resolve(
+                appDataStore.Settings.WayMarkOpenDirectoryMode,
+                appDataStore.GetRecentFiles());
+            if (!string.IsNullOrWhiteSpace(initialDirectory))
+            {
+                openFileDialog.InitialDirectory = initialDirectory;
+            }
+
             if (DialogOwnerHelper.ShowCommonDialog(openFileDialog, this) == true)
             {
                 string filePath = openFileDialog.FileName;

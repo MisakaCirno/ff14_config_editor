@@ -64,6 +64,11 @@ public sealed partial class AppDataStore
             settings.WayMarkFavoriteSaveMode = WayMarkFavoriteSaveMode.Manual;
         }
 
+        if (!Enum.IsDefined(settings.WayMarkOpenDirectoryMode))
+        {
+            settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.GameCharacterDirectory;
+        }
+
         settings.MaxBackupCount = NormalizeIntRange(
             settings.MaxBackupCount,
             AppSettings.MinBackupCount,
@@ -117,6 +122,11 @@ public sealed partial class AppDataStore
         {
             throw new InvalidOperationException("标点收藏保存方式不是有效选项。");
         }
+
+        if (!Enum.IsDefined(settings.WayMarkOpenDirectoryMode))
+        {
+            throw new InvalidOperationException("标点文件打开目录设置不是有效选项。");
+        }
     }
 
     private static void ValidateIntRange(int value, string displayName, int min, int max)
@@ -141,6 +151,7 @@ public sealed partial class AppDataStore
             UseWayMarkImageLabels = settings.UseWayMarkImageLabels,
             StartupWayMarkAction = settings.StartupWayMarkAction,
             WayMarkFavoriteSaveMode = settings.WayMarkFavoriteSaveMode,
+            WayMarkOpenDirectoryMode = settings.WayMarkOpenDirectoryMode,
             LastMapDataManualRefreshAttempt = settings.LastMapDataManualRefreshAttempt,
             LastServerListManualRefreshAttempt = settings.LastServerListManualRefreshAttempt,
             WindowLayout = CloneWindowLayout(settings.WindowLayout),

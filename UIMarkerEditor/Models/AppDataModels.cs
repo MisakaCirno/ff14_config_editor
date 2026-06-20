@@ -96,6 +96,12 @@ public enum WayMarkFavoriteSaveMode
     Auto = 1
 }
 
+public enum WayMarkOpenDirectoryMode
+{
+    GameCharacterDirectory = 0,
+    LastOpenedPath = 1
+}
+
 public sealed class AppSettings
 {
     public const int DefaultMaxBackupCount = 100;
@@ -121,6 +127,7 @@ public sealed class AppSettings
     public bool UseWayMarkImageLabels { get; set; } = true;
     public StartupWayMarkAction StartupWayMarkAction { get; set; } = StartupWayMarkAction.None;
     public WayMarkFavoriteSaveMode WayMarkFavoriteSaveMode { get; set; } = WayMarkFavoriteSaveMode.Manual;
+    public WayMarkOpenDirectoryMode WayMarkOpenDirectoryMode { get; set; } = WayMarkOpenDirectoryMode.GameCharacterDirectory;
     public DateTime LastMapDataManualRefreshAttempt { get; set; } = DateTime.MinValue;
     public DateTime LastServerListManualRefreshAttempt { get; set; } = DateTime.MinValue;
     public WindowLayoutSettings WindowLayout { get; set; } = new();

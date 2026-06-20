@@ -63,6 +63,7 @@ public partial class ToolSettingsControl : UserControl
         LimitBackupCount_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCount;
         LimitBackupDays_CheckBox.IsChecked = appDataStore.Settings.LimitBackupDays;
         ApplyStartupWayMarkActionToUi(appDataStore.Settings.StartupWayMarkAction);
+        ApplyWayMarkOpenDirectoryModeToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
         UpdateBackupLimitInputState();
         RefreshStatusFields();
     }
@@ -264,6 +265,7 @@ public partial class ToolSettingsControl : UserControl
                 UseWayMarkImageLabels = WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected,
                 WayMarkFavoriteSaveMode = ReadWayMarkFavoriteSaveModeFromUi(),
                 StartupWayMarkAction = ReadStartupWayMarkActionFromUi(),
+                WayMarkOpenDirectoryMode = ReadWayMarkOpenDirectoryModeFromUi(),
                 LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
                 LastServerListManualRefreshAttempt = appDataStore.Settings.LastServerListManualRefreshAttempt,
                 WindowLayout = appDataStore.Settings.WindowLayout,
@@ -575,6 +577,7 @@ public partial class ToolSettingsControl : UserControl
             UseWayMarkImageLabels = appDataStore.Settings.UseWayMarkImageLabels,
             WayMarkFavoriteSaveMode = appDataStore.Settings.WayMarkFavoriteSaveMode,
             StartupWayMarkAction = appDataStore.Settings.StartupWayMarkAction,
+            WayMarkOpenDirectoryMode = appDataStore.Settings.WayMarkOpenDirectoryMode,
             LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
             LastServerListManualRefreshAttempt = appDataStore.Settings.LastServerListManualRefreshAttempt,
             WindowLayout = appDataStore.Settings.WindowLayout,
@@ -600,6 +603,19 @@ public partial class ToolSettingsControl : UserControl
         return WayMarkFavoriteSaveMode_SegmentedSwitch.IsLeftSelected
             ? WayMarkFavoriteSaveMode.Manual
             : WayMarkFavoriteSaveMode.Auto;
+    }
+
+    private void ApplyWayMarkOpenDirectoryModeToUi(WayMarkOpenDirectoryMode mode)
+    {
+        OpenDirectoryGameCharacter_RadioButton.IsChecked = mode == WayMarkOpenDirectoryMode.GameCharacterDirectory;
+        OpenDirectoryLastOpened_RadioButton.IsChecked = mode == WayMarkOpenDirectoryMode.LastOpenedPath;
+    }
+
+    private WayMarkOpenDirectoryMode ReadWayMarkOpenDirectoryModeFromUi()
+    {
+        return OpenDirectoryLastOpened_RadioButton.IsChecked == true
+            ? WayMarkOpenDirectoryMode.LastOpenedPath
+            : WayMarkOpenDirectoryMode.GameCharacterDirectory;
     }
 
     private void ApplyStartupWayMarkActionToUi(StartupWayMarkAction action)
