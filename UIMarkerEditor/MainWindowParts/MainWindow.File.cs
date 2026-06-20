@@ -166,6 +166,25 @@ namespace UIMarkerEditor
             }
         }
 
+        private void CreateAutomaticBackupAfterLoad(string filePath)
+        {
+            if (!appDataStore.Settings.AutoBackupAfterLoad)
+            {
+                return;
+            }
+
+            try
+            {
+                appDataStore.CreateBackup(filePath);
+                RefreshBackupList();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning(AppLogCategory.IO, $"读取后自动备份失败：{filePath}", ex);
+                AppMessageBox.Show(this, $"已成功读取 UISAVE.DAT，但读取后自动备份失败。\n\n文件：{filePath}\n\n原因：{ex.Message}", "自动备份失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private async void LoadConfigFileWithOverlay(string filePath)
         {
             try
@@ -250,6 +269,7 @@ namespace UIMarkerEditor
 
                 SetWayMarkDirty(false);
                 UpdateWindowTitle();
+                CreateAutomaticBackupAfterLoad(filePath);
 
                 // 输出所有的enableFlag和regionID以供调试
                 foreach (WayMark mark in wayMarks)

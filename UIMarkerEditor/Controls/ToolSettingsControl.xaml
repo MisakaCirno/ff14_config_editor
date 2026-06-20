@@ -36,7 +36,7 @@
                 <ListBoxItem Content="外观" Tag="Appearance_Section"/>
                 <ListBoxItem Content="标点收藏" Tag="WayMarkFavorites_Section"/>
                 <ListBoxItem Content="启动行为" Tag="StartupBehavior_Section"/>
-                <ListBoxItem Content="自动保存" Tag="AutoBackup_Section"/>
+                <ListBoxItem Content="自动备份" Tag="AutoBackup_Section"/>
                 <ListBoxItem Content="数据同步" Tag="OnlineData_Section"/>
             </ListBox>
         </Border>
@@ -276,16 +276,16 @@
                     </GroupBox>
 
                     <GroupBox x:Name="AutoBackup_Section"
-                              Header="自动保存"
+                              Header="自动备份"
                               Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="保存当前 UISAVE.DAT 前先创建工具备份；清理策略只影响工具生成的备份，不会删除游戏原始文件。"
+                            <TextBlock Text="按设置自动创建 UISAVE.DAT 工具备份；清理策略只影响工具生成的备份，不会删除游戏原始文件。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
-                            <TextBlock Text="自动保存"
+                            <TextBlock Text="备份时机"
                                        Style="{StaticResource SettingsSubsectionTitleStyle}"/>
                             <StackPanel Orientation="Horizontal">
-                                <CheckBox x:Name="AutoBackup_CheckBox"
+                                <CheckBox x:Name="AutoBackupBeforeSave_CheckBox"
                                           VerticalAlignment="Center"
                                           Margin="0,0,8,0"
                                           Checked="AutoBackup_CheckChanged"
@@ -294,12 +294,26 @@
                                            VerticalAlignment="Center"
                                            Padding="0"/>
                             </StackPanel>
+                            <StackPanel Orientation="Horizontal"
+                                        Margin="0,6,0,0">
+                                <CheckBox x:Name="AutoBackupAfterLoad_CheckBox"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,8,0"
+                                          Checked="AutoBackup_CheckChanged"
+                                          Unchecked="AutoBackup_CheckChanged"/>
+                                <TextBlock Text="成功读取 UISAVE.DAT 后自动备份"
+                                           VerticalAlignment="Center"
+                                           Padding="0"/>
+                            </StackPanel>
+                            <TextBlock Text="读取后备份默认关闭，适合在开始编辑前保留一份原始状态。"
+                                       Style="{StaticResource SettingsMutedTextStyle}"
+                                       Margin="22,4,0,0"/>
 
                             <Separator Margin="0,12,0,12"/>
 
                             <TextBlock Text="自动清理"
                                        Style="{StaticResource SettingsSubsectionTitleStyle}"/>
-                            <TextBlock Text="关闭自动备份后仍会保留这些数值，重新启用时继续生效。"
+                            <TextBlock Text="关闭所有自动备份后仍会保留这些数值，重新启用时继续生效。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
                             <StackPanel Orientation="Horizontal"

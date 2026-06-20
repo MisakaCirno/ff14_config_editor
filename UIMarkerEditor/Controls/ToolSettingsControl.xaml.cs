@@ -57,7 +57,8 @@ public partial class ToolSettingsControl : UserControl
         MaxBackupDays_TextBox.Text = appDataStore.Settings.MaxBackupDays.ToString(CultureInfo.InvariantCulture);
         MaxLogFileSizeMb_TextBox.Text = appDataStore.Settings.MaxLogFileSizeMb.ToString(CultureInfo.InvariantCulture);
         MaxLogFileCount_TextBox.Text = appDataStore.Settings.MaxLogFileCount.ToString(CultureInfo.InvariantCulture);
-        AutoBackup_CheckBox.IsChecked = appDataStore.Settings.AutoBackupBeforeSave;
+        AutoBackupBeforeSave_CheckBox.IsChecked = appDataStore.Settings.AutoBackupBeforeSave;
+        AutoBackupAfterLoad_CheckBox.IsChecked = appDataStore.Settings.AutoBackupAfterLoad;
         WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.UseWayMarkImageLabels;
         WayMarkFavoriteSaveMode_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.WayMarkFavoriteSaveMode == WayMarkFavoriteSaveMode.Manual;
         LimitBackupCount_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCount;
@@ -202,7 +203,8 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null) return;
 
-        bool autoBackupBeforeSave = AutoBackup_CheckBox.IsChecked == true;
+        bool autoBackupBeforeSave = AutoBackupBeforeSave_CheckBox.IsChecked == true;
+        bool autoBackupAfterLoad = AutoBackupAfterLoad_CheckBox.IsChecked == true;
         bool limitBackupCount = LimitBackupCount_CheckBox.IsChecked == true;
         bool limitBackupDays = LimitBackupDays_CheckBox.IsChecked == true;
         int maxBackupCount = appDataStore.Settings.MaxBackupCount;
@@ -260,6 +262,7 @@ public partial class ToolSettingsControl : UserControl
                 LimitBackupCount = limitBackupCount,
                 LimitBackupDays = limitBackupDays,
                 AutoBackupBeforeSave = autoBackupBeforeSave,
+                AutoBackupAfterLoad = autoBackupAfterLoad,
                 MaxLogFileSizeMb = maxLogFileSizeMb,
                 MaxLogFileCount = maxLogFileCount,
                 UseWayMarkImageLabels = WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected,
@@ -271,7 +274,7 @@ public partial class ToolSettingsControl : UserControl
                 WindowLayout = appDataStore.Settings.WindowLayout,
                 RecentFiles = [.. appDataStore.Settings.RecentFiles]
             });
-            if (autoBackupBeforeSave)
+            if (autoBackupBeforeSave || autoBackupAfterLoad)
             {
                 appDataStore.CleanupBackups();
             }
@@ -525,7 +528,7 @@ public partial class ToolSettingsControl : UserControl
 
     private void UpdateBackupLimitInputState()
     {
-        bool autoBackupEnabled = AutoBackup_CheckBox.IsChecked == true;
+        bool autoBackupEnabled = AutoBackupBeforeSave_CheckBox.IsChecked == true || AutoBackupAfterLoad_CheckBox.IsChecked == true;
         LimitBackupCount_CheckBox.IsEnabled = autoBackupEnabled;
         LimitBackupDays_CheckBox.IsEnabled = autoBackupEnabled;
         MaxBackupCount_TextBox.IsEnabled = autoBackupEnabled && LimitBackupCount_CheckBox.IsChecked == true;
@@ -572,6 +575,7 @@ public partial class ToolSettingsControl : UserControl
             LimitBackupCount = appDataStore.Settings.LimitBackupCount,
             LimitBackupDays = appDataStore.Settings.LimitBackupDays,
             AutoBackupBeforeSave = appDataStore.Settings.AutoBackupBeforeSave,
+            AutoBackupAfterLoad = appDataStore.Settings.AutoBackupAfterLoad,
             MaxLogFileSizeMb = appDataStore.Settings.MaxLogFileSizeMb,
             MaxLogFileCount = appDataStore.Settings.MaxLogFileCount,
             UseWayMarkImageLabels = appDataStore.Settings.UseWayMarkImageLabels,

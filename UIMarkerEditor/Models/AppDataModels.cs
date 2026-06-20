@@ -122,6 +122,7 @@ public sealed class AppSettings
     public bool LimitBackupCount { get; set; } = true;
     public bool LimitBackupDays { get; set; } = true;
     public bool AutoBackupBeforeSave { get; set; } = true;
+    public bool AutoBackupAfterLoad { get; set; } = false;
     public int MaxLogFileSizeMb { get; set; } = DefaultMaxLogFileSizeMb;
     public int MaxLogFileCount { get; set; } = DefaultMaxLogFileCount;
     public bool UseWayMarkImageLabels { get; set; } = true;

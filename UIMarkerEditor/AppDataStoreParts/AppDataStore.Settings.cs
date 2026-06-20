@@ -146,6 +146,7 @@ public sealed partial class AppDataStore
             LimitBackupCount = settings.LimitBackupCount,
             LimitBackupDays = settings.LimitBackupDays,
             AutoBackupBeforeSave = settings.AutoBackupBeforeSave,
+            AutoBackupAfterLoad = settings.AutoBackupAfterLoad,
             MaxLogFileSizeMb = settings.MaxLogFileSizeMb,
             MaxLogFileCount = settings.MaxLogFileCount,
             UseWayMarkImageLabels = settings.UseWayMarkImageLabels,
