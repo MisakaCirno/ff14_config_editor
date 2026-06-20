@@ -10,7 +10,7 @@
     <FileVersion>2.0.0.0</FileVersion>
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
-    <ApplicationIcon>000055_hr1(1).ico</ApplicationIcon>
+    <ApplicationIcon>Assets\Icon\zip.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="000055_hr1(1).ico" />
+    <Content Include="Assets\Icon\zip.ico" />
   </ItemGroup>
 
   <ItemGroup>
