@@ -84,7 +84,7 @@ namespace UIMarkerEditor.Controls
                 // 强制更新UI（如果需要）
                 // 属性变更应该会自动通知UI
 
-                AppMessageBox.Show("导入成功！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                ToastService.ShowSuccess("导入成功。");
             }
             catch (Exception ex)
             {
@@ -109,7 +109,7 @@ namespace UIMarkerEditor.Controls
                 try
                 {
                     Clipboard.SetText(json);
-                    AppMessageBox.Show("导出成功！\nJSON数据已复制到剪贴板。", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ToastService.ShowSuccess("导出成功，JSON 数据已复制到剪贴板。");
                 }
                 catch
                 {

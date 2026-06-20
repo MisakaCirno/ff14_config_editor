@@ -428,5 +428,49 @@
                                TextTrimming="CharacterEllipsis"/>
             </Grid>
         </Border>
+
+        <ItemsControl x:Name="ToastItems_Control"
+                      Grid.RowSpan="3"
+                      HorizontalAlignment="Right"
+                      VerticalAlignment="Top"
+                      Margin="0,54,16,0"
+                      Panel.ZIndex="100"
+                      IsHitTestVisible="False">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border MinWidth="220"
+                            MaxWidth="360"
+                            Background="#F8FFFFFF"
+                            BorderBrush="{StaticResource AppSuccessButtonBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="12,9"
+                            Margin="0,0,0,8">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="14"
+                                              ShadowDepth="2"
+                                              Opacity="0.18"/>
+                        </Border.Effect>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="√"
+                                       Foreground="{StaticResource AppSuccessButtonBrush}"
+                                       FontSize="15"
+                                       FontWeight="Bold"
+                                       Margin="0,0,8,0"
+                                       VerticalAlignment="Top"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding Message}"
+                                       Foreground="{StaticResource AppTextBrush}"
+                                       FontSize="13"
+                                       TextWrapping="Wrap"/>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
     </Grid>
 </Window>

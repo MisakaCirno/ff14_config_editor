@@ -234,7 +234,7 @@ public partial class CharacterProfilesControl : UserControl
         }
 
         isCharacterDetailDirty = false;
-        AppMessageBox.Show(ownerWindow, "角色备注已创建。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+        ToastService.ShowSuccess("角色备注已创建。");
         return true;
     }
 
@@ -344,7 +344,7 @@ public partial class CharacterProfilesControl : UserControl
 
         if (showSuccessMessage)
         {
-            AppMessageBox.Show(ownerWindow, "角色备注已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            ToastService.ShowSuccess("角色备注已保存。");
         }
 
         return true;

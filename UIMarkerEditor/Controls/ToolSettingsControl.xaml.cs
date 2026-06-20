@@ -283,7 +283,7 @@ public partial class ToolSettingsControl : UserControl
             refreshAppearance();
             refreshBackupList();
             refreshCharacterList();
-            AppMessageBox.Show(ownerWindow, "设置已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            ToastService.ShowSuccess("设置已保存。");
         }
         catch (Exception ex)
         {
@@ -346,7 +346,7 @@ public partial class ToolSettingsControl : UserControl
                 return;
             }
 
-            AppMessageBox.Show(ownerWindow, $"当前日志已归档到：\n{archivePath}", "归档当前日志", MessageBoxButton.OK, MessageBoxImage.Information);
+            ToastService.ShowSuccess($"当前日志已归档到：{archivePath}");
         }
         catch (Exception ex)
         {
@@ -370,7 +370,7 @@ public partial class ToolSettingsControl : UserControl
         {
             int deletedCount = appDataStore.ClearCurrentLogFile();
             UpdateCurrentLogFilePathText();
-            AppMessageBox.Show(ownerWindow, $"已清理 {deletedCount} 个当前日志文件。", "清理当前日志", MessageBoxButton.OK, MessageBoxImage.Information);
+            ToastService.ShowSuccess($"已清理 {deletedCount} 个当前日志文件。");
         }
         catch (Exception ex)
         {
@@ -394,7 +394,7 @@ public partial class ToolSettingsControl : UserControl
         {
             int deletedCount = appDataStore.ClearLogFiles();
             UpdateCurrentLogFilePathText();
-            AppMessageBox.Show(ownerWindow, $"已清理 {deletedCount} 个日志文件。", "清理所有日志", MessageBoxButton.OK, MessageBoxImage.Information);
+            ToastService.ShowSuccess($"已清理 {deletedCount} 个日志文件。");
         }
         catch (Exception ex)
         {
@@ -446,11 +446,11 @@ public partial class ToolSettingsControl : UserControl
             if (result.Updated)
             {
                 refreshMapDataConsumers();
-                AppMessageBox.Show(ownerWindow, $"地图数据已更新到：{versionText}", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
+                ToastService.ShowSuccess($"地图数据已更新到：{versionText}");
                 return;
             }
 
-            AppMessageBox.Show(ownerWindow, $"地图数据目前已是最新，无需更新。\n当前版本：{versionText}", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
+            ToastService.ShowSuccess($"地图数据目前已是最新。当前版本：{versionText}");
         }
         finally
         {
@@ -487,11 +487,11 @@ public partial class ToolSettingsControl : UserControl
             if (result.Updated)
             {
                 refreshServerListConsumers();
-                AppMessageBox.Show(ownerWindow, "服务器列表已更新。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
+                ToastService.ShowSuccess("服务器列表已更新。");
                 return;
             }
 
-            AppMessageBox.Show(ownerWindow, "服务器列表目前已是最新，无需更新。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Information);
+            ToastService.ShowSuccess("服务器列表目前已是最新。");
         }
         finally
         {

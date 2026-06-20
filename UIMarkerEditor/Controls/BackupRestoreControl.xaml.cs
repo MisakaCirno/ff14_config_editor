@@ -227,7 +227,7 @@ public partial class BackupRestoreControl : UserControl
         refreshCharacterList();
         RefreshBackupList();
         Backup_DataGrid.SelectedItem = backupEntries.FirstOrDefault(entry => entry.Id == selectedBackupId);
-        AppMessageBox.Show(ownerWindow, "角色备注已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+        ToastService.ShowSuccess("角色备注已保存。");
     }
 
     private void UpdateBackupDetail(BackupMetadata? backup)
@@ -323,7 +323,7 @@ public partial class BackupRestoreControl : UserControl
                 loadConfigFile(currentFilePath);
             }
 
-            AppMessageBox.Show(ownerWindow, "备份已还原到原文件路径。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            ToastService.ShowSuccess("备份已还原到原文件路径。");
         }
         catch (Exception ex)
         {
@@ -366,7 +366,7 @@ public partial class BackupRestoreControl : UserControl
                 loadConfigFile(getCurrentFilePath());
             }
 
-            AppMessageBox.Show(ownerWindow, "备份已还原到指定位置。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            ToastService.ShowSuccess("备份已还原到指定位置。");
         }
         catch (Exception ex)
         {

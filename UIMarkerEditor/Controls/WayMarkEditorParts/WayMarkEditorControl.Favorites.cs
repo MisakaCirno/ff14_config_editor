@@ -154,7 +154,7 @@ public partial class WayMarkEditorControl
         toolClipboardSnapshot = WayMarkSnapshotConverter.CreateSnapshot(selectedMark);
         if (showMessage)
         {
-            AppMessageBox.Show(ownerWindow, "标点已复制，可粘贴到工具内其它槽位。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            ToastService.ShowSuccess("标点已复制，可粘贴到工具内其它槽位。");
         }
     }
 
@@ -203,7 +203,7 @@ public partial class WayMarkEditorControl
         {
             appDataStore.AddWayMarkFavorite(snapshot, dialog.CommentName);
             refreshWayMarkFavorites();
-            AppMessageBox.Show(ownerWindow, "标点已加入收藏。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            ToastService.ShowSuccess("标点已加入收藏。");
         }
         catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
         {
@@ -238,7 +238,7 @@ public partial class WayMarkEditorControl
         if (dialogResult != true || dialog.SelectedFavorite == null) return;
 
         ApplySnapshotToWayMark(SelectedWayMark, dialog.SelectedFavorite.Marker);
-        AppMessageBox.Show(ownerWindow, "收藏标点已导入到当前标点。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+        ToastService.ShowSuccess("收藏标点已导入到当前标点。");
     }
 
     private void SaveFavoritePickerLayout(WayMarkFavoritePickerDialog dialog)

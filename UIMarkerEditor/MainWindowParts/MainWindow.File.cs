@@ -154,7 +154,7 @@ namespace UIMarkerEditor
                 SetWayMarkDirty(false);
                 if (showSuccessMessage)
                 {
-                    AppMessageBox.Show("文件已保存。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ToastService.ShowSuccess("文件已保存。");
                 }
 
                 return true;

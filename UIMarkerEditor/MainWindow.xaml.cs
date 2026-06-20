@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using System.ComponentModel;
 using System.Text.Json;
 using System.Globalization;
@@ -56,11 +57,14 @@ namespace UIMarkerEditor
         private ConfigUISave? configUISave = null;
 
         private readonly AppDataStore appDataStore;
+        private readonly ObservableCollection<ToastNotification> toastNotifications = [];
 
         public MainWindow(AppDataStore appDataStore)
         {
             this.appDataStore = appDataStore;
             InitializeComponent();
+            ToastItems_Control.ItemsSource = toastNotifications;
+            ToastService.RegisterSuccessHandler(ShowSuccessToast);
             WayMarkEditor_Control.Initialize(appDataStore, this, () => WayMarkFavorites_Control.RefreshFavorites());
             WayMarkFavorites_Control.Initialize(appDataStore, this);
             AddDeveloperToolsTab();
@@ -70,6 +74,39 @@ namespace UIMarkerEditor
             ApplySavedLayoutSettings();
             UpdateMaximizeRestoreButton();
             RefreshRecentFileMenu();
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            ToastService.UnregisterSuccessHandler(ShowSuccessToast);
+            base.OnClosed(e);
+        }
+
+        private void ShowSuccessToast(string message)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.Invoke(() => ShowSuccessToast(message));
+                return;
+            }
+
+            ToastNotification notification = new(message);
+            toastNotifications.Insert(0, notification);
+            while (toastNotifications.Count > 4)
+            {
+                toastNotifications.RemoveAt(toastNotifications.Count - 1);
+            }
+
+            DispatcherTimer timer = new()
+            {
+                Interval = TimeSpan.FromSeconds(2.6)
+            };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                toastNotifications.Remove(notification);
+            };
+            timer.Start();
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)

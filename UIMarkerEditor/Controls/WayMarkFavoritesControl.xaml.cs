@@ -403,7 +403,7 @@ public partial class WayMarkFavoritesControl : UserControl
             RefreshFavorites(updatedFavorite.Id);
             if (showSuccessMessage)
             {
-                AppMessageBox.Show(ownerWindow, "收藏修改已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                ToastService.ShowSuccess("收藏修改已保存。");
             }
             return true;
         }
