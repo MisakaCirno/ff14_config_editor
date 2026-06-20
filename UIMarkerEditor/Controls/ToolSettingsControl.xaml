@@ -109,7 +109,7 @@
                                          GroupName="WayMarkOpenDirectoryMode"
                                          Content="游戏角色目录（自动）"
                                          Margin="0,0,0,8"/>
-                            <TextBlock Text="优先定位包含 UISAVE.DAT 的 FFXIV_CHR... 角色目录；找不到时使用上一次打开的路径。"
+                            <TextBlock Text="优先定位游戏安装目录下的 game\My Games\FINAL FANTASY XIV - A Realm Reborn，让你自行选择 FFXIV_CHR... 角色文件夹；找不到时使用上一次打开的路径。"
                                        Style="{StaticResource SettingsMutedTextStyle}"
                                        Margin="22,-4,0,10"/>
                             <RadioButton x:Name="OpenDirectoryLastOpened_RadioButton"
