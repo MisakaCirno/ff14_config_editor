@@ -67,6 +67,7 @@ public partial class WayMarkEditorControl : UserControl
         }
         else
         {
+            RefreshOpenFileOverlay();
             UpdateMoveButtonState();
         }
     }
@@ -90,6 +91,7 @@ public partial class WayMarkEditorControl : UserControl
         wayMarks = markerSection;
         WayMarkEditPanel_Control.RefreshMapDataDisplay(markerSection.Select(mark => mark.RegionID));
         WayMark_ListBox.ItemsSource = markerSection;
+        RefreshOpenFileOverlay();
         UpdateMoveButtonState();
     }
 
@@ -100,7 +102,15 @@ public partial class WayMarkEditorControl : UserControl
         WayMark_ListBox.ItemsSource = null;
         WayMarkEditPanel_Control.SetWayMark(null);
         WayMarkPreview_Control.SetWayMark(null);
+        RefreshOpenFileOverlay();
         UpdateMoveButtonState();
+    }
+
+    private void RefreshOpenFileOverlay()
+    {
+        OpenFileOverlay_Grid.Visibility = wayMarks == null
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     public void ApplyLayoutSettings(WindowLayoutSettings layout)
