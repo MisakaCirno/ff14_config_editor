@@ -43,7 +43,7 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.True(File.Exists(store.CharactersFilePath));
         Assert.True(Directory.Exists(store.BackupsDirectory));
         Assert.False(store.Settings.AutoBackupAfterLoad);
-        Assert.True(store.Settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted);
+        Assert.False(store.Settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
         Assert.Equal(string.Empty, store.Settings.WayMarkGameCharacterRootDirectory);
     }
@@ -165,7 +165,7 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
-    public void Initialize_WhenWayMarkGameCharacterRootDetected_PersistsDirectoryAndUsesGameCharacterMode()
+    public async Task AutoDetectWayMarkGameCharacterRootDirectoryAsync_WhenDetected_PersistsDirectoryAndKeepsDefaultMode()
     {
         string detectedDirectory = Path.Combine(testDirectory, "Game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
         Directory.CreateDirectory(detectedDirectory);
@@ -175,12 +175,14 @@ public sealed class AppDataStoreTests : IDisposable
             detectCount++;
             return detectedDirectory;
         });
-
         store.Initialize();
 
+        bool updatedDirectory = await store.AutoDetectWayMarkGameCharacterRootDirectoryAsync();
+
+        Assert.True(updatedDirectory);
         Assert.Equal(1, detectCount);
         Assert.True(store.Settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted);
-        Assert.Equal(WayMarkOpenDirectoryMode.GameCharacterDirectory, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
         Assert.Equal(Path.GetFullPath(detectedDirectory), store.Settings.WayMarkGameCharacterRootDirectory);
 
         AppDataStore reloadedStore = CreateStore(() =>
@@ -189,14 +191,16 @@ public sealed class AppDataStoreTests : IDisposable
             return Path.Combine(testDirectory, "Other");
         });
         reloadedStore.Initialize();
+        bool reloadedUpdatedDirectory = await reloadedStore.AutoDetectWayMarkGameCharacterRootDirectoryAsync();
 
+        Assert.False(reloadedUpdatedDirectory);
         Assert.Equal(1, detectCount);
-        Assert.Equal(WayMarkOpenDirectoryMode.GameCharacterDirectory, reloadedStore.Settings.WayMarkOpenDirectoryMode);
+        Assert.Equal(WayMarkOpenDirectoryMode.Default, reloadedStore.Settings.WayMarkOpenDirectoryMode);
         Assert.Equal(Path.GetFullPath(detectedDirectory), reloadedStore.Settings.WayMarkGameCharacterRootDirectory);
     }
 
     [Fact]
-    public void Initialize_WhenWayMarkGameCharacterRootNotDetected_PersistsFallbackAndDoesNotRetry()
+    public async Task AutoDetectWayMarkGameCharacterRootDirectoryAsync_WhenNotDetected_PersistsAttemptAndDoesNotRetry()
     {
         int detectCount = 0;
         AppDataStore store = CreateStore(() =>
@@ -204,9 +208,11 @@ public sealed class AppDataStoreTests : IDisposable
             detectCount++;
             return null;
         });
-
         store.Initialize();
 
+        bool updatedDirectory = await store.AutoDetectWayMarkGameCharacterRootDirectoryAsync();
+
+        Assert.False(updatedDirectory);
         Assert.Equal(1, detectCount);
         Assert.True(store.Settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
@@ -218,10 +224,34 @@ public sealed class AppDataStoreTests : IDisposable
             return Path.Combine(testDirectory, "Game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
         });
         reloadedStore.Initialize();
+        bool reloadedUpdatedDirectory = await reloadedStore.AutoDetectWayMarkGameCharacterRootDirectoryAsync();
 
+        Assert.False(reloadedUpdatedDirectory);
         Assert.Equal(1, detectCount);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, reloadedStore.Settings.WayMarkOpenDirectoryMode);
         Assert.Equal(string.Empty, reloadedStore.Settings.WayMarkGameCharacterRootDirectory);
+    }
+
+    [Fact]
+    public async Task AutoDetectWayMarkGameCharacterRootDirectoryAsync_DoesNotOverwriteExistingDirectoryOrMode()
+    {
+        string manualDirectory = Path.Combine(testDirectory, "Manual", "FINAL FANTASY XIV - A Realm Reborn");
+        string detectedDirectory = Path.Combine(testDirectory, "Game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
+        AppDataStore store = CreateStore(() => detectedDirectory);
+        store.Initialize();
+        store.SaveSettings(new AppSettings
+        {
+            WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.GameCharacterDirectory,
+            WayMarkGameCharacterRootDirectory = manualDirectory,
+            WayMarkGameCharacterRootDirectoryAutoDetectAttempted = false
+        });
+
+        bool updatedDirectory = await store.AutoDetectWayMarkGameCharacterRootDirectoryAsync();
+
+        Assert.False(updatedDirectory);
+        Assert.True(store.Settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted);
+        Assert.Equal(WayMarkOpenDirectoryMode.GameCharacterDirectory, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.Equal(manualDirectory, store.Settings.WayMarkGameCharacterRootDirectory);
     }
 
     [Fact]

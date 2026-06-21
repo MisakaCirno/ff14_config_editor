@@ -127,30 +127,53 @@ public sealed partial class AppDataStore
         return Math.Min(value, max);
     }
 
-    private void InitializeWayMarkGameCharacterRootDirectory()
+    private void EnsureSettingsFile()
     {
-        if (Settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted)
+        if (settingsFileInvalid || File.Exists(SettingsFilePath))
         {
             return;
         }
 
+        try
+        {
+            SaveSettings(Settings);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
+        {
+            AddJsonReadWarning(
+                SettingsFilePath,
+                "默认工具设置无法保存，本次启动将继续使用内存中的默认设置。",
+                ex);
+        }
+    }
+
+    public async Task<bool> AutoDetectWayMarkGameCharacterRootDirectoryAsync()
+    {
+        if (Settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted)
+        {
+            return false;
+        }
+
+        string? detectedDirectory = await Task.Run(TryDetectWayMarkGameCharacterRootDirectory);
+        if (Settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted)
+        {
+            return false;
+        }
+
         AppSettings settings = CloneSettings(Settings);
         settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted = true;
-        string? detectedDirectory = TryDetectWayMarkGameCharacterRootDirectory();
-        if (!string.IsNullOrWhiteSpace(detectedDirectory))
+        bool updatedDirectory = false;
+        if (!string.IsNullOrWhiteSpace(detectedDirectory) &&
+            string.IsNullOrWhiteSpace(settings.WayMarkGameCharacterRootDirectory))
         {
-            settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.GameCharacterDirectory;
             settings.WayMarkGameCharacterRootDirectory = detectedDirectory;
-        }
-        else
-        {
-            settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.Default;
-            settings.WayMarkGameCharacterRootDirectory = string.Empty;
+            updatedDirectory = true;
         }
 
         try
         {
             SaveSettings(settings);
+            return updatedDirectory;
         }
         catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
         {
@@ -158,6 +181,7 @@ public sealed partial class AppDataStore
                 SettingsFilePath,
                 "游戏角色目录自动定位结果无法保存，本次启动将继续使用当前设置。",
                 ex);
+            return false;
         }
     }
 

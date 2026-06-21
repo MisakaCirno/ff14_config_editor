@@ -137,7 +137,7 @@ public sealed partial class AppDataStore
 
         SaveBootstrap();
         LoadSettings();
-        InitializeWayMarkGameCharacterRootDirectory();
+        EnsureSettingsFile();
         ConfigureLogger();
         LoadCharacters();
         LoadWayMarkFavorites();

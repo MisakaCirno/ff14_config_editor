@@ -75,6 +75,16 @@ public partial class ToolSettingsControl : UserControl
         RefreshStatusFields();
     }
 
+    public void RefreshWayMarkGameCharacterRootDirectoryFromSettings()
+    {
+        if (appDataStore == null) return;
+        if (string.IsNullOrWhiteSpace(appDataStore.Settings.WayMarkGameCharacterRootDirectory)) return;
+        if (WayMarkGameCharacterRootDirectory_TextBox.IsKeyboardFocusWithin) return;
+        if (!string.IsNullOrWhiteSpace(WayMarkGameCharacterRootDirectory_TextBox.Text)) return;
+
+        WayMarkGameCharacterRootDirectory_TextBox.Text = appDataStore.Settings.WayMarkGameCharacterRootDirectory;
+    }
+
     private void SettingsNavigation_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (isSelectingNavigationItem) return;
