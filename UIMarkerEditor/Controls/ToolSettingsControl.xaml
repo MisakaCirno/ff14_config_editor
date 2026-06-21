@@ -119,7 +119,7 @@
                                          Content="自定义路径"
                                          Margin="0,0,0,8"
                                          Checked="OpenDirectoryMode_RadioButton_Checked"/>
-                            <TextBlock Text="使用你指定的目录。工具会尝试把游戏角色目录预填到这里，也可以手动改成任意目录。"
+                            <TextBlock Text="使用你指定的目录。首次启动时，工具会自动尝试把游戏角色目录预填到这里。"
                                        Style="{StaticResource SettingsMutedTextStyle}"
                                        Margin="22,-4,0,8"/>
                             <Grid Margin="22,0,0,0">
@@ -280,7 +280,7 @@
                               Header="启动行为"
                               Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="选择工具启动后是否自动处理标点文件；这些操作只会加载或选择文件，不会自动保存修改。"
+                            <TextBlock Text="当工具启动后，自动执行哪些操作。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
                             <RadioButton x:Name="StartupLoadRecentWayMarkFile_RadioButton"
