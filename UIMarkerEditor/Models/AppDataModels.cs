@@ -99,7 +99,7 @@ public enum WayMarkFavoriteSaveMode
 public enum WayMarkOpenDirectoryMode
 {
     GameCharacterDirectory = 0,
-    LastOpenedPath = 1
+    Default = 1
 }
 
 public sealed class AppSettings
@@ -128,7 +128,7 @@ public sealed class AppSettings
     public bool UseWayMarkImageLabels { get; set; } = true;
     public StartupWayMarkAction StartupWayMarkAction { get; set; } = StartupWayMarkAction.None;
     public WayMarkFavoriteSaveMode WayMarkFavoriteSaveMode { get; set; } = WayMarkFavoriteSaveMode.Manual;
-    public WayMarkOpenDirectoryMode WayMarkOpenDirectoryMode { get; set; } = WayMarkOpenDirectoryMode.GameCharacterDirectory;
+    public WayMarkOpenDirectoryMode WayMarkOpenDirectoryMode { get; set; } = WayMarkOpenDirectoryMode.Default;
     public string WayMarkGameCharacterRootDirectory { get; set; } = string.Empty;
     public bool WayMarkGameCharacterRootDirectoryAutoDetectAttempted { get; set; } = false;
     public DateTime LastMapDataManualRefreshAttempt { get; set; } = DateTime.MinValue;

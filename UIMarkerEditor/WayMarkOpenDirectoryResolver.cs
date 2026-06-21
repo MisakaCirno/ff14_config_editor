@@ -8,13 +8,11 @@ namespace UIMarkerEditor;
 
 internal static class WayMarkOpenDirectoryResolver
 {
-    private const string CharacterFolderPrefix = "FFXIV_CHR";
     private const string GameConfigFolderName = "FINAL FANTASY XIV - A Realm Reborn";
 
     public static string? Resolve(
         WayMarkOpenDirectoryMode mode,
-        string gameCharacterRootDirectory,
-        IEnumerable<string> recentFiles)
+        string gameCharacterRootDirectory)
     {
         if (mode == WayMarkOpenDirectoryMode.GameCharacterDirectory &&
             TryNormalizeExistingDirectory(gameCharacterRootDirectory, out string? directory))
@@ -22,7 +20,7 @@ internal static class WayMarkOpenDirectoryResolver
             return directory;
         }
 
-        return FindLastOpenedDirectory(recentFiles);
+        return null;
     }
 
     public static string? AutoDetectGameCharacterRootDirectory()
@@ -34,9 +32,9 @@ internal static class WayMarkOpenDirectoryResolver
     {
         foreach (string candidateRoot in candidateRoots)
         {
-            if (IsGameCharacterRootDirectory(candidateRoot))
+            if (TryNormalizeDirectoryPath(candidateRoot, out string? directory))
             {
-                return Path.GetFullPath(candidateRoot);
+                return directory;
             }
         }
 
@@ -46,7 +44,6 @@ internal static class WayMarkOpenDirectoryResolver
     private static IEnumerable<string> CreateDefaultCandidateRoots()
     {
         return EnumerateRegistryInstallCandidateRoots()
-            .Concat(EnumerateLikelyInstallCandidateRoots())
             .Where(path => !string.IsNullOrWhiteSpace(path))
             .Distinct(StringComparer.OrdinalIgnoreCase);
     }
@@ -190,84 +187,9 @@ internal static class WayMarkOpenDirectoryResolver
                 ? Path.GetDirectoryName(trimmed) ?? string.Empty
                 : trimmed;
         }
-        catch (ArgumentException)
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {
             return string.Empty;
-        }
-    }
-
-    private static IEnumerable<string> EnumerateLikelyInstallCandidateRoots()
-    {
-        foreach (DriveInfo drive in DriveInfo.GetDrives())
-        {
-            if (!IsUsableDrive(drive))
-            {
-                continue;
-            }
-
-            string root = drive.RootDirectory.FullName;
-            foreach (string installDirectory in EnumerateLikelyInstallDirectories(root))
-            {
-                foreach (string candidateRoot in CreateCandidateRootsFromInstallPath(installDirectory))
-                {
-                    yield return candidateRoot;
-                }
-            }
-        }
-    }
-
-    private static bool IsUsableDrive(DriveInfo drive)
-    {
-        try
-        {
-            if (drive.DriveType != DriveType.Fixed && drive.DriveType != DriveType.Removable)
-            {
-                return false;
-            }
-
-            return drive.IsReady;
-        }
-        catch (IOException)
-        {
-            return false;
-        }
-    }
-
-    private static IEnumerable<string> EnumerateLikelyInstallDirectories(string driveRoot)
-    {
-        string[] directInstallNames =
-        [
-            "最终幻想XIV",
-            "最终幻想14",
-            "FINAL FANTASY XIV",
-            "FINAL FANTASY XIV - A Realm Reborn",
-            "FFXIV"
-        ];
-        foreach (string name in directInstallNames)
-        {
-            yield return Path.Combine(driveRoot, name);
-        }
-
-        string[] likelyParents =
-        [
-            "Software",
-            "Games",
-            "Game",
-            "Program Files",
-            "Program Files (x86)",
-            "SquareEnix",
-            "WeGameApps",
-            "WeGame",
-            "腾讯游戏",
-            "上海数龙科技有限公司"
-        ];
-        foreach (string parentName in likelyParents)
-        {
-            string parentDirectory = Path.Combine(driveRoot, parentName);
-            foreach (string childDirectory in EnumerateDirectoriesSafely(parentDirectory))
-            {
-                yield return childDirectory;
-            }
         }
     }
 
@@ -279,12 +201,26 @@ internal static class WayMarkOpenDirectoryResolver
         }
 
         string trimmedPath = installPath.Trim();
-        yield return CombineGameConfigDirectory(trimmedPath);
-        yield return CombineGameConfigDirectory(Path.Combine(trimmedPath, "game"));
-
-        if (string.Equals(Path.GetFileName(trimmedPath), "game", StringComparison.OrdinalIgnoreCase))
+        if (IsGameDirectory(trimmedPath))
         {
             yield return CombineGameConfigDirectory(trimmedPath);
+            yield break;
+        }
+
+        yield return CombineGameConfigDirectory(Path.Combine(trimmedPath, "game"));
+        yield return CombineGameConfigDirectory(trimmedPath);
+    }
+
+    private static bool IsGameDirectory(string path)
+    {
+        try
+        {
+            string trimmedPath = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return string.Equals(Path.GetFileName(trimmedPath), "game", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
         }
     }
 
@@ -293,6 +229,25 @@ internal static class WayMarkOpenDirectoryResolver
         return string.IsNullOrWhiteSpace(gameDirectory)
             ? string.Empty
             : Path.Combine(gameDirectory, "My Games", GameConfigFolderName);
+    }
+
+    private static bool TryNormalizeDirectoryPath(string directory, out string? normalizedDirectory)
+    {
+        normalizedDirectory = null;
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            return false;
+        }
+
+        try
+        {
+            normalizedDirectory = Path.GetFullPath(directory.Trim());
+            return true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
     }
 
     private static bool TryNormalizeExistingDirectory(string directory, out string? normalizedDirectory)
@@ -316,58 +271,6 @@ internal static class WayMarkOpenDirectoryResolver
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             return false;
-        }
-    }
-
-    private static bool IsGameCharacterRootDirectory(string rootDirectory)
-    {
-        try
-        {
-            return Directory.Exists(rootDirectory) &&
-                Directory.EnumerateDirectories(rootDirectory, CharacterFolderPrefix + "*").Any();
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-            return false;
-        }
-    }
-
-    private static string? FindLastOpenedDirectory(IEnumerable<string> recentFiles)
-    {
-        foreach (string recentFile in recentFiles)
-        {
-            string? directory;
-            try
-            {
-                directory = Path.GetDirectoryName(recentFile);
-            }
-            catch (Exception ex) when (ex is ArgumentException or NotSupportedException)
-            {
-                continue;
-            }
-
-            if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
-            {
-                continue;
-            }
-
-            return Path.GetFullPath(directory);
-        }
-
-        return null;
-    }
-
-    private static IEnumerable<string> EnumerateDirectoriesSafely(string directory)
-    {
-        try
-        {
-            return Directory.Exists(directory)
-                ? Directory.EnumerateDirectories(directory).ToArray()
-                : [];
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-        {
-            return [];
         }
     }
 }

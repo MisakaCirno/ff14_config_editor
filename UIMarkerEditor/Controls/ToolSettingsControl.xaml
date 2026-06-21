@@ -105,15 +105,24 @@
                             <TextBlock Text="选择打开 UISAVE.DAT 时，文件选择器默认进入的位置。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
+                            <RadioButton x:Name="OpenDirectoryDefault_RadioButton"
+                                         GroupName="WayMarkOpenDirectoryMode"
+                                         Content="默认"
+                                         Margin="0,0,0,8"
+                                         Checked="OpenDirectoryMode_RadioButton_Checked"/>
+                            <TextBlock Text="使用 Windows 文件选择器自己记住的位置，工具不额外指定目录。"
+                                       Style="{StaticResource SettingsMutedTextStyle}"
+                                       Margin="22,-4,0,10"/>
+
                             <RadioButton x:Name="OpenDirectoryGameCharacter_RadioButton"
                                          GroupName="WayMarkOpenDirectoryMode"
                                          Content="游戏角色目录"
                                          Margin="0,0,0,8"
                                          Checked="OpenDirectoryMode_RadioButton_Checked"/>
-                            <TextBlock Text="首次启动会尝试自动填入游戏安装目录下的 game\My Games\FINAL FANTASY XIV - A Realm Reborn；之后可手动修改。"
+                            <TextBlock Text="首次启动会尝试从游戏安装信息填入 game\My Games\FINAL FANTASY XIV - A Realm Reborn；之后可手动修改。"
                                        Style="{StaticResource SettingsMutedTextStyle}"
                                        Margin="22,-4,0,8"/>
-                            <Grid Margin="22,0,0,10">
+                            <Grid Margin="22,0,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
@@ -127,10 +136,7 @@
                                         Margin="8,0,0,0"
                                         Click="BrowseWayMarkGameCharacterRootDirectory_Button_Click"/>
                             </Grid>
-                            <RadioButton x:Name="OpenDirectoryLastOpened_RadioButton"
-                                         GroupName="WayMarkOpenDirectoryMode"
-                                         Content="上一次打开的路径"
-                                         Checked="OpenDirectoryMode_RadioButton_Checked"/>
+
                         </StackPanel>
                     </GroupBox>
 

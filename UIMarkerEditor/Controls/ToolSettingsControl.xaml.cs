@@ -650,7 +650,7 @@ public partial class ToolSettingsControl : UserControl
     private void ApplyWayMarkOpenDirectoryModeToUi(WayMarkOpenDirectoryMode mode)
     {
         OpenDirectoryGameCharacter_RadioButton.IsChecked = mode == WayMarkOpenDirectoryMode.GameCharacterDirectory;
-        OpenDirectoryLastOpened_RadioButton.IsChecked = mode == WayMarkOpenDirectoryMode.LastOpenedPath;
+        OpenDirectoryDefault_RadioButton.IsChecked = mode == WayMarkOpenDirectoryMode.Default;
         UpdateWayMarkGameCharacterRootDirectoryInputState();
     }
 
@@ -663,8 +663,8 @@ public partial class ToolSettingsControl : UserControl
 
     private WayMarkOpenDirectoryMode ReadWayMarkOpenDirectoryModeFromUi()
     {
-        return OpenDirectoryLastOpened_RadioButton.IsChecked == true
-            ? WayMarkOpenDirectoryMode.LastOpenedPath
+        return OpenDirectoryDefault_RadioButton.IsChecked == true
+            ? WayMarkOpenDirectoryMode.Default
             : WayMarkOpenDirectoryMode.GameCharacterDirectory;
     }
 

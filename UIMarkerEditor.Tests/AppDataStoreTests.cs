@@ -44,7 +44,7 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.True(Directory.Exists(store.BackupsDirectory));
         Assert.False(store.Settings.AutoBackupAfterLoad);
         Assert.True(store.Settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted);
-        Assert.Equal(WayMarkOpenDirectoryMode.LastOpenedPath, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
         Assert.Equal(string.Empty, store.Settings.WayMarkGameCharacterRootDirectory);
     }
 
@@ -209,7 +209,7 @@ public sealed class AppDataStoreTests : IDisposable
 
         Assert.Equal(1, detectCount);
         Assert.True(store.Settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted);
-        Assert.Equal(WayMarkOpenDirectoryMode.LastOpenedPath, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
         Assert.Equal(string.Empty, store.Settings.WayMarkGameCharacterRootDirectory);
 
         AppDataStore reloadedStore = CreateStore(() =>
@@ -220,7 +220,7 @@ public sealed class AppDataStoreTests : IDisposable
         reloadedStore.Initialize();
 
         Assert.Equal(1, detectCount);
-        Assert.Equal(WayMarkOpenDirectoryMode.LastOpenedPath, reloadedStore.Settings.WayMarkOpenDirectoryMode);
+        Assert.Equal(WayMarkOpenDirectoryMode.Default, reloadedStore.Settings.WayMarkOpenDirectoryMode);
         Assert.Equal(string.Empty, reloadedStore.Settings.WayMarkGameCharacterRootDirectory);
     }
 
@@ -235,7 +235,7 @@ public sealed class AppDataStoreTests : IDisposable
             UseWayMarkImageLabels = false,
             StartupWayMarkAction = StartupWayMarkAction.LoadMostRecentFile,
             WayMarkFavoriteSaveMode = WayMarkFavoriteSaveMode.Auto,
-            WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.LastOpenedPath,
+            WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.Default,
             WayMarkGameCharacterRootDirectory = Path.Combine(testDirectory, "Game", "My Games", "FINAL FANTASY XIV - A Realm Reborn"),
             WayMarkGameCharacterRootDirectoryAutoDetectAttempted = true,
             AutoBackupAfterLoad = true,
@@ -260,7 +260,7 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(reloadedStore.Settings.UseWayMarkImageLabels);
         Assert.Equal(StartupWayMarkAction.LoadMostRecentFile, reloadedStore.Settings.StartupWayMarkAction);
         Assert.Equal(WayMarkFavoriteSaveMode.Auto, reloadedStore.Settings.WayMarkFavoriteSaveMode);
-        Assert.Equal(WayMarkOpenDirectoryMode.LastOpenedPath, reloadedStore.Settings.WayMarkOpenDirectoryMode);
+        Assert.Equal(WayMarkOpenDirectoryMode.Default, reloadedStore.Settings.WayMarkOpenDirectoryMode);
         Assert.Equal(Path.GetFullPath(Path.Combine(testDirectory, "Game", "My Games", "FINAL FANTASY XIV - A Realm Reborn")), reloadedStore.Settings.WayMarkGameCharacterRootDirectory);
         Assert.True(reloadedStore.Settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted);
         Assert.True(reloadedStore.Settings.AutoBackupAfterLoad);

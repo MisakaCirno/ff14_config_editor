@@ -68,7 +68,7 @@ public sealed partial class AppDataStore
 
         if (!Enum.IsDefined(settings.WayMarkOpenDirectoryMode))
         {
-            settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.GameCharacterDirectory;
+            settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.Default;
         }
 
         settings.MaxBackupCount = NormalizeIntRange(
@@ -144,7 +144,7 @@ public sealed partial class AppDataStore
         }
         else
         {
-            settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.LastOpenedPath;
+            settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.Default;
             settings.WayMarkGameCharacterRootDirectory = string.Empty;
         }
 
