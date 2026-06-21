@@ -55,7 +55,7 @@ public sealed partial class AppDataStore
     private static void NormalizeSettingsForLoad(AppSettings settings)
     {
         NormalizeSettingsReferences(settings);
-        settings.WayMarkGameCharacterRootDirectory = NormalizeOptionalDirectoryPath(settings.WayMarkGameCharacterRootDirectory);
+        settings.WayMarkCustomDirectory = NormalizeOptionalDirectoryPath(settings.WayMarkCustomDirectory);
         if (!Enum.IsDefined(settings.StartupWayMarkAction))
         {
             settings.StartupWayMarkAction = StartupWayMarkAction.None;
@@ -97,7 +97,7 @@ public sealed partial class AppDataStore
     {
         settings.WindowLayout ??= new WindowLayoutSettings();
         settings.RecentFiles ??= [];
-        settings.WayMarkGameCharacterRootDirectory ??= string.Empty;
+        settings.WayMarkCustomDirectory ??= string.Empty;
     }
 
     private static string NormalizeOptionalDirectoryPath(string? directory)
@@ -147,26 +147,26 @@ public sealed partial class AppDataStore
         }
     }
 
-    public async Task<bool> AutoDetectWayMarkGameCharacterRootDirectoryAsync()
+    public async Task<bool> AutoFillWayMarkCustomDirectoryAsync()
     {
-        if (Settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted)
+        if (Settings.WayMarkCustomDirectoryAutoFillAttempted)
         {
             return false;
         }
 
-        string? detectedDirectory = await Task.Run(TryDetectWayMarkGameCharacterRootDirectory);
-        if (Settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted)
+        string? detectedDirectory = await Task.Run(TryDetectWayMarkCustomDirectory);
+        if (Settings.WayMarkCustomDirectoryAutoFillAttempted)
         {
             return false;
         }
 
         AppSettings settings = CloneSettings(Settings);
-        settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted = true;
+        settings.WayMarkCustomDirectoryAutoFillAttempted = true;
         bool updatedDirectory = false;
         if (!string.IsNullOrWhiteSpace(detectedDirectory) &&
-            string.IsNullOrWhiteSpace(settings.WayMarkGameCharacterRootDirectory))
+            string.IsNullOrWhiteSpace(settings.WayMarkCustomDirectory))
         {
-            settings.WayMarkGameCharacterRootDirectory = detectedDirectory;
+            settings.WayMarkCustomDirectory = detectedDirectory;
             updatedDirectory = true;
         }
 
@@ -179,17 +179,17 @@ public sealed partial class AppDataStore
         {
             AddJsonReadWarning(
                 SettingsFilePath,
-                "游戏角色目录自动定位结果无法保存，本次启动将继续使用当前设置。",
+                "自定义路径自动填充结果无法保存，本次启动将继续使用当前设置。",
                 ex);
             return false;
         }
     }
 
-    private string? TryDetectWayMarkGameCharacterRootDirectory()
+    private string? TryDetectWayMarkCustomDirectory()
     {
         try
         {
-            return wayMarkGameCharacterRootDirectoryDetector();
+            return wayMarkCustomDirectoryDetector();
         }
         catch (Exception)
         {
@@ -243,8 +243,8 @@ public sealed partial class AppDataStore
             StartupWayMarkAction = settings.StartupWayMarkAction,
             WayMarkFavoriteSaveMode = settings.WayMarkFavoriteSaveMode,
             WayMarkOpenDirectoryMode = settings.WayMarkOpenDirectoryMode,
-            WayMarkGameCharacterRootDirectory = settings.WayMarkGameCharacterRootDirectory,
-            WayMarkGameCharacterRootDirectoryAutoDetectAttempted = settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted,
+            WayMarkCustomDirectory = settings.WayMarkCustomDirectory,
+            WayMarkCustomDirectoryAutoFillAttempted = settings.WayMarkCustomDirectoryAutoFillAttempted,
             LastMapDataManualRefreshAttempt = settings.LastMapDataManualRefreshAttempt,
             LastServerListManualRefreshAttempt = settings.LastServerListManualRefreshAttempt,
             WindowLayout = CloneWindowLayout(settings.WindowLayout),

@@ -40,25 +40,25 @@ public sealed class WayMarkOpenDirectoryResolverTests : IDisposable
     }
 
     [Fact]
-    public void Resolve_GameCharacterMode_UsesSavedDirectory()
+    public void Resolve_CustomDirectoryMode_UsesSavedDirectory()
     {
         string gameConfigRoot = Path.Combine(testDirectory, "game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
         Directory.CreateDirectory(gameConfigRoot);
 
         string? directory = WayMarkOpenDirectoryResolver.Resolve(
-            WayMarkOpenDirectoryMode.GameCharacterDirectory,
+            WayMarkOpenDirectoryMode.CustomDirectory,
             gameConfigRoot);
 
         Assert.Equal(Path.GetFullPath(gameConfigRoot), directory);
     }
 
     [Fact]
-    public void Resolve_GameCharacterMode_ReturnsNullWhenSavedDirectoryMissing()
+    public void Resolve_CustomDirectoryMode_ReturnsNullWhenSavedDirectoryMissing()
     {
         string gameConfigRoot = Path.Combine(testDirectory, "game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
 
         string? directory = WayMarkOpenDirectoryResolver.Resolve(
-            WayMarkOpenDirectoryMode.GameCharacterDirectory,
+            WayMarkOpenDirectoryMode.CustomDirectory,
             gameConfigRoot);
 
         Assert.Null(directory);

@@ -102,7 +102,7 @@
                               Header="文件打开"
                               Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="选择打开 UISAVE.DAT 时，文件选择器默认进入的位置。"
+                            <TextBlock Text="选择 UISAVE.DAT 时，文件选择器默认进入的位置。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
                             <RadioButton x:Name="OpenDirectoryDefault_RadioButton"
@@ -110,16 +110,16 @@
                                          Content="默认"
                                          Margin="0,0,0,8"
                                          Checked="OpenDirectoryMode_RadioButton_Checked"/>
-                            <TextBlock Text="使用 Windows 文件选择器自己记住的位置，工具不额外指定目录。"
+                            <TextBlock Text="使用 Windows 文件选择器记住的位置。"
                                        Style="{StaticResource SettingsMutedTextStyle}"
                                        Margin="22,-4,0,10"/>
 
-                            <RadioButton x:Name="OpenDirectoryGameCharacter_RadioButton"
+                            <RadioButton x:Name="OpenDirectoryCustom_RadioButton"
                                          GroupName="WayMarkOpenDirectoryMode"
-                                         Content="游戏角色目录"
+                                         Content="自定义路径"
                                          Margin="0,0,0,8"
                                          Checked="OpenDirectoryMode_RadioButton_Checked"/>
-                            <TextBlock Text="首次启动会尝试从游戏安装信息填入 game\My Games\FINAL FANTASY XIV - A Realm Reborn；之后可手动修改。"
+                            <TextBlock Text="使用你指定的目录。工具会尝试把游戏角色目录预填到这里，也可以手动改成任意目录。"
                                        Style="{StaticResource SettingsMutedTextStyle}"
                                        Margin="22,-4,0,8"/>
                             <Grid Margin="22,0,0,0">
@@ -127,14 +127,14 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBox x:Name="WayMarkGameCharacterRootDirectory_TextBox"
+                                <TextBox x:Name="WayMarkCustomDirectory_TextBox"
                                          HorizontalContentAlignment="Left"
                                          TextAlignment="Left"/>
-                                <Button x:Name="BrowseWayMarkGameCharacterRootDirectory_Button"
+                                <Button x:Name="BrowseWayMarkCustomDirectory_Button"
                                         Grid.Column="1"
                                         Content="选择目录..."
                                         Margin="8,0,0,0"
-                                        Click="BrowseWayMarkGameCharacterRootDirectory_Button_Click"/>
+                                        Click="BrowseWayMarkCustomDirectory_Button_Click"/>
                             </Grid>
 
                         </StackPanel>

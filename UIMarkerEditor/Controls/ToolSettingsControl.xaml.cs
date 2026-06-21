@@ -64,7 +64,7 @@ public partial class ToolSettingsControl : UserControl
         LimitBackupCount_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCount;
         LimitBackupDays_CheckBox.IsChecked = appDataStore.Settings.LimitBackupDays;
         ApplyStartupWayMarkActionToUi(appDataStore.Settings.StartupWayMarkAction);
-        WayMarkGameCharacterRootDirectory_TextBox.Text = appDataStore.Settings.WayMarkGameCharacterRootDirectory;
+        WayMarkCustomDirectory_TextBox.Text = appDataStore.Settings.WayMarkCustomDirectory;
         ApplyWayMarkOpenDirectoryModeToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
         UpdateBackupLimitInputState();
         RefreshStatusFields();
@@ -75,14 +75,14 @@ public partial class ToolSettingsControl : UserControl
         RefreshStatusFields();
     }
 
-    public void RefreshWayMarkGameCharacterRootDirectoryFromSettings()
+    public void RefreshWayMarkCustomDirectoryFromSettings()
     {
         if (appDataStore == null) return;
-        if (string.IsNullOrWhiteSpace(appDataStore.Settings.WayMarkGameCharacterRootDirectory)) return;
-        if (WayMarkGameCharacterRootDirectory_TextBox.IsKeyboardFocusWithin) return;
-        if (!string.IsNullOrWhiteSpace(WayMarkGameCharacterRootDirectory_TextBox.Text)) return;
+        if (string.IsNullOrWhiteSpace(appDataStore.Settings.WayMarkCustomDirectory)) return;
+        if (WayMarkCustomDirectory_TextBox.IsKeyboardFocusWithin) return;
+        if (!string.IsNullOrWhiteSpace(WayMarkCustomDirectory_TextBox.Text)) return;
 
-        WayMarkGameCharacterRootDirectory_TextBox.Text = appDataStore.Settings.WayMarkGameCharacterRootDirectory;
+        WayMarkCustomDirectory_TextBox.Text = appDataStore.Settings.WayMarkCustomDirectory;
     }
 
     private void SettingsNavigation_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -212,34 +212,34 @@ public partial class ToolSettingsControl : UserControl
 
     private void OpenDirectoryMode_RadioButton_Checked(object sender, RoutedEventArgs e)
     {
-        UpdateWayMarkGameCharacterRootDirectoryInputState();
+        UpdateWayMarkCustomDirectoryInputState();
     }
 
-    private void BrowseWayMarkGameCharacterRootDirectory_Button_Click(object sender, RoutedEventArgs e)
+    private void BrowseWayMarkCustomDirectory_Button_Click(object sender, RoutedEventArgs e)
     {
         if (appDataStore == null) return;
 
         string initialDirectory = string.Empty;
-        string currentDirectory = WayMarkGameCharacterRootDirectory_TextBox.Text.Trim();
+        string currentDirectory = WayMarkCustomDirectory_TextBox.Text.Trim();
         if (Directory.Exists(currentDirectory))
         {
             initialDirectory = currentDirectory;
         }
-        else if (Directory.Exists(appDataStore.Settings.WayMarkGameCharacterRootDirectory))
+        else if (Directory.Exists(appDataStore.Settings.WayMarkCustomDirectory))
         {
-            initialDirectory = appDataStore.Settings.WayMarkGameCharacterRootDirectory;
+            initialDirectory = appDataStore.Settings.WayMarkCustomDirectory;
         }
 
         Microsoft.Win32.OpenFolderDialog dialog = new()
         {
-            Title = "选择游戏角色目录",
+            Title = "选择自定义路径",
             InitialDirectory = initialDirectory
         };
 
         if (DialogOwnerHelper.ShowCommonDialog(dialog, ownerWindow ?? Window.GetWindow(this)) == true)
         {
-            WayMarkGameCharacterRootDirectory_TextBox.Text = dialog.FolderName;
-            OpenDirectoryGameCharacter_RadioButton.IsChecked = true;
+            WayMarkCustomDirectory_TextBox.Text = dialog.FolderName;
+            OpenDirectoryCustom_RadioButton.IsChecked = true;
         }
     }
 
@@ -313,8 +313,8 @@ public partial class ToolSettingsControl : UserControl
                 WayMarkFavoriteSaveMode = ReadWayMarkFavoriteSaveModeFromUi(),
                 StartupWayMarkAction = ReadStartupWayMarkActionFromUi(),
                 WayMarkOpenDirectoryMode = ReadWayMarkOpenDirectoryModeFromUi(),
-                WayMarkGameCharacterRootDirectory = WayMarkGameCharacterRootDirectory_TextBox.Text.Trim(),
-                WayMarkGameCharacterRootDirectoryAutoDetectAttempted = true,
+                WayMarkCustomDirectory = WayMarkCustomDirectory_TextBox.Text.Trim(),
+                WayMarkCustomDirectoryAutoFillAttempted = true,
                 LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
                 LastServerListManualRefreshAttempt = appDataStore.Settings.LastServerListManualRefreshAttempt,
                 WindowLayout = appDataStore.Settings.WindowLayout,
@@ -628,8 +628,8 @@ public partial class ToolSettingsControl : UserControl
             WayMarkFavoriteSaveMode = appDataStore.Settings.WayMarkFavoriteSaveMode,
             StartupWayMarkAction = appDataStore.Settings.StartupWayMarkAction,
             WayMarkOpenDirectoryMode = appDataStore.Settings.WayMarkOpenDirectoryMode,
-            WayMarkGameCharacterRootDirectory = appDataStore.Settings.WayMarkGameCharacterRootDirectory,
-            WayMarkGameCharacterRootDirectoryAutoDetectAttempted = appDataStore.Settings.WayMarkGameCharacterRootDirectoryAutoDetectAttempted,
+            WayMarkCustomDirectory = appDataStore.Settings.WayMarkCustomDirectory,
+            WayMarkCustomDirectoryAutoFillAttempted = appDataStore.Settings.WayMarkCustomDirectoryAutoFillAttempted,
             LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
             LastServerListManualRefreshAttempt = appDataStore.Settings.LastServerListManualRefreshAttempt,
             WindowLayout = appDataStore.Settings.WindowLayout,
@@ -659,23 +659,23 @@ public partial class ToolSettingsControl : UserControl
 
     private void ApplyWayMarkOpenDirectoryModeToUi(WayMarkOpenDirectoryMode mode)
     {
-        OpenDirectoryGameCharacter_RadioButton.IsChecked = mode == WayMarkOpenDirectoryMode.GameCharacterDirectory;
+        OpenDirectoryCustom_RadioButton.IsChecked = mode == WayMarkOpenDirectoryMode.CustomDirectory;
         OpenDirectoryDefault_RadioButton.IsChecked = mode == WayMarkOpenDirectoryMode.Default;
-        UpdateWayMarkGameCharacterRootDirectoryInputState();
+        UpdateWayMarkCustomDirectoryInputState();
     }
 
-    private void UpdateWayMarkGameCharacterRootDirectoryInputState()
+    private void UpdateWayMarkCustomDirectoryInputState()
     {
-        bool isGameCharacterMode = OpenDirectoryGameCharacter_RadioButton.IsChecked == true;
-        WayMarkGameCharacterRootDirectory_TextBox.IsEnabled = isGameCharacterMode;
-        BrowseWayMarkGameCharacterRootDirectory_Button.IsEnabled = isGameCharacterMode;
+        bool isCustomDirectoryMode = OpenDirectoryCustom_RadioButton.IsChecked == true;
+        WayMarkCustomDirectory_TextBox.IsEnabled = isCustomDirectoryMode;
+        BrowseWayMarkCustomDirectory_Button.IsEnabled = isCustomDirectoryMode;
     }
 
     private WayMarkOpenDirectoryMode ReadWayMarkOpenDirectoryModeFromUi()
     {
         return OpenDirectoryDefault_RadioButton.IsChecked == true
             ? WayMarkOpenDirectoryMode.Default
-            : WayMarkOpenDirectoryMode.GameCharacterDirectory;
+            : WayMarkOpenDirectoryMode.CustomDirectory;
     }
 
     private void ApplyStartupWayMarkActionToUi(StartupWayMarkAction action)

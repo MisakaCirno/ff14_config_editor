@@ -134,21 +134,21 @@ namespace UIMarkerEditor
             RefreshCharacterList();
             ShowDataLoadWarnings();
             ScheduleStartupWayMarkAction();
-            _ = AutoDetectWayMarkGameCharacterRootDirectoryAsync();
+            _ = AutoFillWayMarkCustomDirectoryAsync();
         }
 
-        private async Task AutoDetectWayMarkGameCharacterRootDirectoryAsync()
+        private async Task AutoFillWayMarkCustomDirectoryAsync()
         {
             try
             {
-                if (await appDataStore.AutoDetectWayMarkGameCharacterRootDirectoryAsync())
+                if (await appDataStore.AutoFillWayMarkCustomDirectoryAsync())
                 {
-                    ToolSettings_Control.RefreshWayMarkGameCharacterRootDirectoryFromSettings();
+                    ToolSettings_Control.RefreshWayMarkCustomDirectoryFromSettings();
                 }
             }
             catch (Exception ex)
             {
-                AppLogger.Warning(AppLogCategory.IO, "自动定位游戏角色目录失败", ex);
+                AppLogger.Warning(AppLogCategory.IO, "自动填充自定义路径失败", ex);
             }
         }
     }

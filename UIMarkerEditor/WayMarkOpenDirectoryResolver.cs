@@ -12,10 +12,10 @@ internal static class WayMarkOpenDirectoryResolver
 
     public static string? Resolve(
         WayMarkOpenDirectoryMode mode,
-        string gameCharacterRootDirectory)
+        string customDirectory)
     {
-        if (mode == WayMarkOpenDirectoryMode.GameCharacterDirectory &&
-            TryNormalizeExistingDirectory(gameCharacterRootDirectory, out string? directory))
+        if (mode == WayMarkOpenDirectoryMode.CustomDirectory &&
+            TryNormalizeExistingDirectory(customDirectory, out string? directory))
         {
             return directory;
         }
