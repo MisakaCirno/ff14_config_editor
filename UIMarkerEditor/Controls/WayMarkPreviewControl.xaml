@@ -12,15 +12,13 @@
 
         <Grid Grid.Row="1"
               x:Name="Preview_Container"
-              Background="#FFD5C896"
+              Background="Transparent"
               Margin="5"
               ClipToBounds="True"
               SizeChanged="Preview_Container_SizeChanged">
             <Canvas x:Name="Preview_Canvas"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Width="0"
-                    Height="0"/>
+                    Background="#FFD5C896"
+                    ClipToBounds="True"/>
         </Grid>
 
         <Grid Grid.Row="2" Margin="5">
@@ -29,7 +27,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Text="点缩放："/>
+            <TextBlock Text="点缩放：" VerticalAlignment="Center"/>
             <Slider x:Name="Scale_Slider"
                     Grid.Column="1"
                     VerticalAlignment="Center"

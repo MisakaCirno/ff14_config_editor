@@ -28,8 +28,8 @@ public partial class WayMarkEditPanelControl : UserControl, INotifyPropertyChang
     {
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
-    private readonly List<string> PointShape = ["圆形八方", "方形八方"];
-    private readonly List<string> PointOrder = ["A1B2C3D4", "A2B3C4D1"];
+    private readonly List<string> PointShape = ["圆形八方", "方形八方", "斜方八方"];
+    private readonly List<string> PointOrder = ["4A1", "1A2"];
 
     private ICollectionView? regionOptionsView;
     private string regionFilterText = string.Empty;
@@ -57,6 +57,9 @@ public partial class WayMarkEditPanelControl : UserControl, INotifyPropertyChang
 
         PointOrder_ComboBox.ItemsSource = PointOrder;
         PointOrder_ComboBox.SelectedIndex = 0;
+
+        RegisterShapePreviewInputHandlers();
+        UpdatePreview();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -183,10 +186,6 @@ public partial class WayMarkEditPanelControl : UserControl, INotifyPropertyChang
         }
 
         WayMarkChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void UpdatePreview()
-    {
     }
 
     private static IEnumerable<ushort> GetLoadedRegionIds()
