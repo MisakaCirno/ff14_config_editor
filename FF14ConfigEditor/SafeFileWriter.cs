@@ -92,7 +92,16 @@ namespace FF14ConfigEditor
         {
             if (File.Exists(targetPath))
             {
-                File.Replace(tempPath, targetPath, destinationBackupFileName: null);
+                try
+                {
+                    File.Replace(tempPath, targetPath, destinationBackupFileName: null, ignoreMetadataErrors: true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Some Windows environments deny File.Replace metadata updates even when a same-directory overwrite is allowed.
+                    File.Move(tempPath, targetPath, overwrite: true);
+                }
+
                 return;
             }
 
