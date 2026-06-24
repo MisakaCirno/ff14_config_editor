@@ -44,7 +44,6 @@
         <Grid Grid.Column="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <ScrollViewer x:Name="SettingsContent_ScrollViewer"
@@ -55,7 +54,7 @@
                               Header="工具数据目录"
                               Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="工具设置、角色备注、服务器列表缓存、地图数据缓存和 UISAVE.DAT 备份的保存位置。"
+                            <TextBlock Text="这里管理工具自己的可迁移数据。设置、备份、缓存和日志保存在下方数据目录中；启动配置和迁移进度是固定辅助文件，不属于迁移对象。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
                             <Grid>
@@ -66,33 +65,76 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Text="数据目录"
-                                           Style="{StaticResource SettingsFormLabelStyle}"/>
-                                <StackPanel Grid.Column="1">
-                                    <TextBox x:Name="DataDirectory_TextBox"
-                                             HorizontalContentAlignment="Left"
-                                             TextAlignment="Left"/>
+                                <StackPanel x:Name="BootstrapFilePath_Label"
+                                            Orientation="Horizontal"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Text="启动配置"
+                                               Style="{StaticResource SettingsFormLabelStyle}"/>
+                                    <TextBlock Text="ⓘ"
+                                               Foreground="{StaticResource AppMutedTextBrush}"
+                                               VerticalAlignment="Center"
+                                               Margin="-8,0,12,0"
+                                               ToolTip="bootstrap.json 固定保存在启动配置目录，记录当前数据目录的位置；工具启动时先读取它来定位数据目录。"/>
                                 </StackPanel>
+                                <TextBox x:Name="BootstrapFilePath_TextBox"
+                                         Grid.Column="1"
+                                         Style="{StaticResource SettingsReadOnlyTextBoxStyle}"
+                                         Foreground="{StaticResource AppMutedTextBrush}"
+                                         ToolTip="bootstrap.json 固定保存在启动配置目录，记录当前数据目录的位置；工具启动时先读取它来定位数据目录。"/>
 
-                                <TextBlock Grid.Row="1"
+                                <StackPanel x:Name="MigrationStateFilePath_Label"
+                                            Grid.Row="1"
+                                            Orientation="Horizontal"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Text="迁移进度"
+                                               Style="{StaticResource SettingsFormLabelStyle}"/>
+                                    <TextBlock Text="ⓘ"
+                                               Foreground="{StaticResource AppMutedTextBrush}"
+                                               VerticalAlignment="Center"
+                                               Margin="-8,0,12,0"
+                                               ToolTip="migration-state.json 只在迁移未完成或需要恢复时存在，记录源目录、目标目录、复制校验和旧目录清理进度；迁移完全结束后会自动删除。"/>
+                                </StackPanel>
+                                <TextBox x:Name="MigrationStateFilePath_TextBox"
+                                         Grid.Row="1"
+                                         Grid.Column="1"
+                                         Style="{StaticResource SettingsReadOnlyTextBoxStyle}"
+                                         Foreground="{StaticResource AppMutedTextBrush}"
+                                         ToolTip="migration-state.json 只在迁移未完成或需要恢复时存在，记录源目录、目标目录、复制校验和旧目录清理进度；迁移完全结束后会自动删除。"/>
+
+                                <Separator Grid.Row="2"
+                                           Grid.ColumnSpan="2"
+                                           Margin="0,8,0,8"/>
+
+                                <TextBlock Grid.Row="3"
+                                           Text="数据目录"
+                                           Style="{StaticResource SettingsFormLabelStyle}"/>
+                                <TextBox x:Name="DataDirectory_TextBox"
+                                         Grid.Row="3"
+                                         Grid.Column="1"
+                                         Style="{StaticResource SettingsReadOnlyTextBoxStyle}"/>
+
+                                <TextBlock Grid.Row="4"
                                            Text="目录操作"
                                            Style="{StaticResource SettingsFormLabelStyle}"/>
-                                <StackPanel Grid.Row="1"
+                                <StackPanel Grid.Row="4"
                                             Grid.Column="1"
                                             Orientation="Horizontal"
                                             Margin="0,4,0,0">
-                                    <Button Content="选择目录..."
+                                    <Button Content="迁移到其他目录..."
                                             Click="BrowseDataDirectory_Button_Click"/>
-                                    <Button Content="恢复默认目录"
+                                    <Button Content="迁移回默认目录"
                                             Click="ResetDataDirectory_Button_Click"/>
                                     <Button Content="打开当前目录"
                                             Click="OpenDataDirectory_Button_Click"/>
                                 </StackPanel>
                             </Grid>
 
-                            <TextBlock Text="更换目录并保存时，可选择迁移现有工具数据，或只切换到一个新的空目录。"
+                            <TextBlock Text="选择新目录或恢复默认目录会先进入迁移确认，再执行复制、校验、切换和旧目录清理。"
                                        Style="{StaticResource SettingsMutedTextStyle}"
                                        Margin="100,4,0,4"/>
                         </StackPanel>
@@ -129,7 +171,9 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBox x:Name="WayMarkCustomDirectory_TextBox"
                                          HorizontalContentAlignment="Left"
-                                         TextAlignment="Left"/>
+                                         TextAlignment="Left"
+                                         LostFocus="WayMarkCustomDirectory_TextBox_LostFocus"
+                                         PreviewKeyDown="WayMarkCustomDirectory_TextBox_PreviewKeyDown"/>
                                 <Button x:Name="BrowseWayMarkCustomDirectory_Button"
                                         Grid.Column="1"
                                         Content="选择目录..."
@@ -202,6 +246,8 @@
                                          Width="120"
                                          MaxLength="3"
                                          HorizontalAlignment="Left"
+                                         LostFocus="MaxLogFileSizeMb_TextBox_LostFocus"
+                                         PreviewKeyDown="IntegerSetting_TextBox_PreviewKeyDown"
                                          PreviewTextInput="IntegerTextBox_PreviewTextInput"
                                          DataObject.Pasting="IntegerTextBox_Pasting"/>
                                 <TextBlock Grid.Column="2"
@@ -218,6 +264,8 @@
                                          Width="120"
                                          MaxLength="2"
                                          HorizontalAlignment="Left"
+                                         LostFocus="MaxLogFileCount_TextBox_LostFocus"
+                                         PreviewKeyDown="IntegerSetting_TextBox_PreviewKeyDown"
                                          PreviewTextInput="IntegerTextBox_PreviewTextInput"
                                          DataObject.Pasting="IntegerTextBox_Pasting"/>
                                 <TextBlock Grid.Row="1"
@@ -247,7 +295,8 @@
                                                                  LeftToolTip="使用项目图片显示 A/B/C/D 和 1/2/3/4 标点"
                                                                  RightText="文字"
                                                                  RightToolTip="使用 A点、B点 等文字显示"
-                                                                 VerticalAlignment="Center"/>
+                                                                 VerticalAlignment="Center"
+                                                                 SelectionChanged="WayMarkLabelDisplayMode_SegmentedSwitch_SelectionChanged"/>
                             </StackPanel>
                         </Grid>
                     </GroupBox>
@@ -268,7 +317,8 @@
                                                                  LeftToolTip="编辑收藏后需要点击保存修改；切换收藏时会提示保存或放弃。"
                                                                  RightText="自动保存"
                                                                  RightToolTip="编辑收藏后自动写入收藏文件，并隐藏保存与放弃按钮。"
-                                                                 VerticalAlignment="Center"/>
+                                                                 VerticalAlignment="Center"
+                                                                 SelectionChanged="WayMarkFavoriteSaveMode_SegmentedSwitch_SelectionChanged"/>
                                 <TextBlock Text="手动保存更适合谨慎编辑；自动保存适合频繁整理收藏。"
                                            Style="{StaticResource SettingsMutedTextStyle}"
                                            Margin="0,4,0,0"/>
@@ -286,14 +336,17 @@
                             <RadioButton x:Name="StartupLoadRecentWayMarkFile_RadioButton"
                                          GroupName="StartupWayMarkAction"
                                          Content="启动时自动加载最近一次打开的标点文件"
-                                         Margin="0,0,0,8"/>
+                                         Margin="0,0,0,8"
+                                         Checked="StartupWayMarkAction_RadioButton_Checked"/>
                             <RadioButton x:Name="StartupOpenWayMarkFileDialog_RadioButton"
                                          GroupName="StartupWayMarkAction"
                                          Content="启动时自动打开选择标点文件对话框"
-                                         Margin="0,0,0,8"/>
+                                         Margin="0,0,0,8"
+                                         Checked="StartupWayMarkAction_RadioButton_Checked"/>
                             <RadioButton x:Name="StartupDoNothing_RadioButton"
                                          GroupName="StartupWayMarkAction"
-                                         Content="启动时不做任何操作"/>
+                                         Content="启动时不做任何操作"
+                                         Checked="StartupWayMarkAction_RadioButton_Checked"/>
                         </StackPanel>
                     </GroupBox>
 
@@ -349,6 +402,8 @@
                                 <TextBox x:Name="MaxBackupCount_TextBox"
                                          Width="120"
                                          MaxLength="5"
+                                         LostFocus="MaxBackupCount_TextBox_LostFocus"
+                                         PreviewKeyDown="IntegerSetting_TextBox_PreviewKeyDown"
                                          PreviewTextInput="IntegerTextBox_PreviewTextInput"
                                          DataObject.Pasting="IntegerTextBox_Pasting"/>
                                 <TextBlock Text="个以内"
@@ -366,6 +421,8 @@
                                 <TextBox x:Name="MaxBackupDays_TextBox"
                                          Width="120"
                                          MaxLength="4"
+                                         LostFocus="MaxBackupDays_TextBox_LostFocus"
+                                         PreviewKeyDown="IntegerSetting_TextBox_PreviewKeyDown"
                                          PreviewTextInput="IntegerTextBox_PreviewTextInput"
                                          DataObject.Pasting="IntegerTextBox_Pasting"/>
                                 <TextBlock Text="天以内"
@@ -528,13 +585,6 @@
                     </GroupBox>
                 </StackPanel>
             </ScrollViewer>
-
-            <Button Grid.Row="1"
-                    Content="保存设置"
-                    Style="{StaticResource PrimaryButtonStyle}"
-                    HorizontalAlignment="Right"
-                    Margin="0,8,0,0"
-                    Click="SaveSettings_Button_Click"/>
         </Grid>
     </Grid>
 </UserControl>

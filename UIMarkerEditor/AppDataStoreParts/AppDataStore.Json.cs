@@ -60,10 +60,16 @@ public sealed partial class AppDataStore
 
     private void AddJsonReadWarning(string path, string message, Exception? error)
     {
-        string warningKey = $"json:{Path.GetFullPath(path)}";
+        string detail = error == null ? string.Empty : $"{Environment.NewLine}原因：{error.Message}";
+        AddDataLoadWarning(
+            $"json:{Path.GetFullPath(path)}",
+            $"{message}{Environment.NewLine}文件：{path}{detail}");
+    }
+
+    private void AddDataLoadWarning(string warningKey, string message)
+    {
         if (!dataLoadWarningKeys.Add(warningKey)) return;
 
-        string detail = error == null ? string.Empty : $"{Environment.NewLine}原因：{error.Message}";
-        dataLoadWarnings.Add($"{message}{Environment.NewLine}文件：{path}{detail}");
+        dataLoadWarnings.Add(message);
     }
 }

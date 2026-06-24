@@ -1,0 +1,155 @@
+﻿<Window x:Class="UIMarkerEditor.DataDirectoryMigrationReportDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="工具数据目录迁移结果"
+        Height="520"
+        Width="720"
+        MinHeight="420"
+        MinWidth="640"
+        WindowStartupLocation="CenterOwner"
+        Style="{StaticResource AppDialogWindowStyle}">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Styles/ToolSettingsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="18,14,18,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="Summary_TextBlock"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,8"/>
+
+        <TextBlock x:Name="Detail_TextBlock"
+                   Grid.Row="1"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,12"/>
+
+        <StackPanel x:Name="Progress_Panel"
+                    Grid.Row="2"
+                    Visibility="Collapsed"
+                    Margin="0,6,0,10">
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="ProgressStage_TextBlock"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBlock x:Name="ProgressPercent_TextBlock"
+                           Grid.Column="1"
+                           Margin="16,0,0,0"/>
+            </Grid>
+            <ProgressBar x:Name="Migration_ProgressBar"
+                         Height="10"
+                         Minimum="0"
+                         Maximum="100"/>
+            <TextBlock x:Name="ProgressOperation_TextBlock"
+                       TextWrapping="Wrap"
+                       Margin="0,8,0,0"/>
+        </StackPanel>
+
+        <Grid x:Name="ReportDetails_Grid"
+              Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="92"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="旧目录"
+                       Style="{StaticResource SettingsFormLabelStyle}"/>
+            <TextBox x:Name="SourceDirectory_TextBox"
+                     Grid.Column="1"
+                     Style="{StaticResource SettingsReadOnlyTextBoxStyle}"/>
+
+            <TextBlock Grid.Row="1"
+                       Text="新目录"
+                       Style="{StaticResource SettingsFormLabelStyle}"/>
+            <TextBox x:Name="TargetDirectory_TextBox"
+                     Grid.Row="1"
+                     Grid.Column="1"
+                     Style="{StaticResource SettingsReadOnlyTextBoxStyle}"/>
+
+            <TextBlock x:Name="MigrationStateFilePath_Label"
+                       Grid.Row="2"
+                       Text="状态文件"
+                       Style="{StaticResource SettingsFormLabelStyle}"/>
+            <TextBox x:Name="MigrationStateFilePath_TextBox"
+                     Grid.Row="2"
+                     Grid.Column="1"
+                     Style="{StaticResource SettingsReadOnlyTextBoxStyle}"/>
+
+            <TextBlock x:Name="Error_TextBlock"
+                       Grid.Row="3"
+                       Grid.ColumnSpan="2"
+                       TextWrapping="Wrap"
+                       Margin="0,8,0,0"/>
+        </Grid>
+
+        <GroupBox x:Name="PendingItems_GroupBox"
+                  Grid.Row="4"
+                  Header="尚未清理的项目"
+                  Padding="5"
+                  Margin="0,12,0,0">
+            <ListBox x:Name="PendingItems_ListBox"
+                     HorizontalContentAlignment="Stretch"/>
+        </GroupBox>
+
+        <StackPanel x:Name="Buttons_Panel"
+                    Grid.Row="5"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,12,0,0">
+            <Button x:Name="OpenSourceDirectory_Button"
+                    Content="打开旧目录"
+                    Width="104"
+                    Height="32"
+                    Margin="0,0,8,0"
+                    Click="OpenSourceDirectory_Button_Click"/>
+            <Button x:Name="OpenTargetDirectory_Button"
+                    Content="打开新目录"
+                    Width="104"
+                    Height="32"
+                    Margin="0,0,8,0"
+                    Click="OpenTargetDirectory_Button_Click"/>
+            <Button x:Name="OpenStateDirectory_Button"
+                    Content="打开状态目录"
+                    Width="116"
+                    Height="32"
+                    Margin="0,0,8,0"
+                    Click="OpenStateDirectory_Button_Click"/>
+            <Button x:Name="CopyReport_Button"
+                    Content="复制信息"
+                    Width="96"
+                    Height="32"
+                    Margin="0,0,8,0"
+                    Click="CopyReport_Button_Click"/>
+            <Button x:Name="Close_Button"
+                    Content="关闭"
+                    Width="96"
+                    Height="32"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    IsDefault="True"
+                    IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

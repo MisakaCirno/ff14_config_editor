@@ -7,6 +7,8 @@ public partial class SegmentedSwitchControl : UserControl
 {
     private bool isUpdatingSelection;
 
+    public event RoutedEventHandler? SelectionChanged;
+
     public SegmentedSwitchControl()
     {
         InitializeComponent();
@@ -67,6 +69,7 @@ public partial class SegmentedSwitchControl : UserControl
         if (d is SegmentedSwitchControl control)
         {
             control.UpdateSelection();
+            control.SelectionChanged?.Invoke(control, new RoutedEventArgs());
         }
     }
 

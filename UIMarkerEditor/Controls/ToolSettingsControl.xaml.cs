@@ -17,6 +17,7 @@ public partial class ToolSettingsControl : UserControl
     private Window? ownerWindow;
     private bool isNavigatingFromNavigation;
     private bool isSelectingNavigationItem;
+    private bool isLoadingSettingsIntoUi;
     private Action refreshBackupList = () => { };
     private Action refreshCharacterList = () => { };
     private Action refreshServerListConsumers = () => { };
@@ -51,23 +52,33 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null) return;
 
-        DataDirectory_TextBox.Text = appDataStore.DataDirectory;
-        UpdateCurrentLogFilePathText();
-        MaxBackupCount_TextBox.Text = appDataStore.Settings.MaxBackupCount.ToString(CultureInfo.InvariantCulture);
-        MaxBackupDays_TextBox.Text = appDataStore.Settings.MaxBackupDays.ToString(CultureInfo.InvariantCulture);
-        MaxLogFileSizeMb_TextBox.Text = appDataStore.Settings.MaxLogFileSizeMb.ToString(CultureInfo.InvariantCulture);
-        MaxLogFileCount_TextBox.Text = appDataStore.Settings.MaxLogFileCount.ToString(CultureInfo.InvariantCulture);
-        AutoBackupBeforeSave_CheckBox.IsChecked = appDataStore.Settings.AutoBackupBeforeSave;
-        AutoBackupAfterLoad_CheckBox.IsChecked = appDataStore.Settings.AutoBackupAfterLoad;
-        WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.UseWayMarkImageLabels;
-        WayMarkFavoriteSaveMode_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.WayMarkFavoriteSaveMode == WayMarkFavoriteSaveMode.Manual;
-        LimitBackupCount_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCount;
-        LimitBackupDays_CheckBox.IsChecked = appDataStore.Settings.LimitBackupDays;
-        ApplyStartupWayMarkActionToUi(appDataStore.Settings.StartupWayMarkAction);
-        WayMarkCustomDirectory_TextBox.Text = appDataStore.Settings.WayMarkCustomDirectory;
-        ApplyWayMarkOpenDirectoryModeToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
-        UpdateBackupLimitInputState();
-        RefreshStatusFields();
+        SetSettingsUiSilently(() =>
+        {
+            DataDirectory_TextBox.Text = appDataStore.DataDirectory;
+            BootstrapFilePath_TextBox.Text = appDataStore.BootstrapFilePath;
+            MigrationStateFilePath_TextBox.Text = appDataStore.MigrationStateFilePath;
+            Visibility migrationStateVisibility = File.Exists(appDataStore.MigrationStateFilePath)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            MigrationStateFilePath_Label.Visibility = migrationStateVisibility;
+            MigrationStateFilePath_TextBox.Visibility = migrationStateVisibility;
+            UpdateCurrentLogFilePathText();
+            MaxBackupCount_TextBox.Text = appDataStore.Settings.MaxBackupCount.ToString(CultureInfo.InvariantCulture);
+            MaxBackupDays_TextBox.Text = appDataStore.Settings.MaxBackupDays.ToString(CultureInfo.InvariantCulture);
+            MaxLogFileSizeMb_TextBox.Text = appDataStore.Settings.MaxLogFileSizeMb.ToString(CultureInfo.InvariantCulture);
+            MaxLogFileCount_TextBox.Text = appDataStore.Settings.MaxLogFileCount.ToString(CultureInfo.InvariantCulture);
+            AutoBackupBeforeSave_CheckBox.IsChecked = appDataStore.Settings.AutoBackupBeforeSave;
+            AutoBackupAfterLoad_CheckBox.IsChecked = appDataStore.Settings.AutoBackupAfterLoad;
+            WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.UseWayMarkImageLabels;
+            WayMarkFavoriteSaveMode_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.WayMarkFavoriteSaveMode == WayMarkFavoriteSaveMode.Manual;
+            LimitBackupCount_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCount;
+            LimitBackupDays_CheckBox.IsChecked = appDataStore.Settings.LimitBackupDays;
+            ApplyStartupWayMarkActionToUi(appDataStore.Settings.StartupWayMarkAction);
+            WayMarkCustomDirectory_TextBox.Text = appDataStore.Settings.WayMarkCustomDirectory;
+            ApplyWayMarkOpenDirectoryModeToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
+            UpdateBackupLimitInputState();
+            RefreshStatusFields();
+        });
     }
 
     public void RefreshOnlineDataStatus()
@@ -191,28 +202,56 @@ public partial class ToolSettingsControl : UserControl
         Microsoft.Win32.OpenFolderDialog dialog = new()
         {
             Title = "选择工具数据目录",
-            InitialDirectory = Directory.Exists(DataDirectory_TextBox.Text) ? DataDirectory_TextBox.Text : appDataStore.DataDirectory
+            InitialDirectory = Directory.Exists(appDataStore.DataDirectory) ? appDataStore.DataDirectory : string.Empty
         };
 
         if (DialogOwnerHelper.ShowCommonDialog(dialog, ownerWindow ?? Window.GetWindow(this)) == true)
         {
-            DataDirectory_TextBox.Text = dialog.FolderName;
+            RequestDataDirectoryChange(dialog.FolderName);
         }
     }
 
     private void BackupLimit_CheckChanged(object sender, RoutedEventArgs e)
     {
         UpdateBackupLimitInputState();
+        if (isLoadingSettingsIntoUi) return;
+
+        SaveSettingsMutation(
+            settings =>
+            {
+                settings.LimitBackupCount = LimitBackupCount_CheckBox.IsChecked == true;
+                settings.LimitBackupDays = LimitBackupDays_CheckBox.IsChecked == true;
+            },
+            "保存自动清理设置",
+            CleanupBackupsIfEnabled);
     }
 
     private void AutoBackup_CheckChanged(object sender, RoutedEventArgs e)
     {
         UpdateBackupLimitInputState();
+        if (isLoadingSettingsIntoUi) return;
+
+        SaveSettingsMutation(
+            settings =>
+            {
+                settings.AutoBackupBeforeSave = AutoBackupBeforeSave_CheckBox.IsChecked == true;
+                settings.AutoBackupAfterLoad = AutoBackupAfterLoad_CheckBox.IsChecked == true;
+            },
+            "保存自动备份设置",
+            CleanupBackupsIfEnabled);
     }
 
     private void OpenDirectoryMode_RadioButton_Checked(object sender, RoutedEventArgs e)
     {
         UpdateWayMarkCustomDirectoryInputState();
+        if (isLoadingSettingsIntoUi) return;
+
+        SaveSettingsMutation(
+            settings =>
+            {
+                settings.WayMarkOpenDirectoryMode = ReadWayMarkOpenDirectoryModeFromUi();
+            },
+            "保存文件打开设置");
     }
 
     private void BrowseWayMarkCustomDirectory_Button_Click(object sender, RoutedEventArgs e)
@@ -238,102 +277,252 @@ public partial class ToolSettingsControl : UserControl
 
         if (DialogOwnerHelper.ShowCommonDialog(dialog, ownerWindow ?? Window.GetWindow(this)) == true)
         {
-            WayMarkCustomDirectory_TextBox.Text = dialog.FolderName;
-            OpenDirectoryCustom_RadioButton.IsChecked = true;
+            SetSettingsUiSilently(() =>
+            {
+                WayMarkCustomDirectory_TextBox.Text = dialog.FolderName;
+                OpenDirectoryCustom_RadioButton.IsChecked = true;
+                UpdateWayMarkCustomDirectoryInputState();
+            });
+            SaveSettingsMutation(
+                settings =>
+                {
+                    settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.CustomDirectory;
+                    settings.WayMarkCustomDirectory = dialog.FolderName.Trim();
+                    settings.WayMarkCustomDirectoryAutoFillAttempted = true;
+                },
+                "保存自定义打开路径");
         }
     }
 
-    private void SaveSettings_Button_Click(object sender, RoutedEventArgs e)
+    private void WayMarkLabelDisplayMode_SegmentedSwitch_SelectionChanged(object sender, RoutedEventArgs e)
     {
-        if (appDataStore == null) return;
+        if (isLoadingSettingsIntoUi) return;
 
-        bool autoBackupBeforeSave = AutoBackupBeforeSave_CheckBox.IsChecked == true;
-        bool autoBackupAfterLoad = AutoBackupAfterLoad_CheckBox.IsChecked == true;
-        bool limitBackupCount = LimitBackupCount_CheckBox.IsChecked == true;
-        bool limitBackupDays = LimitBackupDays_CheckBox.IsChecked == true;
-        int maxBackupCount = appDataStore.Settings.MaxBackupCount;
-        int maxBackupDays = appDataStore.Settings.MaxBackupDays;
-        int maxLogFileSizeMb = appDataStore.Settings.MaxLogFileSizeMb;
-        int maxLogFileCount = appDataStore.Settings.MaxLogFileCount;
-        if (!TryReadIntInRange(
-                MaxBackupCount_TextBox,
-                "最多保留备份数量",
-                AppSettings.MinBackupCount,
-                AppSettings.MaxBackupCountLimit,
-                out maxBackupCount) ||
-            !TryReadIntInRange(
-                MaxBackupDays_TextBox,
-                "最多保留备份天数",
-                AppSettings.MinBackupDays,
-                AppSettings.MaxBackupDaysLimit,
-                out maxBackupDays) ||
-            !TryReadIntInRange(
-                MaxLogFileSizeMb_TextBox,
-                "日志文件大小",
-                AppSettings.MinLogFileSizeMb,
-                AppSettings.MaxLogFileSizeMbLimit,
-                out maxLogFileSizeMb) ||
-            !TryReadIntInRange(
-                MaxLogFileCount_TextBox,
-                "日志文件最多保存数量",
-                AppSettings.MinLogFileCount,
-                AppSettings.MaxLogFileCountLimit,
-                out maxLogFileCount))
+        SaveSettingsMutation(
+            settings =>
+            {
+                settings.UseWayMarkImageLabels = WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected;
+            },
+            "保存标点显示形式",
+            refreshAppearance);
+    }
+
+    private void WayMarkFavoriteSaveMode_SegmentedSwitch_SelectionChanged(object sender, RoutedEventArgs e)
+    {
+        if (isLoadingSettingsIntoUi) return;
+
+        SaveSettingsMutation(
+            settings =>
+            {
+                settings.WayMarkFavoriteSaveMode = ReadWayMarkFavoriteSaveModeFromUi();
+            },
+            "保存标点收藏设置",
+            refreshAppearance);
+    }
+
+    private void StartupWayMarkAction_RadioButton_Checked(object sender, RoutedEventArgs e)
+    {
+        if (isLoadingSettingsIntoUi) return;
+
+        SaveSettingsMutation(
+            settings =>
+            {
+                settings.StartupWayMarkAction = ReadStartupWayMarkActionFromUi();
+            },
+            "保存启动行为设置");
+    }
+
+    private void MaxBackupCount_TextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        CommitIntegerSetting(
+            MaxBackupCount_TextBox,
+            "最多保留备份数量",
+            AppSettings.MinBackupCount,
+            AppSettings.MaxBackupCountLimit,
+            settings => settings.MaxBackupCount,
+            (settings, value) => settings.MaxBackupCount = value,
+            "保存备份数量设置",
+            CleanupBackupsIfEnabled);
+    }
+
+    private void MaxBackupDays_TextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        CommitIntegerSetting(
+            MaxBackupDays_TextBox,
+            "最多保留备份天数",
+            AppSettings.MinBackupDays,
+            AppSettings.MaxBackupDaysLimit,
+            settings => settings.MaxBackupDays,
+            (settings, value) => settings.MaxBackupDays = value,
+            "保存备份时间设置",
+            CleanupBackupsIfEnabled);
+    }
+
+    private void MaxLogFileSizeMb_TextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        CommitIntegerSetting(
+            MaxLogFileSizeMb_TextBox,
+            "日志文件大小",
+            AppSettings.MinLogFileSizeMb,
+            AppSettings.MaxLogFileSizeMbLimit,
+            settings => settings.MaxLogFileSizeMb,
+            (settings, value) => settings.MaxLogFileSizeMb = value,
+            "保存日志大小设置");
+    }
+
+    private void MaxLogFileCount_TextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        CommitIntegerSetting(
+            MaxLogFileCount_TextBox,
+            "日志文件最多保存数量",
+            AppSettings.MinLogFileCount,
+            AppSettings.MaxLogFileCountLimit,
+            settings => settings.MaxLogFileCount,
+            (settings, value) => settings.MaxLogFileCount = value,
+            "保存日志数量设置");
+    }
+
+    private void IntegerSetting_TextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || sender is not TextBox textBox)
         {
             return;
         }
 
+        e.Handled = true;
+        bool committed =
+            ReferenceEquals(textBox, MaxBackupCount_TextBox) && CommitIntegerSetting(
+                MaxBackupCount_TextBox,
+                "最多保留备份数量",
+                AppSettings.MinBackupCount,
+                AppSettings.MaxBackupCountLimit,
+                settings => settings.MaxBackupCount,
+                (settings, value) => settings.MaxBackupCount = value,
+                "保存备份数量设置",
+                CleanupBackupsIfEnabled) ||
+            ReferenceEquals(textBox, MaxBackupDays_TextBox) && CommitIntegerSetting(
+                MaxBackupDays_TextBox,
+                "最多保留备份天数",
+                AppSettings.MinBackupDays,
+                AppSettings.MaxBackupDaysLimit,
+                settings => settings.MaxBackupDays,
+                (settings, value) => settings.MaxBackupDays = value,
+                "保存备份时间设置",
+                CleanupBackupsIfEnabled) ||
+            ReferenceEquals(textBox, MaxLogFileSizeMb_TextBox) && CommitIntegerSetting(
+                MaxLogFileSizeMb_TextBox,
+                "日志文件大小",
+                AppSettings.MinLogFileSizeMb,
+                AppSettings.MaxLogFileSizeMbLimit,
+                settings => settings.MaxLogFileSizeMb,
+                (settings, value) => settings.MaxLogFileSizeMb = value,
+                "保存日志大小设置") ||
+            ReferenceEquals(textBox, MaxLogFileCount_TextBox) && CommitIntegerSetting(
+                MaxLogFileCount_TextBox,
+                "日志文件最多保存数量",
+                AppSettings.MinLogFileCount,
+                AppSettings.MaxLogFileCountLimit,
+                settings => settings.MaxLogFileCount,
+                (settings, value) => settings.MaxLogFileCount = value,
+                "保存日志数量设置");
+
+        if (committed)
+        {
+            Keyboard.ClearFocus();
+        }
+    }
+
+    private void WayMarkCustomDirectory_TextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        CommitWayMarkCustomDirectory();
+    }
+
+    private void WayMarkCustomDirectory_TextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        if (CommitWayMarkCustomDirectory())
+        {
+            Keyboard.ClearFocus();
+        }
+    }
+
+    private void ShowMigrationReport(DataDirectoryMigrationResult result)
+    {
+        DataDirectoryMigrationReportDialog dialog = new(result);
+        DialogOwnerHelper.ConfigureOwnedDialog(dialog, ownerWindow ?? Window.GetWindow(this));
+        dialog.ShowDialog();
+    }
+
+    private void RequestDataDirectoryChange(string requestedDataDirectory)
+    {
+        if (appDataStore == null) return;
+
+        requestedDataDirectory = requestedDataDirectory.Trim();
+        if (string.IsNullOrWhiteSpace(requestedDataDirectory))
+        {
+            AppMessageBox.Show(ownerWindow, "数据目录不能为空。", "迁移工具数据目录", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        string requestedFullPath;
+        string currentFullPath;
         try
         {
-            string requestedDataDirectory = DataDirectory_TextBox.Text.Trim();
-            if (!string.Equals(requestedDataDirectory, appDataStore.DataDirectory, StringComparison.OrdinalIgnoreCase))
-            {
-                MessageBoxResult migrateResult = AppMessageBox.Show(
-                    ownerWindow,
-                    "是否将现有工具设置、角色备注和备份迁移到新目录？\n选择“否”将只切换目录，不复制旧数据。",
-                    "迁移工具数据目录",
-                    MessageBoxButton.YesNoCancel,
-                    MessageBoxImage.Question);
-                if (migrateResult == MessageBoxResult.Cancel) return;
+            requestedFullPath = Path.GetFullPath(requestedDataDirectory);
+            currentFullPath = Path.GetFullPath(appDataStore.DataDirectory);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            AppMessageBox.Show(ownerWindow, $"数据目录路径无效：{ex.Message}", "迁移工具数据目录", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
 
-                appDataStore.ChangeDataDirectory(requestedDataDirectory, migrateResult == MessageBoxResult.Yes);
-            }
+        if (string.Equals(requestedFullPath, currentFullPath, StringComparison.OrdinalIgnoreCase))
+        {
+            LoadSettingsIntoUi();
+            return;
+        }
 
-            appDataStore.SaveSettings(new AppSettings
-            {
-                MaxBackupCount = maxBackupCount,
-                MaxBackupDays = maxBackupDays,
-                LimitBackupCount = limitBackupCount,
-                LimitBackupDays = limitBackupDays,
-                AutoBackupBeforeSave = autoBackupBeforeSave,
-                AutoBackupAfterLoad = autoBackupAfterLoad,
-                MaxLogFileSizeMb = maxLogFileSizeMb,
-                MaxLogFileCount = maxLogFileCount,
-                UseWayMarkImageLabels = WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected,
-                WayMarkFavoriteSaveMode = ReadWayMarkFavoriteSaveModeFromUi(),
-                StartupWayMarkAction = ReadStartupWayMarkActionFromUi(),
-                WayMarkOpenDirectoryMode = ReadWayMarkOpenDirectoryModeFromUi(),
-                WayMarkCustomDirectory = WayMarkCustomDirectory_TextBox.Text.Trim(),
-                WayMarkCustomDirectoryAutoFillAttempted = true,
-                LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
-                LastServerListManualRefreshAttempt = appDataStore.Settings.LastServerListManualRefreshAttempt,
-                WindowLayout = appDataStore.Settings.WindowLayout,
-                RecentFiles = [.. appDataStore.Settings.RecentFiles]
-            });
-            if (autoBackupBeforeSave || autoBackupAfterLoad)
-            {
-                appDataStore.CleanupBackups();
-            }
+        MessageBoxResult migrateResult = AppMessageBox.Show(
+            ownerWindow,
+            "将把当前数据目录中的受管目录迁移到新目录：configs、backups、cache、logs。\n\n这些目录之外的内容会留在旧目录，不会被工具复制或删除。新目录必须是空的专用文件夹，不能是磁盘根目录、共享根目录，也不能位于当前数据目录内部。\n\n工具会逐文件复制并校验 SHA-256，切换成功后清理旧目录；未清理完成的受管文件会在下次启动自动重试。\n\n确定继续吗？",
+            "迁移工具数据目录",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Question);
+        if (migrateResult != MessageBoxResult.OK)
+        {
+            LoadSettingsIntoUi();
+            return;
+        }
+
+        bool migrationDialogCreated = false;
+        try
+        {
+            DataDirectoryMigrationReportDialog migrationDialog = new();
+            migrationDialogCreated = true;
+            DialogOwnerHelper.ConfigureOwnedDialog(migrationDialog, ownerWindow ?? Window.GetWindow(this));
+            migrationDialog.RunMigration(progress =>
+                appDataStore.ChangeDataDirectoryAsync(requestedFullPath, progress));
 
             LoadSettingsIntoUi();
             refreshAppearance();
             refreshBackupList();
             refreshCharacterList();
-            ToastService.ShowSuccess("设置已保存。");
+            refreshServerListConsumers();
+            refreshMapDataConsumers();
         }
         catch (Exception ex)
         {
-            AppMessageBox.Show(ownerWindow, $"保存设置失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            LoadSettingsIntoUi();
+            if (!migrationDialogCreated)
+            {
+                AppMessageBox.Show(ownerWindow, $"迁移工具数据目录失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 
@@ -341,22 +530,22 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null) return;
 
-        DataDirectory_TextBox.Text = appDataStore.DefaultDataDirectory;
+        RequestDataDirectoryChange(appDataStore.DefaultDataDirectory);
     }
 
     private void OpenDataDirectory_Button_Click(object sender, RoutedEventArgs e)
     {
         if (appDataStore == null) return;
 
-        string directory = DataDirectory_TextBox.Text.Trim();
+        string directory = appDataStore.DataDirectory;
         if (string.IsNullOrWhiteSpace(directory))
         {
-            AppMessageBox.Show(ownerWindow, "请先填写工具数据目录。", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "当前工具数据目录为空。", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         if (!Directory.Exists(directory))
         {
-            AppMessageBox.Show(ownerWindow, "当前工具数据目录不存在，请先选择一个已有目录或保存设置后再打开。", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppMessageBox.Show(ownerWindow, "当前工具数据目录不存在，请先迁移到一个可用目录。", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -610,44 +799,117 @@ public partial class ToolSettingsControl : UserControl
         RefreshServerList_Button.IsEnabled = isEnabled;
     }
 
-    private void SaveSettingsPreservingEditableValues(Action<AppSettings> updateSettings)
+    private void SetSettingsUiSilently(Action updateUi)
     {
-        if (appDataStore == null) return;
-
-        AppSettings settings = new()
+        bool previousValue = isLoadingSettingsIntoUi;
+        isLoadingSettingsIntoUi = true;
+        try
         {
-            MaxBackupCount = appDataStore.Settings.MaxBackupCount,
-            MaxBackupDays = appDataStore.Settings.MaxBackupDays,
-            LimitBackupCount = appDataStore.Settings.LimitBackupCount,
-            LimitBackupDays = appDataStore.Settings.LimitBackupDays,
-            AutoBackupBeforeSave = appDataStore.Settings.AutoBackupBeforeSave,
-            AutoBackupAfterLoad = appDataStore.Settings.AutoBackupAfterLoad,
-            MaxLogFileSizeMb = appDataStore.Settings.MaxLogFileSizeMb,
-            MaxLogFileCount = appDataStore.Settings.MaxLogFileCount,
-            UseWayMarkImageLabels = appDataStore.Settings.UseWayMarkImageLabels,
-            WayMarkFavoriteSaveMode = appDataStore.Settings.WayMarkFavoriteSaveMode,
-            StartupWayMarkAction = appDataStore.Settings.StartupWayMarkAction,
-            WayMarkOpenDirectoryMode = appDataStore.Settings.WayMarkOpenDirectoryMode,
-            WayMarkCustomDirectory = appDataStore.Settings.WayMarkCustomDirectory,
-            WayMarkCustomDirectoryAutoFillAttempted = appDataStore.Settings.WayMarkCustomDirectoryAutoFillAttempted,
-            LastMapDataManualRefreshAttempt = appDataStore.Settings.LastMapDataManualRefreshAttempt,
-            LastServerListManualRefreshAttempt = appDataStore.Settings.LastServerListManualRefreshAttempt,
-            WindowLayout = appDataStore.Settings.WindowLayout,
-            RecentFiles = [.. appDataStore.Settings.RecentFiles]
-        };
+            updateUi();
+        }
+        finally
+        {
+            isLoadingSettingsIntoUi = previousValue;
+        }
+    }
+
+    private bool SaveSettingsMutation(
+        Action<AppSettings> updateSettings,
+        string actionName,
+        Action? afterSave = null,
+        bool restoreUiOnFailure = true)
+    {
+        if (appDataStore == null) return false;
+
+        AppSettings settings = appDataStore.CreateSettingsSnapshot();
         updateSettings(settings);
         try
         {
             appDataStore.SaveSettings(settings);
+            afterSave?.Invoke();
+            return true;
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException or IOException or UnauthorizedAccessException)
         {
-            AppMessageBox.Show(ownerWindow, $"无法保存检查记录：{ex.Message}", "设置保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
+            if (restoreUiOnFailure)
+            {
+                LoadSettingsIntoUi();
+                refreshAppearance();
+            }
+
+            AppMessageBox.Show(ownerWindow, $"{actionName}失败：{ex.Message}", "设置保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
         }
-        catch (AppDataStoreException ex)
+    }
+
+    private bool CommitIntegerSetting(
+        TextBox textBox,
+        string displayName,
+        int min,
+        int max,
+        Func<AppSettings, int> readSetting,
+        Action<AppSettings, int> writeSetting,
+        string actionName,
+        Action? afterSave = null)
+    {
+        if (appDataStore == null || isLoadingSettingsIntoUi) return false;
+
+        int currentValue = readSetting(appDataStore.Settings);
+        if (!TryReadIntInRange(textBox, displayName, min, max, out int value))
         {
-            AppMessageBox.Show(ownerWindow, $"无法保存检查记录：{ex.Message}", "设置保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            textBox.Text = currentValue.ToString(CultureInfo.InvariantCulture);
+            return false;
         }
+
+        if (value == currentValue)
+        {
+            textBox.Text = currentValue.ToString(CultureInfo.InvariantCulture);
+            return true;
+        }
+
+        bool saved = SaveSettingsMutation(
+            settings =>
+            {
+                writeSetting(settings, value);
+            },
+            actionName,
+            afterSave);
+        textBox.Text = readSetting(appDataStore.Settings).ToString(CultureInfo.InvariantCulture);
+        return saved;
+    }
+
+    private bool CommitWayMarkCustomDirectory()
+    {
+        if (appDataStore == null || isLoadingSettingsIntoUi) return false;
+
+        string directory = WayMarkCustomDirectory_TextBox.Text.Trim();
+        if (string.Equals(directory, appDataStore.Settings.WayMarkCustomDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            WayMarkCustomDirectory_TextBox.Text = appDataStore.Settings.WayMarkCustomDirectory;
+            return true;
+        }
+
+        return SaveSettingsMutation(
+            settings =>
+            {
+                settings.WayMarkCustomDirectory = directory;
+                settings.WayMarkCustomDirectoryAutoFillAttempted = true;
+            },
+            "保存自定义打开路径");
+    }
+
+    private void CleanupBackupsIfEnabled()
+    {
+        if (appDataStore == null) return;
+        if (!appDataStore.Settings.AutoBackupBeforeSave && !appDataStore.Settings.AutoBackupAfterLoad) return;
+
+        appDataStore.CleanupBackups();
+        refreshBackupList();
+    }
+
+    private void SaveSettingsPreservingEditableValues(Action<AppSettings> updateSettings)
+    {
+        SaveSettingsMutation(updateSettings, "保存检查记录", restoreUiOnFailure: false);
     }
 
     private WayMarkFavoriteSaveMode ReadWayMarkFavoriteSaveModeFromUi()

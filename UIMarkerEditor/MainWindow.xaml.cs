@@ -133,6 +133,7 @@ namespace UIMarkerEditor
             RefreshBackupList();
             RefreshCharacterList();
             ShowDataLoadWarnings();
+            ShowMigrationReports();
             ScheduleStartupWayMarkAction();
             _ = AutoFillWayMarkCustomDirectoryAsync();
         }

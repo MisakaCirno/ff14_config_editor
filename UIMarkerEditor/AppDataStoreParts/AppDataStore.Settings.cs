@@ -20,7 +20,7 @@ public sealed partial class AppDataStore
         EnsureDataDirectory();
         WriteJson(SettingsFilePath, nextSettings);
         Settings = nextSettings;
-        ConfigureLogger();
+        ConfigureLoggerIfMigrationCleanupAllows();
     }
 
     public AppSettings CreateSettingsSnapshot()

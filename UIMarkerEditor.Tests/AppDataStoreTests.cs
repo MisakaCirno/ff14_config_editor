@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -39,9 +40,14 @@ public sealed class AppDataStoreTests : IDisposable
 
         Assert.Equal(Path.Combine(testDirectory, "Data"), store.DataDirectory);
         Assert.True(File.Exists(store.BootstrapFilePath));
+        Assert.True(Directory.Exists(store.ConfigsDirectory));
+        Assert.True(Directory.Exists(store.CacheDirectory));
+        Assert.True(Directory.Exists(store.LogDirectory));
         Assert.True(File.Exists(store.SettingsFilePath));
         Assert.True(File.Exists(store.CharactersFilePath));
         Assert.True(Directory.Exists(store.BackupsDirectory));
+        Assert.Equal(Path.Combine(testDirectory, "Data", "configs", "config.json"), store.SettingsFilePath);
+        Assert.Equal(Path.Combine(testDirectory, "Data", "cache", "servers.json"), store.ServersFilePath);
         Assert.False(store.Settings.AutoBackupAfterLoad);
         Assert.False(store.Settings.WayMarkCustomDirectoryAutoFillAttempted);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
@@ -51,7 +57,7 @@ public sealed class AppDataStoreTests : IDisposable
     [Fact]
     public void Initialize_WhenSettingsJsonInvalid_DoesNotOverwriteCorruptedFileAndBlocksSave()
     {
-        string settingsPath = Path.Combine(testDirectory, "Data", "config.json");
+        string settingsPath = Path.Combine(testDirectory, "Data", "configs", "config.json");
         Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
         File.WriteAllText(settingsPath, "{ 损坏的 JSON");
         AppDataStore store = CreateStore();
@@ -68,7 +74,7 @@ public sealed class AppDataStoreTests : IDisposable
     [Fact]
     public void Initialize_WhenCharactersJsonInvalid_DoesNotOverwriteCorruptedFileAndBlocksSave()
     {
-        string charactersPath = Path.Combine(testDirectory, "Data", "characters.json");
+        string charactersPath = Path.Combine(testDirectory, "Data", "configs", "characters.json");
         Directory.CreateDirectory(Path.GetDirectoryName(charactersPath)!);
         File.WriteAllText(charactersPath, "{ 损坏的 JSON");
         AppDataStore store = CreateStore();
@@ -348,16 +354,15 @@ public sealed class AppDataStoreTests : IDisposable
         string oldDataDirectory = store.DataDirectory;
         string oldSettingsFilePath = store.SettingsFilePath;
         string targetDirectory = Path.Combine(testDirectory, "NewData");
-        Directory.CreateDirectory(targetDirectory);
-        File.WriteAllText(Path.Combine(targetDirectory, "config.json"), "{ 损坏的 JSON");
         File.Delete(store.BootstrapFilePath);
         Directory.CreateDirectory(store.BootstrapFilePath);
 
-        Assert.Throws<AppDataStoreException>(() =>
-            store.ChangeDataDirectory(targetDirectory, migrateExistingData: false));
+        Assert.Throws<AppDataStoreException>(() => store.ChangeDataDirectory(targetDirectory));
 
         Assert.Equal(oldDataDirectory, store.DataDirectory);
         Assert.Equal(oldSettingsFilePath, store.SettingsFilePath);
+        Assert.True(Directory.Exists(oldDataDirectory));
+        Assert.True(File.Exists(store.MigrationStateFilePath));
         Assert.Equal(37, store.Settings.MaxBackupCount);
         Assert.Single(store.Settings.RecentFiles);
         Assert.EndsWith("old.dat", store.Settings.RecentFiles[0]);
@@ -370,45 +375,305 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
-    public void ChangeDataDirectory_WhenMigratingData_LoadsMigratedMapCache()
+    public void ChangeDataDirectory_WhenMigratingData_LoadsMigratedMapCacheAndCleansOldDirectory()
     {
         DateTime mapSuccessfulSyncAt = new(2026, 6, 18, 10, 20, 0);
         AppDataStore store = CreateStore();
         store.Initialize();
         WriteMapDataCache(901, "迁移地图", "migrated-map-version", mapSuccessfulSyncAt);
+        string oldDataDirectory = store.DataDirectory;
         string targetDirectory = Path.Combine(testDirectory, "MigratedData");
 
-        store.ChangeDataDirectory(targetDirectory, migrateExistingData: true);
+        DataDirectoryMigrationResult result = store.ChangeDataDirectory(targetDirectory);
 
-        Assert.Equal(Path.GetFullPath(targetDirectory), store.DataDirectory);
-        Assert.True(File.Exists(Path.Combine(targetDirectory, "mapdata.json")));
+        Assert.True(result.CleanupCompleted, $"{result.ErrorMessage} | {string.Join(", ", result.PendingItems)}");
+        Assert.Equal(NormalizeDirectoryPathForTest(targetDirectory), NormalizeDirectoryPathForTest(store.DataDirectory));
+        Assert.True(File.Exists(Path.Combine(targetDirectory, "cache", "mapdata.json")));
+        Assert.Equal(Directory.EnumerateFiles(targetDirectory, "*", SearchOption.AllDirectories).Count(), result.MigratedFileCount);
+        Assert.False(Directory.Exists(oldDataDirectory));
+        Assert.False(File.Exists(store.MigrationStateFilePath));
         Assert.Equal("migrated-map-version", store.MapDataVersion);
         Assert.Equal(mapSuccessfulSyncAt, store.MapDataLastSuccessfulSyncAt);
         Assert.Equal("迁移地图", MapData.GetName(901));
     }
 
     [Fact]
-    public async Task ChangeDataDirectory_WhenNotMigratingData_ClearsMapCacheState()
+    public async Task ChangeDataDirectoryAsync_WhenMigratingData_ReportsProgressAndCleansOldDirectory()
     {
-        DateTime mapSuccessfulSyncAt = new(2026, 6, 18, 10, 40, 0);
-        FakeAppDataNetworkClient networkClient = new();
-        networkClient.AddException(MapDataVersionUrl, new InvalidOperationException("模拟网络失败"));
-        AppDataStore store = CreateStore(networkClient);
+        AppDataStore store = CreateStore();
         store.Initialize();
-        WriteMapDataCache(902, "旧目录地图", "old-directory-map-version", mapSuccessfulSyncAt);
-        MapDataLoadResult mapDataResult = await store.EnsureMapDataAvailableAsync();
-        Assert.True(mapDataResult.Success);
-        Assert.Equal("旧目录地图", MapData.GetName(902));
+        store.SaveSettings(new AppSettings { MaxBackupCount = 41 });
+        string oldDataDirectory = store.DataDirectory;
+        string targetDirectory = Path.Combine(testDirectory, "AsyncMigratedData");
+        RecordingMigrationProgress progress = new();
 
-        string targetDirectory = Path.Combine(testDirectory, "EmptyData");
-        store.ChangeDataDirectory(targetDirectory, migrateExistingData: false);
+        DataDirectoryMigrationResult result = await store.ChangeDataDirectoryAsync(targetDirectory, progress);
 
-        Assert.Equal(Path.GetFullPath(targetDirectory), store.DataDirectory);
-        Assert.Equal(string.Empty, store.MapDataVersion);
-        Assert.Equal(DateTime.MinValue, store.MapDataLastUpdated);
-        Assert.Equal(DateTime.MinValue, store.MapDataLastSuccessfulSyncAt);
-        Assert.False(MapData.HasData);
-        Assert.False(File.Exists(Path.Combine(targetDirectory, "mapdata.json")));
+        Assert.True(result.CleanupCompleted, $"{result.ErrorMessage} | {string.Join(", ", result.PendingItems)}");
+        Assert.Equal(NormalizeDirectoryPathForTest(targetDirectory), NormalizeDirectoryPathForTest(store.DataDirectory));
+        Assert.Equal(41, store.Settings.MaxBackupCount);
+        Assert.False(Directory.Exists(oldDataDirectory));
+        Assert.False(File.Exists(store.MigrationStateFilePath));
+        Assert.Contains(progress.Events, item => item.StageName == "复制文件");
+        Assert.Contains(progress.Events, item => item.StageName == "校验文件");
+        Assert.Contains(progress.Events, item => item.StageName == "清理旧目录");
+        Assert.Contains(progress.Events, item => item.StageName == "迁移完成" && item.Percent == 100);
+    }
+    [Fact]
+    public void ChangeDataDirectory_WhenSourceContainsUnmanagedContent_LeavesItInOldDirectory()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string oldDataDirectory = store.DataDirectory;
+        string unmanagedRootFile = Path.Combine(oldDataDirectory, "manual-note.txt");
+        string unmanagedDirectory = Path.Combine(oldDataDirectory, "manual-folder");
+        Directory.CreateDirectory(unmanagedDirectory);
+        File.WriteAllText(unmanagedRootFile, "用户手动放入的文件");
+        File.WriteAllText(Path.Combine(unmanagedDirectory, "manual-data.txt"), "用户手动放入的目录内容");
+        string targetDirectory = Path.Combine(testDirectory, "ManagedOnlyData");
+
+        DataDirectoryMigrationResult result = store.ChangeDataDirectory(targetDirectory);
+
+        Assert.True(result.CleanupCompleted, $"{result.ErrorMessage} | {string.Join(", ", result.PendingItems)}");
+        Assert.True(result.OldDirectoryRetained);
+        Assert.True(File.Exists(Path.Combine(targetDirectory, "configs", "config.json")));
+        Assert.False(File.Exists(Path.Combine(targetDirectory, "manual-note.txt")));
+        Assert.False(Directory.Exists(Path.Combine(targetDirectory, "manual-folder")));
+        Assert.True(File.Exists(unmanagedRootFile));
+        Assert.True(File.Exists(Path.Combine(unmanagedDirectory, "manual-data.txt")));
+        Assert.False(File.Exists(store.MigrationStateFilePath));
+        Assert.Contains("非本工具管理", result.ErrorMessage);
+        Assert.Contains(result.PendingItems, item => item.Contains("非本工具管理"));
+    }
+
+    [Fact]
+    public void ChangeDataDirectory_WhenOnlyUnmanagedContentRemains_ClearsMigrationStateAndDoesNotRetry()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string oldDataDirectory = store.DataDirectory;
+        File.WriteAllText(Path.Combine(oldDataDirectory, "manual-note.txt"), "用户手动放入的文件");
+        string targetDirectory = Path.Combine(testDirectory, "ChangedTargetAfterCleanupData");
+        DataDirectoryMigrationResult result = store.ChangeDataDirectory(targetDirectory);
+        Assert.True(result.CleanupCompleted, $"{result.ErrorMessage} | {string.Join(", ", result.PendingItems)}");
+        Assert.True(result.OldDirectoryRetained);
+        Assert.False(File.Exists(store.MigrationStateFilePath));
+
+        store.SaveSettings(new AppSettings { MaxBackupCount = 52 });
+
+        AppDataStore recoveredStore = CreateStore();
+        recoveredStore.Initialize();
+
+        Assert.Equal(NormalizeDirectoryPathForTest(targetDirectory), NormalizeDirectoryPathForTest(recoveredStore.DataDirectory));
+        Assert.Equal(52, recoveredStore.Settings.MaxBackupCount);
+        Assert.DoesNotContain(recoveredStore.ConsumeDataLoadWarnings(), warning => warning.Contains("自动恢复上次工具数据目录迁移失败"));
+        Assert.Empty(recoveredStore.ConsumeMigrationReports());
+    }
+
+    [Fact]
+    public void ChangeDataDirectory_WhenTargetDirectoryNotEmpty_ThrowsAndKeepsCurrentDirectory()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string oldDataDirectory = store.DataDirectory;
+        string targetDirectory = Path.Combine(testDirectory, "ExistingData");
+        Directory.CreateDirectory(targetDirectory);
+        File.WriteAllText(Path.Combine(targetDirectory, "existing.txt"), "已有数据");
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            store.ChangeDataDirectory(targetDirectory));
+
+        Assert.Contains("必须为空", exception.Message);
+        Assert.Equal(oldDataDirectory, store.DataDirectory);
+        Assert.True(Directory.Exists(oldDataDirectory));
+        Assert.False(File.Exists(store.MigrationStateFilePath));
+    }
+
+    [Fact]
+    public void ChangeDataDirectory_WhenTargetIsRootDirectory_ThrowsAndKeepsCurrentDirectory()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string oldDataDirectory = store.DataDirectory;
+        string rootDirectory = Path.GetPathRoot(testDirectory)!;
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            store.ChangeDataDirectory(rootDirectory));
+
+        Assert.Contains("根目录", exception.Message);
+        Assert.Equal(oldDataDirectory, store.DataDirectory);
+        Assert.False(File.Exists(store.MigrationStateFilePath));
+    }
+
+    [Fact]
+    public void ChangeDataDirectory_WhenTargetIsSharedRootDirectory_ThrowsAndKeepsCurrentDirectory()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string oldDataDirectory = store.DataDirectory;
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            store.ChangeDataDirectory("\\\\server\\share\\"));
+
+        Assert.Contains("根目录", exception.Message);
+        Assert.Equal(oldDataDirectory, store.DataDirectory);
+        Assert.False(File.Exists(store.MigrationStateFilePath));
+    }
+
+    [Fact]
+    public void Initialize_WhenMigrationReadyToCommit_RecoversAndCleansOldDirectory()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        store.SaveSettings(new AppSettings { MaxBackupCount = 37 });
+        CharacterProfile profile = store.GetOrCreateCharacter("abc");
+        profile.CharacterName = "恢复角色";
+        store.SaveCharacters();
+        string oldDataDirectory = store.DataDirectory;
+        string targetDirectory = Path.Combine(testDirectory, "RecoveredData");
+        WriteReadyToCommitMigrationState(store.MigrationStateFilePath, oldDataDirectory, targetDirectory);
+
+        AppDataStore recoveredStore = CreateStore();
+        recoveredStore.Initialize();
+
+        Assert.Equal(NormalizeDirectoryPathForTest(targetDirectory), NormalizeDirectoryPathForTest(recoveredStore.DataDirectory));
+        Assert.Equal(37, recoveredStore.Settings.MaxBackupCount);
+        Assert.Contains(recoveredStore.Characters, character =>
+            character.UserID == "ABC" && character.CharacterName == "恢复角色");
+        Assert.False(Directory.Exists(oldDataDirectory));
+        Assert.False(File.Exists(recoveredStore.MigrationStateFilePath));
+        DataDirectoryMigrationResult report = Assert.Single(recoveredStore.ConsumeMigrationReports());
+        Assert.True(report.CleanupCompleted);
+        Assert.True(report.AutomaticRetryAttempted);
+        Assert.True(report.MigratedFileCount > 0);
+    }
+
+    [Fact]
+    public void Initialize_WhenMigrationCopying_ResumesAndCleansOldDirectory()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        store.SaveSettings(new AppSettings { MaxBackupCount = 37 });
+        CharacterProfile profile = store.GetOrCreateCharacter("abc");
+        profile.CharacterName = "续迁角色";
+        store.SaveCharacters();
+        string oldDataDirectory = store.DataDirectory;
+        string targetDirectory = Path.Combine(testDirectory, "ResumeCopyingData");
+        WriteCopyingMigrationState(store.MigrationStateFilePath, oldDataDirectory, targetDirectory);
+
+        AppDataStore recoveredStore = CreateStore();
+        recoveredStore.Initialize();
+
+        Assert.Equal(NormalizeDirectoryPathForTest(targetDirectory), NormalizeDirectoryPathForTest(recoveredStore.DataDirectory));
+        Assert.Equal(37, recoveredStore.Settings.MaxBackupCount);
+        Assert.Contains(recoveredStore.Characters, character =>
+            character.UserID == "ABC" && character.CharacterName == "续迁角色");
+        Assert.False(Directory.Exists(oldDataDirectory));
+        Assert.False(File.Exists(recoveredStore.MigrationStateFilePath));
+        DataDirectoryMigrationResult report = Assert.Single(recoveredStore.ConsumeMigrationReports());
+        Assert.True(report.CleanupCompleted);
+        Assert.True(report.AutomaticRetryAttempted);
+        Assert.True(report.MigratedFileCount > 0);
+    }
+
+    [Fact]
+    public void Initialize_WhenMigrationStateUsesSameSourceAndTarget_DoesNotDeleteData()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        store.SaveSettings(new AppSettings { MaxBackupCount = 38 });
+        string oldDataDirectory = store.DataDirectory;
+        string oldSettingsFilePath = store.SettingsFilePath;
+        WriteReadyToCommitMigrationState(store.MigrationStateFilePath, oldDataDirectory, oldDataDirectory);
+
+        AppDataStore recoveredStore = CreateStore();
+        recoveredStore.Initialize();
+
+        Assert.Equal(NormalizeDirectoryPathForTest(oldDataDirectory), NormalizeDirectoryPathForTest(recoveredStore.DataDirectory));
+        Assert.True(Directory.Exists(oldDataDirectory));
+        Assert.True(File.Exists(oldSettingsFilePath));
+        Assert.Equal(38, recoveredStore.Settings.MaxBackupCount);
+        Assert.True(File.Exists(recoveredStore.MigrationStateFilePath));
+        Assert.Empty(recoveredStore.ConsumeMigrationReports());
+        Assert.Contains(recoveredStore.ConsumeDataLoadWarnings(), warning => warning.Contains("不能是同一个目录"));
+    }
+
+    [Fact]
+    public void Initialize_WhenPreCommitRecoveryTargetContainsChangedFile_DoesNotOverwriteTarget()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        store.SaveSettings(new AppSettings { MaxBackupCount = 39 });
+        string oldDataDirectory = store.DataDirectory;
+        string targetDirectory = Path.Combine(testDirectory, "ChangedRecoveryTargetData");
+        WriteCopyingMigrationState(store.MigrationStateFilePath, oldDataDirectory, targetDirectory);
+        string changedTargetFile = Path.Combine(targetDirectory, "configs", "config.json");
+        string changedTargetContent = "{\"MaxBackupCount\":9999}";
+        File.WriteAllText(changedTargetFile, changedTargetContent);
+        string unknownTargetFile = Path.Combine(targetDirectory, "manual-note.txt");
+        File.WriteAllText(unknownTargetFile, "用户放入目标目录的内容");
+
+        AppDataStore recoveredStore = CreateStore();
+        recoveredStore.Initialize();
+
+        Assert.Equal(NormalizeDirectoryPathForTest(oldDataDirectory), NormalizeDirectoryPathForTest(recoveredStore.DataDirectory));
+        Assert.True(Directory.Exists(oldDataDirectory));
+        Assert.Equal(39, recoveredStore.Settings.MaxBackupCount);
+        Assert.Equal(changedTargetContent, File.ReadAllText(changedTargetFile));
+        Assert.True(File.Exists(unknownTargetFile));
+        Assert.True(File.Exists(recoveredStore.MigrationStateFilePath));
+        Assert.Empty(recoveredStore.ConsumeMigrationReports());
+        Assert.Contains(recoveredStore.ConsumeDataLoadWarnings(), warning => warning.Contains("避免覆盖数据"));
+    }
+
+    [Fact]
+    public void Initialize_WhenMigrationCleanupStillIncomplete_AddsMigrationReport()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        store.SaveSettings(new AppSettings { MaxBackupCount = 37 });
+        string oldDataDirectory = store.DataDirectory;
+        string targetDirectory = Path.Combine(testDirectory, "CleanupPendingData");
+        WriteCommittedMigrationState(store.MigrationStateFilePath, oldDataDirectory, targetDirectory);
+        File.AppendAllText(store.SettingsFilePath, Environment.NewLine + "changed after migration state");
+        File.WriteAllText(Path.Combine(oldDataDirectory, "manual-note.txt"), "用户手动放入的文件");
+
+        AppDataStore recoveredStore = CreateStore();
+        recoveredStore.Initialize();
+
+        Assert.Equal(NormalizeDirectoryPathForTest(targetDirectory), NormalizeDirectoryPathForTest(recoveredStore.DataDirectory));
+        Assert.True(Directory.Exists(oldDataDirectory));
+        Assert.True(File.Exists(recoveredStore.MigrationStateFilePath));
+        DataDirectoryMigrationResult report = Assert.Single(recoveredStore.ConsumeMigrationReports());
+        Assert.False(report.CleanupCompleted);
+        Assert.True(report.AutomaticRetryAttempted);
+        Assert.Equal(NormalizeDirectoryPathForTest(oldDataDirectory), NormalizeDirectoryPathForTest(report.SourceDirectory));
+        Assert.Equal(NormalizeDirectoryPathForTest(targetDirectory), NormalizeDirectoryPathForTest(report.TargetDirectory));
+        Assert.Contains(report.PendingItems, item => item.EndsWith(Path.Combine("configs", "config.json"), StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(report.PendingItems, item => item.Contains("非本工具管理"));
+        Assert.Contains("发生变化", report.ErrorMessage);
+    }
+
+    [Fact]
+    public void RecoverInterruptedMigration_WhenBootstrapWriteFails_RestoresPreviousState()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string oldDataDirectory = store.DataDirectory;
+        string targetDirectory = Path.Combine(testDirectory, "BootstrapWriteFailsData");
+        WriteReadyToCommitMigrationState(store.MigrationStateFilePath, oldDataDirectory, targetDirectory);
+
+        AppDataStore recoveredStore = CreateStore();
+        using FileStream bootstrapLock = new(
+            recoveredStore.BootstrapFilePath,
+            FileMode.OpenOrCreate,
+            FileAccess.ReadWrite,
+            FileShare.None);
+
+        InvokeRecoverInterruptedDataDirectoryMigration(recoveredStore);
+
+        Assert.Equal(NormalizeDirectoryPathForTest(oldDataDirectory), NormalizeDirectoryPathForTest(recoveredStore.DataDirectory));
+        Assert.Contains(recoveredStore.ConsumeDataLoadWarnings(), warning => warning.Contains("自动恢复上次工具数据目录迁移失败"));
     }
 
     [Fact]
@@ -480,7 +745,7 @@ public sealed class AppDataStoreTests : IDisposable
     [Fact]
     public void AddRecentFile_WhenSettingsJsonInvalid_DoesNotThrowOrOverwriteCorruptedFile()
     {
-        string settingsPath = Path.Combine(testDirectory, "Data", "config.json");
+        string settingsPath = Path.Combine(testDirectory, "Data", "configs", "config.json");
         Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
         File.WriteAllText(settingsPath, "{ 损坏的 JSON");
         AppDataStore store = CreateStore();
@@ -496,7 +761,7 @@ public sealed class AppDataStoreTests : IDisposable
     [Fact]
     public async Task EnsureServerListAvailableAsync_WhenValidCacheLoaded_UsesCacheWithoutRefresh()
     {
-        string serversPath = Path.Combine(testDirectory, "Data", "servers.json");
+        string serversPath = Path.Combine(testDirectory, "Data", "cache", "servers.json");
         Directory.CreateDirectory(Path.GetDirectoryName(serversPath)!);
         ServerListCache cache = new()
         {
@@ -1052,10 +1317,11 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal(originalOrder, store.WayMarkFavorites.Select(favorite => favorite.Id));
         Assert.Equal(originalRegions, store.WayMarkFavorites.Select(favorite => favorite.RegionID));
     }
+
     [Fact]
     public void Initialize_WhenWayMarkFavoritesJsonInvalid_DoesNotOverwriteCorruptedFileAndBlocksSave()
     {
-        string favoritesPath = Path.Combine(testDirectory, "Data", "waymark-favorites.json");
+        string favoritesPath = Path.Combine(testDirectory, "Data", "configs", "waymark-favorites.json");
         Directory.CreateDirectory(Path.GetDirectoryName(favoritesPath)!);
         File.WriteAllText(favoritesPath, "{ 损坏的 JSON");
         AppDataStore store = CreateStore();
@@ -1070,6 +1336,15 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Contains(store.ConsumeDataLoadWarnings(), warning => warning.Contains("标点收藏无法读取"));
     }
 
+    private sealed class RecordingMigrationProgress : IProgress<DataDirectoryMigrationProgress>
+    {
+        public List<DataDirectoryMigrationProgress> Events { get; } = [];
+
+        public void Report(DataDirectoryMigrationProgress value)
+        {
+            Events.Add(value);
+        }
+    }
     private AppDataStore CreateStore()
     {
         return CreateStore(() => null);
@@ -1085,6 +1360,131 @@ public sealed class AppDataStoreTests : IDisposable
         return new AppDataStore(testDirectory, networkClient, () => null);
     }
 
+    private static void WriteReadyToCommitMigrationState(string stateFilePath, string sourceDirectory, string targetDirectory)
+    {
+        WriteMigrationState(
+            stateFilePath,
+            sourceDirectory,
+            targetDirectory,
+            stage: "ReadyToCommit",
+            copyTargetFiles: true,
+            includeHashes: true);
+    }
+
+    private static void WriteCopyingMigrationState(string stateFilePath, string sourceDirectory, string targetDirectory)
+    {
+        WriteMigrationState(
+            stateFilePath,
+            sourceDirectory,
+            targetDirectory,
+            stage: "Copying",
+            copyTargetFiles: false,
+            includeHashes: false);
+    }
+
+    private static void WriteCommittedMigrationState(string stateFilePath, string sourceDirectory, string targetDirectory)
+    {
+        WriteMigrationState(
+            stateFilePath,
+            sourceDirectory,
+            targetDirectory,
+            stage: "Committed",
+            copyTargetFiles: true,
+            includeHashes: true);
+    }
+
+    private static void WriteMigrationState(
+        string stateFilePath,
+        string sourceDirectory,
+        string targetDirectory,
+        string stage,
+        bool copyTargetFiles,
+        bool includeHashes)
+    {
+        string sourceFullPath = NormalizeDirectoryPathForTest(sourceDirectory);
+        string targetFullPath = NormalizeDirectoryPathForTest(targetDirectory);
+        Directory.CreateDirectory(targetFullPath);
+
+        List<string> directories = Directory.EnumerateDirectories(sourceFullPath, "*", SearchOption.AllDirectories)
+            .Select(directory => Path.GetRelativePath(sourceFullPath, directory))
+            .OrderBy(directory => directory, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        foreach (string relativeDirectory in directories)
+        {
+            Directory.CreateDirectory(Path.Combine(targetFullPath, relativeDirectory));
+        }
+
+        var files = Directory.EnumerateFiles(sourceFullPath, "*", SearchOption.AllDirectories)
+            .Select(file => Path.GetRelativePath(sourceFullPath, file))
+            .OrderBy(file => file, StringComparer.OrdinalIgnoreCase)
+            .Select(relativePath =>
+            {
+                string sourceFile = Path.Combine(sourceFullPath, relativePath);
+                string targetFile = Path.Combine(targetFullPath, relativePath);
+                string? targetFileDirectory = Path.GetDirectoryName(targetFile);
+                if (!string.IsNullOrWhiteSpace(targetFileDirectory))
+                {
+                    Directory.CreateDirectory(targetFileDirectory);
+                }
+
+                if (copyTargetFiles)
+                {
+                    if (!string.Equals(
+                        NormalizeDirectoryPathForTest(sourceFile),
+                        NormalizeDirectoryPathForTest(targetFile),
+                        StringComparison.OrdinalIgnoreCase))
+                    {
+                        File.Copy(sourceFile, targetFile, overwrite: true);
+                    }
+                }
+
+                return new
+                {
+                    RelativePath = relativePath,
+                    Length = new FileInfo(sourceFile).Length,
+                    Sha256 = includeHashes ? ComputeSha256ForTest(sourceFile) : string.Empty,
+                    Copied = copyTargetFiles,
+                    Verified = includeHashes,
+                    DeletedFromSource = false
+                };
+            })
+            .ToList();
+
+        var state = new
+        {
+            Version = 1,
+            Id = $"test-{stage.ToLowerInvariant()}",
+            SourceDataDirectory = sourceFullPath,
+            TargetDataDirectory = targetFullPath,
+            Stage = stage,
+            StartedAt = DateTime.Now,
+            UpdatedAt = DateTime.Now,
+            CurrentOperation = "测试模拟迁移状态。",
+            ErrorMessage = string.Empty,
+            Directories = directories,
+            Files = files
+        };
+        File.WriteAllText(stateFilePath, JsonSerializer.Serialize(state));
+    }
+
+    private static string NormalizeDirectoryPathForTest(string directory)
+    {
+        return Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
+    }
+
+    private static string ComputeSha256ForTest(string filePath)
+    {
+        using FileStream stream = File.OpenRead(filePath);
+        return Convert.ToHexString(SHA256.HashData(stream));
+    }
+
+    private static void InvokeRecoverInterruptedDataDirectoryMigration(AppDataStore store)
+    {
+        typeof(AppDataStore)
+            .GetMethod("RecoverInterruptedDataDirectoryMigration", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(store, null);
+    }
+
     private void WriteMapDataCache(
         ushort mapId,
         string mapName,
@@ -1092,7 +1492,7 @@ public sealed class AppDataStoreTests : IDisposable
         DateTime? lastSuccessfulSyncAt = null)
     {
         string dataDirectory = Path.Combine(testDirectory, "Data");
-        Directory.CreateDirectory(dataDirectory);
+        Directory.CreateDirectory(Path.Combine(dataDirectory, "cache"));
         MapDataCache cache = new()
         {
             Version = version,
@@ -1103,14 +1503,14 @@ public sealed class AppDataStoreTests : IDisposable
                 [mapId.ToString()] = mapName
             }
         };
-        File.WriteAllText(Path.Combine(dataDirectory, "mapdata.json"), JsonSerializer.Serialize(cache));
+        File.WriteAllText(Path.Combine(dataDirectory, "cache", "mapdata.json"), JsonSerializer.Serialize(cache));
     }
 
     private void WriteServerCache(ServerListCache cache)
     {
         string dataDirectory = Path.Combine(testDirectory, "Data");
-        Directory.CreateDirectory(dataDirectory);
-        File.WriteAllText(Path.Combine(dataDirectory, "servers.json"), JsonSerializer.Serialize(cache));
+        Directory.CreateDirectory(Path.Combine(dataDirectory, "cache"));
+        File.WriteAllText(Path.Combine(dataDirectory, "cache", "servers.json"), JsonSerializer.Serialize(cache));
     }
 
     private static string CreateMapInstanceJson(ushort mapId, string mapName)

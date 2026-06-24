@@ -44,6 +44,17 @@ namespace UIMarkerEditor
                 MessageBoxImage.Warning);
         }
 
+        private void ShowMigrationReports()
+        {
+            List<DataDirectoryMigrationResult> reports = appDataStore.ConsumeMigrationReports();
+            foreach (DataDirectoryMigrationResult report in reports)
+            {
+                DataDirectoryMigrationReportDialog dialog = new(report);
+                DialogOwnerHelper.ConfigureOwnedDialog(dialog, this);
+                dialog.ShowDialog();
+            }
+        }
+
         private static bool IsValidUserID(string userID)
         {
             return userID.Length == 16 && userID.All(Uri.IsHexDigit);

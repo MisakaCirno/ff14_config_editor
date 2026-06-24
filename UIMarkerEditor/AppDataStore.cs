@@ -23,6 +23,11 @@ public sealed partial class AppDataStore
     private const string MetadataFileName = "metadata.json";
     private const string BackupDataFileName = "UISAVE.DAT";
     private const string LogFileName = "app.log";
+    private const string ConfigsFolderName = "configs";
+    private const string BackupsFolderName = "backups";
+    private const string CacheFolderName = "cache";
+    private const string LogsFolderName = "logs";
+    private const string MigrationStateFileName = "migration-state.json";
 
     private readonly JsonSerializerOptions jsonOptions = new()
     {
@@ -33,22 +38,27 @@ public sealed partial class AppDataStore
     private readonly Func<string?> wayMarkCustomDirectoryDetector;
     private readonly List<string> dataLoadWarnings = [];
     private readonly HashSet<string> dataLoadWarningKeys = [];
+    private readonly List<DataDirectoryMigrationResult> migrationReports = [];
     private bool bootstrapFileInvalid;
     private bool settingsFileInvalid;
     private bool charactersFileInvalid;
     private bool wayMarkFavoritesFileInvalid;
+    private bool migrationCleanupPending;
 
     public string BootstrapDirectory { get; }
     public string BootstrapFilePath => Path.Combine(BootstrapDirectory, BootstrapFileName);
+    public string MigrationStateFilePath => Path.Combine(BootstrapDirectory, MigrationStateFileName);
     public string DefaultDataDirectory => Path.Combine(BootstrapDirectory, "Data");
     public string DataDirectory { get; private set; }
-    public string BackupsDirectory => Path.Combine(DataDirectory, "backups");
-    public string SettingsFilePath => Path.Combine(DataDirectory, SettingsFileName);
-    public string CharactersFilePath => Path.Combine(DataDirectory, CharactersFileName);
-    public string ServersFilePath => Path.Combine(DataDirectory, ServersFileName);
-    public string MapDataCacheFilePath => Path.Combine(DataDirectory, MapDataCacheFileName);
-    public string WayMarkFavoritesFilePath => Path.Combine(DataDirectory, WayMarkFavoritesFileName);
-    public string LogDirectory => Path.Combine(DataDirectory, "logs");
+    public string ConfigsDirectory => Path.Combine(DataDirectory, ConfigsFolderName);
+    public string BackupsDirectory => Path.Combine(DataDirectory, BackupsFolderName);
+    public string CacheDirectory => Path.Combine(DataDirectory, CacheFolderName);
+    public string SettingsFilePath => Path.Combine(ConfigsDirectory, SettingsFileName);
+    public string CharactersFilePath => Path.Combine(ConfigsDirectory, CharactersFileName);
+    public string ServersFilePath => Path.Combine(CacheDirectory, ServersFileName);
+    public string MapDataCacheFilePath => Path.Combine(CacheDirectory, MapDataCacheFileName);
+    public string WayMarkFavoritesFilePath => Path.Combine(ConfigsDirectory, WayMarkFavoritesFileName);
+    public string LogDirectory => Path.Combine(DataDirectory, LogsFolderName);
     public string LogFilePath => Path.Combine(LogDirectory, LogFileName);
 
     public AppSettings Settings { get; private set; } = new();
@@ -124,6 +134,17 @@ public sealed partial class AppDataStore
         DataDirectory = !string.IsNullOrWhiteSpace(bootstrap?.DataDirectory)
             ? bootstrap.DataDirectory
             : DefaultDataDirectory;
+        if (IsRootDataDirectory(DataDirectory))
+        {
+            AddDataLoadWarning(
+                $"data-directory-root:{DataDirectory}",
+                $"启动配置指向磁盘根目录或共享根目录，已改用默认数据目录。{Environment.NewLine}" +
+                $"配置的数据目录：{DataDirectory}{Environment.NewLine}" +
+                $"默认数据目录：{DefaultDataDirectory}");
+            DataDirectory = DefaultDataDirectory;
+        }
+
+        RecoverInterruptedDataDirectoryMigration();
 
         try
         {
@@ -138,7 +159,7 @@ public sealed partial class AppDataStore
         SaveBootstrap();
         LoadSettings();
         EnsureSettingsFile();
-        ConfigureLogger();
+        ConfigureLoggerIfMigrationCleanupAllows();
         LoadCharacters();
         LoadWayMarkFavorites();
         LoadServerList();
@@ -150,5 +171,12 @@ public sealed partial class AppDataStore
         dataLoadWarnings.Clear();
         dataLoadWarningKeys.Clear();
         return warnings;
+    }
+
+    public List<DataDirectoryMigrationResult> ConsumeMigrationReports()
+    {
+        List<DataDirectoryMigrationResult> reports = [.. migrationReports];
+        migrationReports.Clear();
+        return reports;
     }
 }

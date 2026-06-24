@@ -28,6 +28,7 @@ public sealed class XamlResourceTests
             {
                 MainWindow window = new(new AppDataStore(testDirectory));
                 window.Close();
+                AssertDataDirectoryMigrationReportDialogCanInitialize(testDirectory);
             }
             finally
             {
@@ -36,6 +37,22 @@ public sealed class XamlResourceTests
         });
 
         Assert.Null(exception);
+    }
+
+    private static void AssertDataDirectoryMigrationReportDialogCanInitialize(string testDirectory)
+    {
+        DataDirectoryMigrationReportDialog progressDialog = new();
+        progressDialog.Close();
+
+        DataDirectoryMigrationReportDialog reportDialog = new(new DataDirectoryMigrationResult
+        {
+            CleanupCompleted = true,
+            MigratedFileCount = 3,
+            SourceDirectory = Path.Combine(testDirectory, "old-data"),
+            TargetDirectory = Path.Combine(testDirectory, "new-data"),
+            MigrationStateFilePath = Path.Combine(testDirectory, "migration-state.json")
+        });
+        reportDialog.Close();
     }
 
     private static void AssertColoredButtonForegroundPassesIntoTemplate()

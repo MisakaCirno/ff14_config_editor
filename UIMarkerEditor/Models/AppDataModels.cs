@@ -20,6 +20,30 @@ public sealed record ServerListLoadResult(
     bool UsedCache = false,
     bool CacheAvailable = false);
 
+public sealed class DataDirectoryMigrationResult
+{
+    public bool CleanupCompleted { get; set; } = true;
+    public bool AutomaticRetryAttempted { get; set; }
+    public bool OldDirectoryRetained { get; set; }
+    public int MigratedFileCount { get; set; }
+    public string SourceDirectory { get; set; } = string.Empty;
+    public string TargetDirectory { get; set; } = string.Empty;
+    public string MigrationStateFilePath { get; set; } = string.Empty;
+    public string ErrorMessage { get; set; } = string.Empty;
+    public List<string> PendingItems { get; set; } = [];
+}
+
+public sealed class DataDirectoryMigrationProgress
+{
+    public string StageName { get; set; } = string.Empty;
+    public string CurrentOperation { get; set; } = string.Empty;
+    public int CompletedSteps { get; set; }
+    public int TotalSteps { get; set; } = 1;
+
+    public double Percent => TotalSteps <= 0
+        ? 0
+        : Math.Clamp((double)CompletedSteps / TotalSteps * 100, 0, 100);
+}
 public sealed class MapDataCache
 {
     public string Version { get; set; } = string.Empty;
