@@ -120,6 +120,7 @@ namespace UIMarkerEditor
                 filePath => LoadConfigFileWithOverlay(filePath),
                 ConfirmSaveOrDiscardWayMarkChanges,
                 ConfirmSaveOrDiscardCharacterChanges,
+                () => SyncServerListIfNeededAsync(showFailureMessage: true),
                 RefreshCharacterList);
             ToolSettings_Control.Initialize(
                 appDataStore,

@@ -65,11 +65,10 @@ public partial class App : Application
         appDataStore.Initialize();
 
         MapDataLoadResult mapDataLoadResult = await appDataStore.EnsureMapDataAvailableAsync();
-        ServerListLoadResult serverListLoadResult = await appDataStore.EnsureServerListAvailableAsync();
-        if (!mapDataLoadResult.Success || !serverListLoadResult.Success)
+        if (!mapDataLoadResult.Success)
         {
             AppMessageBox.Show(
-                BuildRequiredOnlineDataFailureMessage(mapDataLoadResult, serverListLoadResult),
+                BuildRequiredMapDataFailureMessage(),
                 "在线数据加载失败",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
@@ -77,9 +76,9 @@ public partial class App : Application
             return;
         }
 
-        if ((mapDataLoadResult.UsedCache || serverListLoadResult.UsedCache) &&
+        if (mapDataLoadResult.UsedCache &&
             AppMessageBox.Show(
-                BuildCacheModeConfirmMessage(mapDataLoadResult, serverListLoadResult),
+                BuildMapDataCacheModeConfirmMessage(),
                 "使用本地缓存启动",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning) != MessageBoxResult.Yes)
@@ -154,43 +153,17 @@ public partial class App : Application
         return $"工具启动失败，无法继续运行。{Environment.NewLine}{Environment.NewLine}原因：{exception.Message}";
     }
 
-    private static string BuildRequiredOnlineDataFailureMessage(
-        MapDataLoadResult mapDataLoadResult,
-        ServerListLoadResult serverListLoadResult)
+    private static string BuildRequiredMapDataFailureMessage()
     {
-        List<string> failedItems = [];
-        if (!mapDataLoadResult.Success)
-        {
-            failedItems.Add("地图数据");
-        }
-
-        if (!serverListLoadResult.Success)
-        {
-            failedItems.Add("服务器列表");
-        }
-
         return
-            $"无法获取必要的在线数据：{string.Join("、", failedItems)}。\n\n" +
+            "无法获取必要的在线数据：地图数据。\n\n" +
             "本地也没有可用缓存，工具无法启动。请检查网络连接后重新打开工具。";
     }
 
-    private static string BuildCacheModeConfirmMessage(
-        MapDataLoadResult mapDataLoadResult,
-        ServerListLoadResult serverListLoadResult)
+    private static string BuildMapDataCacheModeConfirmMessage()
     {
-        List<string> cachedItems = [];
-        if (mapDataLoadResult.UsedCache)
-        {
-            cachedItems.Add("地图数据");
-        }
-
-        if (serverListLoadResult.UsedCache)
-        {
-            cachedItems.Add("服务器列表");
-        }
-
         return
-            $"在线检查失败，但已找到本地缓存：{string.Join("、", cachedItems)}。\n\n" +
+            "在线检查失败，但已找到本地地图数据缓存。\n\n" +
             "是否使用本地缓存启动？";
     }
 }

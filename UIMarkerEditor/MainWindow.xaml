@@ -377,7 +377,8 @@
         <TabControl x:Name="MainTab_Control"
                         Grid.Row="1"
                         ItemContainerStyle="{StaticResource MainTabItemStyle}"
-                        Style="{StaticResource MainTabControlStyle}">
+                        Style="{StaticResource MainTabControlStyle}"
+                        SelectionChanged="MainTab_Control_SelectionChanged">
             <TabItem Header="标点编辑">
                 <controls:WayMarkEditorControl x:Name="WayMarkEditor_Control"/>
             </TabItem>
@@ -390,7 +391,7 @@
                 <controls:BackupRestoreControl x:Name="BackupRestore_Control"/>
             </TabItem>
 
-            <TabItem Header="角色备注">
+            <TabItem x:Name="CharacterProfiles_TabItem" Header="角色备注">
                 <controls:CharacterProfilesControl x:Name="CharacterProfiles_Control"/>
             </TabItem>
 

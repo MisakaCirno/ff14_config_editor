@@ -7,10 +7,20 @@
             CharacterProfiles_Control.RefreshCharacterList();
         }
 
-        private async Task SyncServerListIfNeededAsync()
+        private async Task SyncServerListIfNeededAsync(bool showFailureMessage = false)
         {
-            await CharacterProfiles_Control.SyncServerListIfNeededAsync();
+            await CharacterProfiles_Control.SyncServerListIfNeededAsync(showFailureMessage);
             ToolSettings_Control.RefreshOnlineDataStatus();
+        }
+
+        private async void MainTab_Control_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (e.OriginalSource != MainTab_Control || !CharacterProfiles_TabItem.IsSelected)
+            {
+                return;
+            }
+
+            await SyncServerListIfNeededAsync();
         }
 
         private bool ConfirmSaveOrDiscardCharacterChanges()

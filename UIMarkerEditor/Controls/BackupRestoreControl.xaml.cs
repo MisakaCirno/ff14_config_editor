@@ -17,6 +17,7 @@ public partial class BackupRestoreControl : UserControl
     private Action<string> loadConfigFile = _ => { };
     private Func<bool> confirmSaveOrDiscardWayMarkChanges = () => true;
     private Func<bool> confirmSaveOrDiscardCharacterChanges = () => true;
+    private Func<Task> syncServerListForCharacterEditing = () => Task.CompletedTask;
     private Action refreshCharacterList = () => { };
 
     public BackupRestoreControl()
@@ -33,6 +34,7 @@ public partial class BackupRestoreControl : UserControl
         Action<string> loadConfigFile,
         Func<bool> confirmSaveOrDiscardWayMarkChanges,
         Func<bool> confirmSaveOrDiscardCharacterChanges,
+        Func<Task> syncServerListForCharacterEditing,
         Action refreshCharacterList)
     {
         this.appDataStore = appDataStore;
@@ -41,6 +43,7 @@ public partial class BackupRestoreControl : UserControl
         this.loadConfigFile = loadConfigFile;
         this.confirmSaveOrDiscardWayMarkChanges = confirmSaveOrDiscardWayMarkChanges;
         this.confirmSaveOrDiscardCharacterChanges = confirmSaveOrDiscardCharacterChanges;
+        this.syncServerListForCharacterEditing = syncServerListForCharacterEditing;
         this.refreshCharacterList = refreshCharacterList;
     }
 
@@ -112,7 +115,7 @@ public partial class BackupRestoreControl : UserControl
         Backup_DataGrid.SelectedItem = null;
     }
 
-    private void Backup_DataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private async void Backup_DataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject) is not DataGridRow row ||
             row.Item is not BackupMetadata backup)
@@ -122,7 +125,7 @@ public partial class BackupRestoreControl : UserControl
 
         Backup_DataGrid.SelectedItem = backup;
         e.Handled = true;
-        OpenCharacterProfileForBackup(backup);
+        await OpenCharacterProfileForBackupAsync(backup);
     }
 
     private void Backup_ContextMenu_Opened(object sender, RoutedEventArgs e)
@@ -147,12 +150,12 @@ public partial class BackupRestoreControl : UserControl
                     : "无法创建角色备注";
     }
 
-    private void OpenCharacterProfileFromBackup_MenuItem_Click(object sender, RoutedEventArgs e)
+    private async void OpenCharacterProfileFromBackup_MenuItem_Click(object sender, RoutedEventArgs e)
     {
-        OpenCharacterProfileForBackup(Backup_DataGrid.SelectedItem as BackupMetadata);
+        await OpenCharacterProfileForBackupAsync(Backup_DataGrid.SelectedItem as BackupMetadata);
     }
 
-    private void OpenCharacterProfileForBackup(BackupMetadata? backup)
+    private async Task OpenCharacterProfileForBackupAsync(BackupMetadata? backup)
     {
         if (appDataStore == null || !confirmSaveOrDiscardCharacterChanges()) return;
 
@@ -169,6 +172,7 @@ public partial class BackupRestoreControl : UserControl
             return;
         }
 
+        await syncServerListForCharacterEditing();
         CharacterProfile? existingProfile = appDataStore.Characters.FirstOrDefault(character =>
             string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase));
         BackupCharacterProfileDialog dialog = existingProfile != null && HasCharacterRemark(existingProfile)

@@ -18,6 +18,7 @@ public partial class CharacterProfilesControl : UserControl
     private bool isCharacterDetailDirty;
     private bool suppressCharacterSelectionChanged;
     private bool suppressCharacterChangeTracking;
+    private Task<ServerListLoadResult?>? serverListSyncTask;
 
     public CharacterProfilesControl()
     {
@@ -60,19 +61,44 @@ public partial class CharacterProfilesControl : UserControl
         return double.IsFinite(value) ? Math.Clamp(value, 0.15, 0.85) : 0.4;
     }
 
-    public async Task SyncServerListIfNeededAsync()
+    public async Task<ServerListLoadResult?> SyncServerListIfNeededAsync(bool showFailureMessage)
     {
-        if (appDataStore == null) return;
+        if (appDataStore == null) return null;
 
-        DateTime lastServerSyncCheck = appDataStore.ServerList.LastUpdated > appDataStore.ServerList.LastSuccessfulSyncAt
-            ? appDataStore.ServerList.LastUpdated
-            : appDataStore.ServerList.LastSuccessfulSyncAt;
-        if (DateTime.Now - lastServerSyncCheck < TimeSpan.FromDays(7)) return;
-
-        if (await appDataStore.TrySyncServerListAsync())
+        Task<ServerListLoadResult?> syncTask = serverListSyncTask ??= SyncServerListIfNeededCoreAsync();
+        ServerListLoadResult? result;
+        try
         {
-            RefreshServerPicker();
+            result = await syncTask;
         }
+        finally
+        {
+            if (ReferenceEquals(serverListSyncTask, syncTask))
+            {
+                serverListSyncTask = null;
+            }
+        }
+
+        if (showFailureMessage && result?.Success == false && appDataStore.ServerList.Groups.Count == 0)
+        {
+            AppMessageBox.Show(
+                ownerWindow ?? Window.GetWindow(this),
+                "服务器列表同步失败，当前没有可用的服务器列表。你仍然可以编辑角色名和备注，稍后可在工具设置中手动检查服务器列表。",
+                "服务器列表不可用",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+
+        return result;
+    }
+
+    private async Task<ServerListLoadResult?> SyncServerListIfNeededCoreAsync()
+    {
+        if (appDataStore == null) return null;
+
+        ServerListLoadResult result = await appDataStore.EnsureServerListAvailableAsync();
+        RefreshServerPicker();
+        return result;
     }
 
     public bool ConfirmSaveOrDiscardCharacterChanges()
@@ -138,7 +164,7 @@ public partial class CharacterProfilesControl : UserControl
         ReloadCharacterList(null);
     }
 
-    private void Character_DataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void Character_DataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (suppressCharacterSelectionChanged) return;
 
@@ -151,6 +177,10 @@ public partial class CharacterProfilesControl : UserControl
         }
 
         LoadCharacterProfileIntoDetail(selectedProfile);
+        if (selectedProfile != null)
+        {
+            await SyncServerListIfNeededAsync(showFailureMessage: false);
+        }
     }
 
     private void Character_DataGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
@@ -176,10 +206,11 @@ public partial class CharacterProfilesControl : UserControl
         UpdateCharacterActionStates();
     }
 
-    private void NewCharacter_Button_Click(object sender, RoutedEventArgs e)
+    private async void NewCharacter_Button_Click(object sender, RoutedEventArgs e)
     {
         if (appDataStore == null || !ConfirmSaveOrDiscardCharacterChanges()) return;
 
+        await SyncServerListIfNeededAsync(showFailureMessage: true);
         BackupCharacterProfileDialog dialog = new(appDataStore.ServerList.Groups);
         DialogOwnerHelper.ConfigureOwnedDialog(dialog, ownerWindow ?? Window.GetWindow(this));
         if (dialog.ShowDialog() != true) return;

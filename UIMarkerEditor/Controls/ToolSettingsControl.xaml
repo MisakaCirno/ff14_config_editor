@@ -436,7 +436,7 @@
                               Header="数据同步"
                               Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="启动工具时会先确认地图数据和服务器列表可用；在线检查失败但已有缓存时会提示是否使用缓存启动，没有可用缓存则无法启动。为减轻服务器压力，手动检查每类数据 1 分钟内只能成功触发一次；检查失败不会进入频率限制。"
+                            <TextBlock Text="启动工具时只会确认地图数据可用；服务器列表会在进入或编辑角色备注时按需检查，不影响标点编辑启动。为减轻服务器压力，手动检查每类数据 1 分钟内只能成功触发一次；检查失败不会进入频率限制。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
                             <TextBlock Text="地图数据"
@@ -523,7 +523,7 @@
 
                             <TextBlock Text="服务器列表"
                                        Style="{StaticResource SettingsSubsectionTitleStyle}"/>
-                            <TextBlock Text="自动检查：启动时无可用缓存会立即同步；已有缓存时每 7 天最多自动同步一次。在线同步失败但缓存可用时，会继续使用本地缓存。"
+                            <TextBlock Text="自动检查：进入角色备注页，或从备份创建、编辑角色备注时按需同步；已有缓存时每 7 天最多自动同步一次。在线同步失败但缓存可用时，会继续使用本地缓存。"
                                        Style="{StaticResource SettingsMutedTextStyle}"
                                        Margin="0,-4,0,10"/>
                             <Grid>
