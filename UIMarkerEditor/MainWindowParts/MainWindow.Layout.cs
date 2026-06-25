@@ -108,7 +108,16 @@ namespace UIMarkerEditor
                 SystemParameters.VirtualScreenTop,
                 SystemParameters.VirtualScreenWidth,
                 SystemParameters.VirtualScreenHeight);
-            return virtualScreen.IntersectsWith(bounds);
+            Rect visibleBounds = Rect.Intersect(virtualScreen, bounds);
+            if (visibleBounds.IsEmpty)
+            {
+                return false;
+            }
+
+            double requiredVisibleWidth = Math.Min(200, bounds.Width * 0.25);
+            double requiredVisibleHeight = Math.Min(120, bounds.Height * 0.25);
+            return visibleBounds.Width >= requiredVisibleWidth &&
+                visibleBounds.Height >= requiredVisibleHeight;
         }
     }
 }
