@@ -199,15 +199,43 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null) return;
 
-        Microsoft.Win32.OpenFolderDialog dialog = new()
-        {
-            Title = "选择工具数据目录",
-            InitialDirectory = Directory.Exists(appDataStore.DataDirectory) ? appDataStore.DataDirectory : string.Empty
-        };
+        string initialDirectory = Directory.Exists(appDataStore.DataDirectory)
+            ? appDataStore.DataDirectory
+            : string.Empty;
 
-        if (DialogOwnerHelper.ShowCommonDialog(dialog, ownerWindow ?? Window.GetWindow(this)) == true)
+        while (true)
         {
-            RequestDataDirectoryChange(dialog.FolderName);
+            Microsoft.Win32.OpenFolderDialog dialog = new()
+            {
+                Title = "选择新的工具数据目录",
+                InitialDirectory = initialDirectory
+            };
+
+            if (DialogOwnerHelper.ShowCommonDialog(dialog, ownerWindow ?? Window.GetWindow(this)) != true)
+            {
+                return;
+            }
+
+            if (DataDirectoryMigrationReportDialog.TryValidateTargetDirectory(
+                appDataStore.DataDirectory,
+                dialog.FolderName,
+                out string targetFullPath,
+                out string errorMessage))
+            {
+                RequestDataDirectoryChange(targetFullPath);
+                return;
+            }
+
+            AppMessageBox.Show(
+                ownerWindow,
+                $"{errorMessage}\n\n请重新选择一个目录。",
+                "迁移工具数据目录",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            if (Directory.Exists(dialog.FolderName))
+            {
+                initialDirectory = dialog.FolderName;
+            }
         }
     }
 
@@ -488,26 +516,19 @@ public partial class ToolSettingsControl : UserControl
             return;
         }
 
-        MessageBoxResult migrateResult = AppMessageBox.Show(
-            ownerWindow,
-            "将把当前数据目录中的受管目录迁移到新目录：configs、backups、cache、logs。\n\n这些目录之外的内容会留在旧目录，不会被工具复制或删除。新目录必须是空的专用文件夹，不能是磁盘根目录、共享根目录，也不能位于当前数据目录内部。\n\n工具会逐文件复制并校验 SHA-256，切换成功后清理旧目录；未清理完成的受管文件会在下次启动自动重试。\n\n确定继续吗？",
-            "迁移工具数据目录",
-            MessageBoxButton.OKCancel,
-            MessageBoxImage.Question);
-        if (migrateResult != MessageBoxResult.OK)
-        {
-            LoadSettingsIntoUi();
-            return;
-        }
-
         bool migrationDialogCreated = false;
         try
         {
-            DataDirectoryMigrationReportDialog migrationDialog = new();
+            DataDirectoryMigrationReportDialog migrationDialog = new(currentFullPath, requestedFullPath);
             migrationDialogCreated = true;
             DialogOwnerHelper.ConfigureOwnedDialog(migrationDialog, ownerWindow ?? Window.GetWindow(this));
-            migrationDialog.RunMigration(progress =>
-                appDataStore.ChangeDataDirectoryAsync(requestedFullPath, progress));
+            DataDirectoryMigrationResult? result = migrationDialog.RunMigration((targetDirectory, progress) =>
+                appDataStore.ChangeDataDirectoryAsync(targetDirectory, progress));
+            if (result == null)
+            {
+                LoadSettingsIntoUi();
+                return;
+            }
 
             LoadSettingsIntoUi();
             refreshAppearance();

@@ -97,14 +97,14 @@
                                                Foreground="{StaticResource AppMutedTextBrush}"
                                                VerticalAlignment="Center"
                                                Margin="-8,0,12,0"
-                                               ToolTip="migration-state.json 只在迁移未完成或需要恢复时存在，记录源目录、目标目录、复制校验和旧目录清理进度；迁移完全结束后会自动删除。"/>
+                                               ToolTip="migration-state.json 只在迁移未完成或需要恢复时存在，记录旧目录、新目录、复制校验和旧目录清理进度；迁移完全结束后会自动删除。"/>
                                 </StackPanel>
                                 <TextBox x:Name="MigrationStateFilePath_TextBox"
                                          Grid.Row="1"
                                          Grid.Column="1"
                                          Style="{StaticResource SettingsReadOnlyTextBoxStyle}"
                                          Foreground="{StaticResource AppMutedTextBrush}"
-                                         ToolTip="migration-state.json 只在迁移未完成或需要恢复时存在，记录源目录、目标目录、复制校验和旧目录清理进度；迁移完全结束后会自动删除。"/>
+                                         ToolTip="migration-state.json 只在迁移未完成或需要恢复时存在，记录旧目录、新目录、复制校验和旧目录清理进度；迁移完全结束后会自动删除。"/>
 
                                 <Separator Grid.Row="2"
                                            Grid.ColumnSpan="2"

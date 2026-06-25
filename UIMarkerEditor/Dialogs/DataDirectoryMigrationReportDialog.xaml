@@ -1,10 +1,10 @@
 ﻿<Window x:Class="UIMarkerEditor.DataDirectoryMigrationReportDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="工具数据目录迁移结果"
-        Height="520"
+        Title="工具数据目录迁移"
+        Height="600"
         Width="720"
-        MinHeight="420"
+        MinHeight="520"
         MinWidth="640"
         WindowStartupLocation="CenterOwner"
         Style="{StaticResource AppDialogWindowStyle}">
@@ -13,6 +13,23 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="../Styles/ToolSettingsStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="MigrationFolderNameTextStyle"
+                   TargetType="TextBlock"
+                   BasedOn="{StaticResource {x:Type TextBlock}}">
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Foreground" Value="{StaticResource AppAccentPressedBrush}"/>
+                <Setter Property="Margin" Value="0,6,14,6"/>
+                <Setter Property="VerticalAlignment" Value="Top"/>
+            </Style>
+
+            <Style x:Key="MigrationFolderDescriptionTextStyle"
+                   TargetType="TextBlock"
+                   BasedOn="{StaticResource {x:Type TextBlock}}">
+                <Setter Property="Foreground" Value="{StaticResource AppMutedTextBrush}"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+                <Setter Property="Margin" Value="0,6,0,6"/>
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -36,6 +53,122 @@
                    Grid.Row="1"
                    TextWrapping="Wrap"
                    Margin="0,0,0,12"/>
+
+        <StackPanel x:Name="Preparation_Panel"
+                    Grid.Row="2"
+                    Grid.RowSpan="3"
+                    Visibility="Collapsed">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="92"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="当前目录"
+                           Style="{StaticResource SettingsFormLabelStyle}"/>
+                <TextBox x:Name="CurrentDataDirectory_TextBox"
+                         Grid.Column="1"
+                         Grid.ColumnSpan="2"
+                         Style="{StaticResource SettingsReadOnlyTextBoxStyle}"/>
+
+                <TextBlock Grid.Row="1"
+                           Text="新的目录"
+                           Style="{StaticResource SettingsFormLabelStyle}"/>
+                <TextBox x:Name="TargetDataDirectory_TextBox"
+                         Grid.Row="1"
+                         Grid.Column="1"
+                         HorizontalContentAlignment="Left"
+                         TextAlignment="Left"/>
+                <Button x:Name="BrowseTargetDirectory_Button"
+                        Grid.Row="1"
+                        Grid.Column="2"
+                        Content="选择目录..."
+                        Height="32"
+                        Margin="8,0,0,0"
+                        Click="BrowseTargetDirectory_Button_Click"/>
+            </Grid>
+
+            <GroupBox Header="迁移内容"
+                      Padding="8"
+                      Margin="0,12,0,0">
+                <StackPanel>
+                    <TextBlock Text="将迁移当前数据目录中的工具数据。"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,10"/>
+
+                    <TextBlock Text="文件夹内容"
+                               Style="{StaticResource SettingsSubsectionTitleStyle}"
+                               Margin="0,0,0,4"/>
+                    <Border Background="{StaticResource AppBackgroundBrush}"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,4"
+                            Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="92"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="configs"
+                                       Style="{StaticResource MigrationFolderNameTextStyle}"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="工具设置、角色备注、标点收藏。"
+                                       Style="{StaticResource MigrationFolderDescriptionTextStyle}"/>
+
+                            <TextBlock Grid.Row="1"
+                                       Text="backups"
+                                       Style="{StaticResource MigrationFolderNameTextStyle}"/>
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="1"
+                                       Text="工具创建的 UISAVE.DAT 备份。"
+                                       Style="{StaticResource MigrationFolderDescriptionTextStyle}"/>
+
+                            <TextBlock Grid.Row="2"
+                                       Text="cache"
+                                       Style="{StaticResource MigrationFolderNameTextStyle}"/>
+                            <TextBlock Grid.Row="2"
+                                       Grid.Column="1"
+                                       Text="服务器列表和地图数据缓存。"
+                                       Style="{StaticResource MigrationFolderDescriptionTextStyle}"/>
+
+                            <TextBlock Grid.Row="3"
+                                       Text="logs"
+                                       Style="{StaticResource MigrationFolderNameTextStyle}"/>
+                            <TextBlock Grid.Row="3"
+                                       Grid.Column="1"
+                                       Text="工具运行日志。"
+                                       Style="{StaticResource MigrationFolderDescriptionTextStyle}"/>
+                        </Grid>
+                    </Border>
+
+                    <TextBlock Text="迁移边界"
+                               Style="{StaticResource SettingsSubsectionTitleStyle}"
+                               Margin="0,0,0,4"/>
+                    <TextBlock Text="这些目录之外的内容不会被工具复制或删除；如果旧目录保留非本工具管理的内容，迁移结果会提示你手动检查。"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,6"/>
+
+                    <TextBlock Text="迁移方式"
+                               Style="{StaticResource SettingsSubsectionTitleStyle}"
+                               Margin="0,4,0,4"/>
+                    <TextBlock Text="工具会逐文件复制并校验 SHA-256，确认新的目录完整后才切换数据目录并清理旧目录；迁移中断时，下次启动会根据迁移进度文件恢复或继续清理。"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </GroupBox>
+        </StackPanel>
 
         <StackPanel x:Name="Progress_Panel"
                     Grid.Row="2"
@@ -119,6 +252,13 @@
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="0,12,0,0">
+            <Button x:Name="StartMigration_Button"
+                    Content="开始迁移"
+                    Width="104"
+                    Height="32"
+                    Margin="0,0,8,0"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Click="StartMigration_Button_Click"/>
             <Button x:Name="OpenSourceDirectory_Button"
                     Content="打开旧目录"
                     Width="104"

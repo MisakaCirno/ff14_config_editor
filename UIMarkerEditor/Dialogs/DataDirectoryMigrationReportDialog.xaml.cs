@@ -10,12 +10,23 @@ namespace UIMarkerEditor;
 public partial class DataDirectoryMigrationReportDialog : Window
 {
     private DataDirectoryMigrationResult? result;
+    private Func<string, IProgress<DataDirectoryMigrationProgress>, Task<DataDirectoryMigrationResult>>? migrationOperation;
+    private DataDirectoryMigrationResult? migrationResult;
+    private Exception? migrationError;
+    private string currentDataDirectory = string.Empty;
     private bool allowClose = true;
 
     public DataDirectoryMigrationReportDialog()
     {
         InitializeComponent();
         ShowProgressMode();
+    }
+
+    public DataDirectoryMigrationReportDialog(string currentDataDirectory, string targetDataDirectory)
+    {
+        InitializeComponent();
+        this.currentDataDirectory = currentDataDirectory ?? string.Empty;
+        ShowPreparationMode(this.currentDataDirectory, targetDataDirectory ?? string.Empty);
     }
 
     public DataDirectoryMigrationReportDialog(DataDirectoryMigrationResult result)
@@ -60,6 +71,21 @@ public partial class DataDirectoryMigrationReportDialog : Window
         return migrationResult ?? throw new InvalidOperationException("迁移未完成。");
     }
 
+    public DataDirectoryMigrationResult? RunMigration(
+        Func<string, IProgress<DataDirectoryMigrationProgress>, Task<DataDirectoryMigrationResult>> operation)
+    {
+        migrationOperation = operation ?? throw new ArgumentNullException(nameof(operation));
+        migrationResult = null;
+        migrationError = null;
+        ShowDialog();
+        if (migrationError != null)
+        {
+            ExceptionDispatchInfo.Capture(migrationError).Throw();
+        }
+
+        return migrationResult;
+    }
+
     protected override void OnClosing(CancelEventArgs e)
     {
         if (!allowClose)
@@ -71,11 +97,35 @@ public partial class DataDirectoryMigrationReportDialog : Window
         base.OnClosing(e);
     }
 
+    private void ShowPreparationMode(string sourceDirectory, string targetDirectory)
+    {
+        Title = "工具数据目录迁移";
+        Summary_TextBlock.Text = "确认工具数据目录迁移";
+        Detail_TextBlock.Text = "请确认新的目录和迁移内容。点击“开始迁移”后，工具才会复制、校验并切换数据目录。";
+        currentDataDirectory = NormalizeOptionalDirectory(sourceDirectory);
+        CurrentDataDirectory_TextBox.Text = currentDataDirectory;
+        TargetDataDirectory_TextBox.Text = NormalizeOptionalDirectory(targetDirectory);
+        Preparation_Panel.Visibility = Visibility.Visible;
+        Progress_Panel.Visibility = Visibility.Collapsed;
+        ReportDetails_Grid.Visibility = Visibility.Collapsed;
+        PendingItems_GroupBox.Visibility = Visibility.Collapsed;
+        Buttons_Panel.Visibility = Visibility.Visible;
+        StartMigration_Button.Visibility = Visibility.Visible;
+        OpenSourceDirectory_Button.Visibility = Visibility.Collapsed;
+        OpenTargetDirectory_Button.Visibility = Visibility.Collapsed;
+        OpenStateDirectory_Button.Visibility = Visibility.Collapsed;
+        CopyReport_Button.Visibility = Visibility.Collapsed;
+        StartMigration_Button.IsDefault = true;
+        Close_Button.IsDefault = false;
+        Close_Button.Content = "取消";
+    }
+
     private void ShowProgressMode()
     {
-        Title = "正在迁移工具数据目录";
+        Title = "工具数据目录迁移";
         Summary_TextBlock.Text = "正在迁移工具数据目录";
         Detail_TextBlock.Text = "工具正在复制、校验并清理旧目录中的受管数据。";
+        Preparation_Panel.Visibility = Visibility.Collapsed;
         Progress_Panel.Visibility = Visibility.Visible;
         ReportDetails_Grid.Visibility = Visibility.Collapsed;
         PendingItems_GroupBox.Visibility = Visibility.Collapsed;
@@ -102,14 +152,19 @@ public partial class DataDirectoryMigrationReportDialog : Window
     private void LoadReport(DataDirectoryMigrationResult result)
     {
         this.result = result;
-        Title = "工具数据目录迁移结果";
+        Title = "工具数据目录迁移";
+        Preparation_Panel.Visibility = Visibility.Collapsed;
         Progress_Panel.Visibility = Visibility.Collapsed;
         ReportDetails_Grid.Visibility = Visibility.Visible;
         PendingItems_GroupBox.Visibility = Visibility.Visible;
         Buttons_Panel.Visibility = Visibility.Visible;
+        StartMigration_Button.Visibility = Visibility.Collapsed;
         OpenSourceDirectory_Button.Visibility = Visibility.Visible;
         OpenTargetDirectory_Button.Visibility = Visibility.Visible;
         CopyReport_Button.Visibility = Visibility.Visible;
+        StartMigration_Button.IsDefault = false;
+        Close_Button.IsDefault = true;
+        Close_Button.Content = "关闭";
         bool showMigrationState = ShouldShowMigrationState(result);
         Visibility migrationStateVisibility = showMigrationState
             ? Visibility.Visible
@@ -154,17 +209,99 @@ public partial class DataDirectoryMigrationReportDialog : Window
     private void LoadFailure(Exception exception)
     {
         result = null;
-        Title = "工具数据目录迁移失败";
+        Title = "工具数据目录迁移";
         Summary_TextBlock.Text = "工具数据目录迁移失败";
         Detail_TextBlock.Text = $"迁移未完成，工具已保留原数据目录。原因：{exception.Message}";
+        Preparation_Panel.Visibility = Visibility.Collapsed;
         Progress_Panel.Visibility = Visibility.Collapsed;
         ReportDetails_Grid.Visibility = Visibility.Collapsed;
         PendingItems_GroupBox.Visibility = Visibility.Collapsed;
         Buttons_Panel.Visibility = Visibility.Visible;
+        StartMigration_Button.Visibility = Visibility.Collapsed;
         OpenSourceDirectory_Button.Visibility = Visibility.Collapsed;
         OpenTargetDirectory_Button.Visibility = Visibility.Collapsed;
         OpenStateDirectory_Button.Visibility = Visibility.Collapsed;
         CopyReport_Button.Visibility = Visibility.Collapsed;
+        StartMigration_Button.IsDefault = false;
+        Close_Button.IsDefault = true;
+        Close_Button.Content = "关闭";
+    }
+
+    private void BrowseTargetDirectory_Button_Click(object sender, RoutedEventArgs e)
+    {
+        string targetDirectory = TargetDataDirectory_TextBox.Text.Trim();
+        string initialDirectory = Directory.Exists(targetDirectory)
+            ? targetDirectory
+            : Directory.Exists(currentDataDirectory)
+                ? currentDataDirectory
+                : string.Empty;
+
+        while (true)
+        {
+            Microsoft.Win32.OpenFolderDialog dialog = new()
+            {
+                Title = "选择新的工具数据目录",
+                InitialDirectory = initialDirectory
+            };
+
+            if (DialogOwnerHelper.ShowCommonDialog(dialog, this) != true)
+            {
+                return;
+            }
+
+            if (TryValidateTargetDirectory(
+                currentDataDirectory,
+                dialog.FolderName,
+                out string targetFullPath,
+                out string errorMessage))
+            {
+                TargetDataDirectory_TextBox.Text = targetFullPath;
+                return;
+            }
+
+            AppMessageBox.Show(
+                this,
+                $"{errorMessage}{Environment.NewLine}{Environment.NewLine}请重新选择一个目录。",
+                "工具数据目录迁移",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            if (Directory.Exists(dialog.FolderName))
+            {
+                initialDirectory = dialog.FolderName;
+            }
+        }
+    }
+
+    private async void StartMigration_Button_Click(object sender, RoutedEventArgs e)
+    {
+        if (migrationOperation == null) return;
+
+        if (!TryValidateTargetDirectory(
+            currentDataDirectory,
+            TargetDataDirectory_TextBox.Text.Trim(),
+            out string targetFullPath,
+            out string errorMessage))
+        {
+            AppMessageBox.Show(this, errorMessage, "工具数据目录迁移", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        TargetDataDirectory_TextBox.Text = targetFullPath;
+
+        allowClose = false;
+        try
+        {
+            ShowProgressMode();
+            Progress<DataDirectoryMigrationProgress> progress = new(UpdateProgress);
+            migrationResult = await migrationOperation(targetFullPath, progress);
+            allowClose = true;
+            LoadReport(migrationResult);
+        }
+        catch (Exception ex)
+        {
+            migrationError = ex;
+            allowClose = true;
+            LoadFailure(ex);
+        }
     }
 
     private void OpenSourceDirectory_Button_Click(object sender, RoutedEventArgs e)
@@ -246,11 +383,138 @@ public partial class DataDirectoryMigrationReportDialog : Window
         return !result.CleanupCompleted && !string.IsNullOrWhiteSpace(result.MigrationStateFilePath);
     }
 
+    internal static bool TryValidateTargetDirectory(
+        string currentDataDirectory,
+        string targetDirectory,
+        out string targetFullPath,
+        out string errorMessage)
+    {
+        targetFullPath = string.Empty;
+        errorMessage = string.Empty;
+        if (string.IsNullOrWhiteSpace(targetDirectory))
+        {
+            errorMessage = "新的目录不能为空。";
+            return false;
+        }
+
+        string currentFullPath;
+        try
+        {
+            currentFullPath = NormalizeDataDirectoryPath(currentDataDirectory);
+            targetFullPath = NormalizeDataDirectoryPath(targetDirectory);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            errorMessage = $"新的目录路径无效：{ex.Message}";
+            return false;
+        }
+
+        if (IsSameDirectory(currentFullPath, targetFullPath))
+        {
+            errorMessage = "新的目录与当前数据目录相同，无需迁移。";
+            return false;
+        }
+
+        if (IsRootDataDirectory(targetFullPath))
+        {
+            errorMessage = "新的目录不能是磁盘根目录或共享根目录。";
+            return false;
+        }
+
+        if (IsSubdirectoryOf(targetFullPath, currentFullPath))
+        {
+            errorMessage = "新的目录不能位于当前数据目录内部。";
+            return false;
+        }
+
+        if (IsSubdirectoryOf(currentFullPath, targetFullPath))
+        {
+            errorMessage = "新的目录不能包含当前数据目录。";
+            return false;
+        }
+
+        try
+        {
+            if (Directory.Exists(targetFullPath) &&
+                Directory.EnumerateFileSystemEntries(targetFullPath).Any())
+            {
+                errorMessage = "新的目录必须为空。";
+                return false;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PathTooLongException)
+        {
+            errorMessage = $"无法检查新的目录：{ex.Message}";
+            return false;
+        }
+
+        return true;
+    }
+
     private string GetMigrationStateDirectory()
     {
         return result == null
             ? string.Empty
             : Path.GetDirectoryName(result.MigrationStateFilePath) ?? string.Empty;
+    }
+
+    private static bool IsSameDirectory(string left, string right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+        {
+            return false;
+        }
+
+        try
+        {
+            string normalizedLeft = NormalizeDataDirectoryPath(left);
+            string normalizedRight = NormalizeDataDirectoryPath(right);
+            return string.Equals(normalizedLeft, normalizedRight, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
+    }
+
+    private static bool IsRootDataDirectory(string directory)
+    {
+        string fullPath = Path.GetFullPath(directory);
+        string? root = Path.GetPathRoot(fullPath);
+        return !string.IsNullOrWhiteSpace(root) &&
+            string.Equals(
+                NormalizeDataDirectoryPath(fullPath),
+                NormalizeDataDirectoryPath(root),
+                StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsSubdirectoryOf(string candidateDirectory, string parentDirectory)
+    {
+        string candidateFullPath = NormalizeDataDirectoryPath(candidateDirectory);
+        string parentFullPath = NormalizeDataDirectoryPath(parentDirectory);
+        return candidateFullPath.StartsWith(parentFullPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeOptionalDirectory(string directory)
+    {
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            return NormalizeDataDirectoryPath(directory);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return directory.Trim();
+        }
+    }
+
+    private static string NormalizeDataDirectoryPath(string directory)
+    {
+        return Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
     }
 
     private void OpenExistingDirectory(string directory)

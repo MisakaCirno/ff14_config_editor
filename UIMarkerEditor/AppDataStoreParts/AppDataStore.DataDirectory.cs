@@ -237,7 +237,7 @@ public sealed partial class AppDataStore
                         $"如需重新迁移，请重新选择一个空的数据目录。{Environment.NewLine}" +
                         $"迁移状态文件：{MigrationStateFilePath}{Environment.NewLine}" +
                         $"源目录：{state.SourceDataDirectory}{Environment.NewLine}" +
-                        $"目标目录：{state.TargetDataDirectory}{Environment.NewLine}" +
+                        $"新目录：{state.TargetDataDirectory}{Environment.NewLine}" +
                         $"中断阶段：{state.Stage}");
                     break;
             }
@@ -276,7 +276,7 @@ public sealed partial class AppDataStore
         }
 
         DataDirectory = state.TargetDataDirectory;
-        MarkMigrationState(state, MigrationStageCommitted, "启动时检测到迁移已完成复制和校验，已切换到目标目录。");
+        MarkMigrationState(state, MigrationStageCommitted, "启动时检测到迁移已完成复制和校验，已切换到新目录。");
         SaveBootstrap(allowOverwriteInvalid: true);
         bool cleanupCompleted = CompleteDataDirectoryMigrationCleanup(state);
         if (cleanupCompleted)
@@ -295,7 +295,7 @@ public sealed partial class AppDataStore
         EnsureMigrationStateDirectoriesAllowed(state);
         VerifyMigrationTargetFromState(state, includeDeletedSourceFiles: false);
         DataDirectory = state.TargetDataDirectory;
-        MarkMigrationState(state, MigrationStageCommitted, "启动时检测到迁移已切换到目标目录，继续清理旧目录。");
+        MarkMigrationState(state, MigrationStageCommitted, "启动时检测到迁移已切换到新目录，继续清理旧目录。");
         SaveBootstrap(allowOverwriteInvalid: true);
         bool cleanupCompleted = CompleteDataDirectoryMigrationCleanup(state);
         if (cleanupCompleted)
@@ -523,7 +523,7 @@ public sealed partial class AppDataStore
             string normalizedDirectory = NormalizeRelativePath(relativeDirectory);
             if (!expectedDirectories.Contains(normalizedDirectory))
             {
-                throw new InvalidOperationException($"恢复迁移时目标目录包含未知目录，已停止恢复以避免覆盖数据：{relativeDirectory}");
+                throw new InvalidOperationException($"恢复迁移时新目录包含未知目录，已停止恢复以避免覆盖数据：{relativeDirectory}");
             }
         }
 
@@ -537,7 +537,7 @@ public sealed partial class AppDataStore
             string normalizedPath = NormalizeRelativePath(relativePath);
             if (!expectedFiles.Contains(normalizedPath))
             {
-                throw new InvalidOperationException($"恢复迁移时目标目录包含未知文件，已停止恢复以避免覆盖数据：{relativePath}");
+                throw new InvalidOperationException($"恢复迁移时新目录包含未知文件，已停止恢复以避免覆盖数据：{relativePath}");
             }
 
             string sourceFile = Path.Combine(state.SourceDataDirectory, relativePath);
@@ -729,13 +729,13 @@ public sealed partial class AppDataStore
 
             if (string.IsNullOrWhiteSpace(file.Sha256))
             {
-                throw new InvalidOperationException($"迁移状态缺少文件哈希，无法验证目标目录：{file.RelativePath}");
+                throw new InvalidOperationException($"迁移状态缺少文件哈希，无法验证新目录：{file.RelativePath}");
             }
 
             string targetFile = Path.Combine(state.TargetDataDirectory, file.RelativePath);
             if (!File.Exists(targetFile))
             {
-                throw new FileNotFoundException("迁移目标目录缺少已校验文件。", targetFile);
+                throw new FileNotFoundException("迁移新目录缺少已校验文件。", targetFile);
             }
 
             string targetHash = ComputeSha256(targetFile);
@@ -963,16 +963,16 @@ public sealed partial class AppDataStore
 
             if (string.IsNullOrWhiteSpace(file.Sha256))
             {
-                throw new InvalidOperationException($"迁移状态缺少文件哈希，无法验证目标目录：{file.RelativePath}");
+                throw new InvalidOperationException($"迁移状态缺少文件哈希，无法验证新目录：{file.RelativePath}");
             }
 
             string targetFile = Path.Combine(state.TargetDataDirectory, file.RelativePath);
             if (!File.Exists(targetFile))
             {
-                throw new FileNotFoundException("迁移目标目录缺少已校验文件。", targetFile);
+                throw new FileNotFoundException("迁移新目录缺少已校验文件。", targetFile);
             }
 
-            ReportMigrationProgress(progress, "复核目标目录", $"复核目标文件：{file.RelativePath}", completedSteps, totalSteps);
+            ReportMigrationProgress(progress, "复核新目录", $"复核新目录文件：{file.RelativePath}", completedSteps, totalSteps);
             string targetHash = await Task.Run(() => ComputeSha256(targetFile));
             if (!string.Equals(targetHash, file.Sha256, StringComparison.OrdinalIgnoreCase))
             {
@@ -980,7 +980,7 @@ public sealed partial class AppDataStore
             }
 
             completedSteps++;
-            ReportMigrationProgress(progress, "复核目标目录", $"目标文件复核完成：{file.RelativePath}", completedSteps, totalSteps);
+            ReportMigrationProgress(progress, "复核新目录", $"新目录文件复核完成：{file.RelativePath}", completedSteps, totalSteps);
         }
 
         return completedSteps;

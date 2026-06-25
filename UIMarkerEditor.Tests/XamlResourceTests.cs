@@ -44,6 +44,11 @@ public sealed class XamlResourceTests
         DataDirectoryMigrationReportDialog progressDialog = new();
         progressDialog.Close();
 
+        DataDirectoryMigrationReportDialog preparationDialog = new(
+            Path.Combine(testDirectory, "old-data"),
+            Path.Combine(testDirectory, "new-data"));
+        preparationDialog.Close();
+
         DataDirectoryMigrationReportDialog reportDialog = new(new DataDirectoryMigrationResult
         {
             CleanupCompleted = true,
