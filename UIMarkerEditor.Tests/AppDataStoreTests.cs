@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using FF14ConfigEditor;
@@ -265,6 +266,12 @@ public sealed class AppDataStoreTests : IDisposable
     {
         AppDataStore store = CreateStore();
         store.Initialize();
+        string customDirectory = Path.Combine(
+            testDirectory,
+            "\u6700\u7EC8\u5E7B\u60F3XIV",
+            "game",
+            "My Games",
+            "FINAL FANTASY XIV - A Realm Reborn");
 
         store.SaveSettings(new AppSettings
         {
@@ -272,7 +279,7 @@ public sealed class AppDataStoreTests : IDisposable
             StartupWayMarkAction = StartupWayMarkAction.LoadMostRecentFile,
             WayMarkFavoriteSaveMode = WayMarkFavoriteSaveMode.Auto,
             WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.Default,
-            WayMarkCustomDirectory = Path.Combine(testDirectory, "Game", "My Games", "FINAL FANTASY XIV - A Realm Reborn"),
+            WayMarkCustomDirectory = customDirectory,
             WayMarkCustomDirectoryAutoFillAttempted = true,
             AutoBackupAfterLoad = true,
             MaxLogFileSizeMb = 13,
@@ -297,7 +304,7 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal(StartupWayMarkAction.LoadMostRecentFile, reloadedStore.Settings.StartupWayMarkAction);
         Assert.Equal(WayMarkFavoriteSaveMode.Auto, reloadedStore.Settings.WayMarkFavoriteSaveMode);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, reloadedStore.Settings.WayMarkOpenDirectoryMode);
-        Assert.Equal(Path.GetFullPath(Path.Combine(testDirectory, "Game", "My Games", "FINAL FANTASY XIV - A Realm Reborn")), reloadedStore.Settings.WayMarkCustomDirectory);
+        Assert.Equal(Path.GetFullPath(customDirectory), reloadedStore.Settings.WayMarkCustomDirectory);
         Assert.True(reloadedStore.Settings.WayMarkCustomDirectoryAutoFillAttempted);
         Assert.True(reloadedStore.Settings.AutoBackupAfterLoad);
         Assert.Equal(13, reloadedStore.Settings.MaxLogFileSizeMb);
@@ -311,6 +318,34 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal(777, reloadedStore.Settings.WindowLayout.WayMarkFavoritePickerWidth);
         Assert.Equal(555, reloadedStore.Settings.WindowLayout.WayMarkFavoritePickerHeight);
         Assert.Equal(0.65, reloadedStore.Settings.WindowLayout.WayMarkFavoritePickerListRatio);
+    }
+
+    [Fact]
+    public void Initialize_RepairsUtf8DecodedAsGbkWayMarkCustomDirectory()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string customDirectory = Path.Combine(
+            testDirectory,
+            "\u6700\u7EC8\u5E7B\u60F3XIV",
+            "game",
+            "My Games",
+            "FINAL FANTASY XIV - A Realm Reborn");
+        string garbledDirectory = CreateUtf8DecodedAsGbk(customDirectory);
+        Directory.CreateDirectory(Path.GetDirectoryName(store.SettingsFilePath)!);
+        File.WriteAllText(
+            store.SettingsFilePath,
+            JsonSerializer.Serialize(new AppSettings
+            {
+                WayMarkCustomDirectory = garbledDirectory,
+                WayMarkCustomDirectoryAutoFillAttempted = true
+            }));
+
+        AppDataStore reloadedStore = CreateStore();
+        reloadedStore.Initialize();
+
+        Assert.Equal(Path.GetFullPath(customDirectory), reloadedStore.Settings.WayMarkCustomDirectory);
+        Assert.True(reloadedStore.Settings.WayMarkCustomDirectoryAutoFillAttempted);
     }
 
     [Fact]
@@ -1607,6 +1642,12 @@ public sealed class AppDataStoreTests : IDisposable
         writer.Write(123456);
         writer.Write(new byte[] { 0, 0, 0, 0 });
         return stream.ToArray();
+    }
+
+    private static string CreateUtf8DecodedAsGbk(string value)
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        return Encoding.GetEncoding(936).GetString(Encoding.UTF8.GetBytes(value));
     }
 
     private const string MapDataVersionUrl = "https://cdn.diemoe.net/files/ACT.DieMoe/Resources/MatchaData/data.version";

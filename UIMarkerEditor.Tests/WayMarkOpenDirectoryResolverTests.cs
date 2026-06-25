@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using UIMarkerEditor;
 
 namespace UIMarkerEditor.Tests;
@@ -20,9 +21,10 @@ public sealed class WayMarkOpenDirectoryResolverTests : IDisposable
     }
 
     [Fact]
-    public void AutoDetectGameCharacterRootDirectory_UsesRegistryCandidateWithoutDirectoryScan()
+    public void AutoDetectGameCharacterRootDirectory_UsesExistingRegistryCandidate()
     {
         string gameConfigRoot = Path.Combine(testDirectory, "game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
+        Directory.CreateDirectory(gameConfigRoot);
 
         string? directory = WayMarkOpenDirectoryResolver.AutoDetectGameCharacterRootDirectory([gameConfigRoot]);
 
@@ -33,8 +35,37 @@ public sealed class WayMarkOpenDirectoryResolverTests : IDisposable
     public void AutoDetectGameCharacterRootDirectory_SkipsEmptyCandidates()
     {
         string gameConfigRoot = Path.Combine(testDirectory, "game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
+        Directory.CreateDirectory(gameConfigRoot);
 
         string? directory = WayMarkOpenDirectoryResolver.AutoDetectGameCharacterRootDirectory([string.Empty, "  ", gameConfigRoot]);
+
+        Assert.Equal(Path.GetFullPath(gameConfigRoot), directory);
+    }
+
+    [Fact]
+    public void AutoDetectGameCharacterRootDirectory_SkipsMissingCandidates()
+    {
+        string gameConfigRoot = Path.Combine(testDirectory, "game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
+
+        string? directory = WayMarkOpenDirectoryResolver.AutoDetectGameCharacterRootDirectory([gameConfigRoot]);
+
+        Assert.Null(directory);
+    }
+
+    [Fact]
+    public void AutoDetectGameCharacterRootDirectory_RepairsUtf8DecodedAsGbkCandidate()
+    {
+        string gameConfigRoot = Path.Combine(
+            testDirectory,
+            "Software",
+            "\u6700\u7EC8\u5E7B\u60F3XIV",
+            "game",
+            "My Games",
+            "FINAL FANTASY XIV - A Realm Reborn");
+        Directory.CreateDirectory(gameConfigRoot);
+        string garbledRoot = CreateUtf8DecodedAsGbk(gameConfigRoot);
+
+        string? directory = WayMarkOpenDirectoryResolver.AutoDetectGameCharacterRootDirectory([garbledRoot]);
 
         Assert.Equal(Path.GetFullPath(gameConfigRoot), directory);
     }
@@ -102,5 +133,11 @@ public sealed class WayMarkOpenDirectoryResolverTests : IDisposable
             .ToArray();
 
         Assert.Equal(new[] { expectedRoot }, candidateRoots);
+    }
+
+    private static string CreateUtf8DecodedAsGbk(string value)
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        return Encoding.GetEncoding(936).GetString(Encoding.UTF8.GetBytes(value));
     }
 }

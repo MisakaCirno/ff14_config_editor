@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using FF14ConfigEditor;
 
@@ -7,6 +8,8 @@ namespace UIMarkerEditor;
 
 public sealed partial class AppDataStore
 {
+    private static readonly Encoding JsonTextEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
     private enum JsonFileReadStatus
     {
         Missing,
@@ -25,7 +28,7 @@ public sealed partial class AppDataStore
 
         try
         {
-            string json = File.ReadAllText(path);
+            string json = File.ReadAllText(path, JsonTextEncoding);
             T? value = JsonSerializer.Deserialize<T>(json, jsonOptions);
             return value == null
                 ? new JsonFileReadResult<T>(
@@ -50,7 +53,7 @@ public sealed partial class AppDataStore
             }
 
             string json = JsonSerializer.Serialize(value, jsonOptions);
-            SafeFileWriter.WriteAllText(path, json);
+            SafeFileWriter.WriteAllText(path, json, JsonTextEncoding);
         }
         catch (Exception ex)
         {

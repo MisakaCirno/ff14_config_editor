@@ -32,9 +32,12 @@ internal static class WayMarkOpenDirectoryResolver
     {
         foreach (string candidateRoot in candidateRoots)
         {
-            if (TryNormalizeDirectoryPath(candidateRoot, out string? directory))
+            foreach (string candidateRootVariant in PathTextRepair.EnumerateCommonUtf8MojibakeVariants(candidateRoot))
             {
-                return directory;
+                if (TryNormalizeExistingDirectory(candidateRootVariant, out string? directory))
+                {
+                    return directory;
+                }
             }
         }
 
@@ -132,10 +135,22 @@ internal static class WayMarkOpenDirectoryResolver
 
     private static bool IsFinalFantasyXivDisplayName(string? displayName)
     {
-        return !string.IsNullOrWhiteSpace(displayName) &&
-            (displayName.Contains("FINAL FANTASY XIV", StringComparison.OrdinalIgnoreCase) ||
-             displayName.Contains("最终幻想XIV", StringComparison.OrdinalIgnoreCase) ||
-             displayName.Contains("最终幻想14", StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            return false;
+        }
+
+        foreach (string displayNameVariant in PathTextRepair.EnumerateCommonUtf8MojibakeVariants(displayName))
+        {
+            if (displayNameVariant.Contains("FINAL FANTASY XIV", StringComparison.OrdinalIgnoreCase) ||
+                displayNameVariant.Contains("最终幻想XIV", StringComparison.OrdinalIgnoreCase) ||
+                displayNameVariant.Contains("最终幻想14", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static IEnumerable<string> EnumerateRegistryInstallPaths(RegistryKey appKey)
@@ -151,7 +166,10 @@ internal static class WayMarkOpenDirectoryResolver
             string path = ExtractPathFromRegistryValue(value);
             if (!string.IsNullOrWhiteSpace(path))
             {
-                yield return path;
+                foreach (string pathVariant in PathTextRepair.EnumerateCommonUtf8MojibakeVariants(path))
+                {
+                    yield return pathVariant;
+                }
             }
         }
     }
@@ -229,25 +247,6 @@ internal static class WayMarkOpenDirectoryResolver
         return string.IsNullOrWhiteSpace(gameDirectory)
             ? string.Empty
             : Path.Combine(gameDirectory, "My Games", GameConfigFolderName);
-    }
-
-    private static bool TryNormalizeDirectoryPath(string directory, out string? normalizedDirectory)
-    {
-        normalizedDirectory = null;
-        if (string.IsNullOrWhiteSpace(directory))
-        {
-            return false;
-        }
-
-        try
-        {
-            normalizedDirectory = Path.GetFullPath(directory.Trim());
-            return true;
-        }
-        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
-        {
-            return false;
-        }
     }
 
     private static bool TryNormalizeExistingDirectory(string directory, out string? normalizedDirectory)

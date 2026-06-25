@@ -109,7 +109,7 @@ public sealed partial class AppDataStore
 
         try
         {
-            return Path.GetFullPath(directory.Trim());
+            return Path.GetFullPath(PathTextRepair.RepairCommonUtf8Mojibake(directory.Trim()));
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {
