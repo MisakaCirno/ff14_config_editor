@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace UIMarkerEditor;
 
@@ -122,13 +122,22 @@ public enum WayMarkFavoriteSaveMode
 
 public enum WayMarkOpenDirectoryMode
 {
-    CustomDirectory = 0,
-    Default = 1
+    Default = 0,
+    GameCharacterDirectory = 1,
+    CustomDirectory = 2
+}
+
+public enum GameInstallDirectoryUpdateResult
+{
+    NotFound = 0,
+    Unchanged = 1,
+    Updated = 2
 }
 
 public sealed class AppSettings
 {
     public const int DefaultMaxBackupCount = 100;
+    public const int DefaultMaxBackupCountPerUser = 20;
     public const int DefaultMaxBackupDays = 90;
     public const int MinBackupCount = 1;
     public const int MaxBackupCountLimit = 10000;
@@ -142,23 +151,44 @@ public sealed class AppSettings
     public const int MaxLogFileCountLimit = 20;
 
     public int MaxBackupCount { get; set; } = DefaultMaxBackupCount;
+    public int MaxBackupCountPerUser { get; set; } = DefaultMaxBackupCountPerUser;
     public int MaxBackupDays { get; set; } = DefaultMaxBackupDays;
     public bool LimitBackupCount { get; set; } = true;
+    public bool LimitBackupCountPerUser { get; set; } = true;
     public bool LimitBackupDays { get; set; } = true;
     public bool AutoBackupBeforeSave { get; set; } = true;
     public bool AutoBackupAfterLoad { get; set; } = false;
+    public bool AutoBackupBeforeRestore { get; set; } = true;
     public int MaxLogFileSizeMb { get; set; } = DefaultMaxLogFileSizeMb;
     public int MaxLogFileCount { get; set; } = DefaultMaxLogFileCount;
     public bool UseWayMarkImageLabels { get; set; } = true;
     public StartupWayMarkAction StartupWayMarkAction { get; set; } = StartupWayMarkAction.None;
     public WayMarkFavoriteSaveMode WayMarkFavoriteSaveMode { get; set; } = WayMarkFavoriteSaveMode.Manual;
     public WayMarkOpenDirectoryMode WayMarkOpenDirectoryMode { get; set; } = WayMarkOpenDirectoryMode.Default;
+    public string GameInstallDirectory { get; set; } = string.Empty;
     public string WayMarkCustomDirectory { get; set; } = string.Empty;
-    public bool WayMarkCustomDirectoryAutoFillAttempted { get; set; } = false;
     public DateTime LastMapDataManualRefreshAttempt { get; set; } = DateTime.MinValue;
     public DateTime LastServerListManualRefreshAttempt { get; set; } = DateTime.MinValue;
     public WindowLayoutSettings WindowLayout { get; set; } = new();
     public List<string> RecentFiles { get; set; } = [];
+}
+
+public static class BackupCreationTriggers
+{
+    public const string BeforeSave = "BeforeSave";
+    public const string AfterLoad = "AfterLoad";
+    public const string BeforeRestore = "BeforeRestore";
+
+    public static string ToDisplayText(string? creationTrigger)
+    {
+        return creationTrigger switch
+        {
+            BeforeSave => "保存前自动备份",
+            AfterLoad => "读取后自动备份",
+            BeforeRestore => "还原前安全备份",
+            _ => "未记录"
+        };
+    }
 }
 
 public sealed class WindowLayoutSettings
@@ -259,6 +289,8 @@ public sealed class BackupMetadata
     public string OriginalDirectory { get; set; } = string.Empty;
     public string FolderUserID { get; set; } = string.Empty;
     public string FileUserID { get; set; } = string.Empty;
+    public bool UseFolderUserIDAsEffectiveUserID { get; set; }
+    public string CreationTrigger { get; set; } = string.Empty;
     public long SourceFileSize { get; set; }
     public string SourceFileSha256 { get; set; } = string.Empty;
     public List<BackupMarkerSnapshot> MarkerSnapshots { get; set; } = [];
@@ -282,7 +314,12 @@ public sealed class BackupMetadata
     public string ServerDisplayName { get; set; } = string.Empty;
 
     [JsonIgnore]
-    public string EffectiveUserID => !string.IsNullOrWhiteSpace(FileUserID) ? FileUserID : FolderUserID;
+    public string EffectiveUserID => UseFolderUserIDAsEffectiveUserID && !string.IsNullOrWhiteSpace(FolderUserID)
+        ? FolderUserID
+        : FileUserID;
+
+    [JsonIgnore]
+    public string CreationTriggerDisplay => BackupCreationTriggers.ToDisplayText(CreationTrigger);
 
     [JsonIgnore]
     public string Summary => $"{MarkerSnapshots.Count} 条标点记录";

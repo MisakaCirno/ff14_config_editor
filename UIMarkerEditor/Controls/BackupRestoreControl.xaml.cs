@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -250,6 +250,7 @@ public partial class BackupRestoreControl : UserControl
         BackupDetail_ScrollViewer.Visibility = Visibility.Visible;
         BackupDetail_BackupTime_TextBox.Text = backup.BackupTime.ToString("yyyy-MM-dd HH:mm:ss");
         BackupDetail_Character_TextBox.Text = backup.CharacterDisplayName;
+        BackupDetail_CreationTrigger_TextBox.Text = backup.CreationTriggerDisplay;
         BackupDetail_OriginalPath_TextBox.Text = backup.OriginalFilePath;
         BackupDetail_FolderUserID_TextBox.Text = DisplayOptionalText(backup.FolderUserID);
         BackupDetail_FileUserID_TextBox.Text = DisplayOptionalText(backup.FileUserID);
@@ -274,6 +275,7 @@ public partial class BackupRestoreControl : UserControl
     {
         BackupDetail_BackupTime_TextBox.Text = string.Empty;
         BackupDetail_Character_TextBox.Text = string.Empty;
+        BackupDetail_CreationTrigger_TextBox.Text = string.Empty;
         BackupDetail_OriginalPath_TextBox.Text = string.Empty;
         BackupDetail_FolderUserID_TextBox.Text = string.Empty;
         BackupDetail_FileUserID_TextBox.Text = string.Empty;
@@ -303,7 +305,11 @@ public partial class BackupRestoreControl : UserControl
             return;
         }
 
-        string warning = BuildRestoreWarning(backup, backup.OriginalFilePath);
+        bool willCreateSafetyBackup =
+            appDataStore.Settings.AutoBackupBeforeRestore &&
+            File.Exists(backup.OriginalFilePath) &&
+            appDataStore.IsTrustedGameCharacterSaveFile(backup.OriginalFilePath);
+        string warning = BuildRestoreWarning(backup, backup.OriginalFilePath, willCreateSafetyBackup);
         if (AppMessageBox.Show(ownerWindow, warning, "确认还原备份", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
         {
             return;
@@ -311,28 +317,45 @@ public partial class BackupRestoreControl : UserControl
 
         try
         {
-            BackupMetadata? safetyBackup = null;
-            if (File.Exists(backup.OriginalFilePath))
+            if (willCreateSafetyBackup)
             {
-                safetyBackup = appDataStore.CreateBackup(backup.OriginalFilePath, cleanupAfterCreate: false);
+                appDataStore.CreateBackup(
+                    backup.OriginalFilePath,
+                    cleanupAfterCreate: false,
+                    creationTrigger: BackupCreationTriggers.BeforeRestore);
             }
 
             appDataStore.RestoreBackup(backup, backup.OriginalFilePath);
-            appDataStore.CleanupBackups(backup.BackupDirectory, safetyBackup?.BackupDirectory ?? string.Empty);
-            RefreshBackupList();
-
-            string currentFilePath = getCurrentFilePath();
-            if (string.Equals(currentFilePath, backup.OriginalFilePath, StringComparison.OrdinalIgnoreCase))
-            {
-                loadConfigFile(currentFilePath);
-            }
-
-            ToastService.ShowSuccess("备份已还原到原文件路径。");
         }
         catch (Exception ex)
         {
             AppMessageBox.Show(ownerWindow, $"还原失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
         }
+
+        try
+        {
+            RefreshBackupList();
+        }
+        catch (Exception ex)
+        {
+            AppMessageBox.Show(ownerWindow, $"备份已还原到原文件路径，但刷新备份列表失败：{ex.Message}", "还原已完成", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        string currentFilePath = getCurrentFilePath();
+        if (string.Equals(currentFilePath, backup.OriginalFilePath, StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                loadConfigFile(currentFilePath);
+            }
+            catch (Exception ex)
+            {
+                AppMessageBox.Show(ownerWindow, $"备份已还原到原文件路径，但重新加载当前文件失败：{ex.Message}", "还原已完成", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        ToastService.ShowSuccess("备份已还原到原文件路径。");
     }
 
     private void RestoreBackupAs_Button_Click(object sender, RoutedEventArgs e)
@@ -437,14 +460,20 @@ public partial class BackupRestoreControl : UserControl
             !string.IsNullOrWhiteSpace(profile.Note);
     }
 
-    private static string BuildRestoreWarning(BackupMetadata backup, string targetFilePath)
+    private static string BuildRestoreWarning(
+        BackupMetadata backup,
+        string targetFilePath,
+        bool willCreateSafetyBackup)
     {
         string? targetFolderUserID = AppDataStore.GetUserIDFromCharacterFolder(targetFilePath);
         string userIDWarning = !string.IsNullOrWhiteSpace(targetFolderUserID) &&
             !string.IsNullOrWhiteSpace(backup.EffectiveUserID) &&
             !string.Equals(targetFolderUserID, backup.EffectiveUserID, StringComparison.OrdinalIgnoreCase)
-                ? $"\n\n警告：目标目录 User ID 为 {targetFolderUserID}，备份文件 User ID 为 {backup.EffectiveUserID}。"
+                ? $"\n\n警告：目标目录 User ID 为 {targetFolderUserID}，备份归属 User ID 为 {backup.EffectiveUserID}。"
                 : string.Empty;
+        string safetyBackupText = willCreateSafetyBackup
+            ? "覆盖前会自动备份当前目标文件。"
+            : "当前不会创建还原前安全备份，覆盖后目标文件当前状态将无法从工具备份中恢复。";
 
         return
             "将把下面的备份文件还原到原文件路径，并覆盖目标文件。\n\n" +
@@ -454,7 +483,7 @@ public partial class BackupRestoreControl : UserControl
             $"文件 User ID：{DisplayOptionalText(backup.FileUserID)}\n\n" +
             $"原文件路径：\n{targetFilePath}\n\n" +
             $"备份文件路径：\n{backup.BackupFilePath}\n\n" +
-            $"覆盖前会自动备份当前目标文件。确定继续吗？{userIDWarning}";
+            $"{safetyBackupText}确定继续吗？{userIDWarning}";
     }
 
     private static string DisplayOptionalText(string text)

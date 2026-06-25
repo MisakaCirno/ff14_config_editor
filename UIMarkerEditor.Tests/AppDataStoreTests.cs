@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -49,9 +49,12 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.True(Directory.Exists(store.BackupsDirectory));
         Assert.Equal(Path.Combine(testDirectory, "Data", "configs", "config.json"), store.SettingsFilePath);
         Assert.Equal(Path.Combine(testDirectory, "Data", "cache", "servers.json"), store.ServersFilePath);
+        Assert.True(store.Settings.LimitBackupCountPerUser);
+        Assert.Equal(AppSettings.DefaultMaxBackupCountPerUser, store.Settings.MaxBackupCountPerUser);
         Assert.False(store.Settings.AutoBackupAfterLoad);
-        Assert.False(store.Settings.WayMarkCustomDirectoryAutoFillAttempted);
+        Assert.True(store.Settings.AutoBackupBeforeRestore);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.Equal(string.Empty, store.Settings.GameInstallDirectory);
         Assert.Equal(string.Empty, store.Settings.WayMarkCustomDirectory);
     }
 
@@ -151,6 +154,7 @@ public sealed class AppDataStoreTests : IDisposable
         store.SaveSettings(new AppSettings
         {
             MaxBackupCount = 37,
+            MaxBackupCountPerUser = 9,
             MaxBackupDays = 120,
             MaxLogFileSizeMb = 13,
             MaxLogFileCount = 4
@@ -169,45 +173,68 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal(13, store.Settings.MaxLogFileSizeMb);
         Assert.Equal(4, store.Settings.MaxLogFileCount);
         Assert.Equal(37, store.Settings.MaxBackupCount);
+        Assert.Equal(9, store.Settings.MaxBackupCountPerUser);
     }
 
     [Fact]
-    public async Task AutoFillWayMarkCustomDirectoryAsync_WhenDetected_PersistsDirectoryAndKeepsDefaultMode()
+    public void SaveSettings_WhenPerUserBackupCountInvalid_ThrowsAndDoesNotReplaceCurrentSettings()
     {
-        string detectedDirectory = Path.Combine(testDirectory, "Game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
-        Directory.CreateDirectory(detectedDirectory);
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        store.SaveSettings(new AppSettings
+        {
+            MaxBackupCountPerUser = 9
+        });
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            store.SaveSettings(new AppSettings
+            {
+                MaxBackupCountPerUser = AppSettings.MaxBackupCountLimit + 1
+            }));
+
+        Assert.Contains("每个玩家最多保留备份数量", exception.Message);
+        Assert.Equal(9, store.Settings.MaxBackupCountPerUser);
+    }
+
+    [Fact]
+    public async Task AutoDetectGameInstallDirectoryAsync_WhenDetected_PersistsGameInstallDirectoryAndKeepsDefaultMode()
+    {
+        string gameInstallDirectory = Path.Combine(testDirectory, "FinalFantasyXIV");
+        string detectedGameExecutablePath = Path.Combine(gameInstallDirectory, "game", "ffxiv_dx11.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(detectedGameExecutablePath)!);
+        File.WriteAllText(detectedGameExecutablePath, string.Empty);
         int detectCount = 0;
         AppDataStore store = CreateStore(() =>
         {
             detectCount++;
-            return detectedDirectory;
+            return detectedGameExecutablePath;
         });
         store.Initialize();
 
-        bool updatedDirectory = await store.AutoFillWayMarkCustomDirectoryAsync();
+        bool updatedPath = await store.AutoDetectGameInstallDirectoryAsync();
 
-        Assert.True(updatedDirectory);
+        Assert.True(updatedPath);
         Assert.Equal(1, detectCount);
-        Assert.True(store.Settings.WayMarkCustomDirectoryAutoFillAttempted);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
-        Assert.Equal(Path.GetFullPath(detectedDirectory), store.Settings.WayMarkCustomDirectory);
+        Assert.Equal(Path.GetFullPath(gameInstallDirectory), store.Settings.GameInstallDirectory);
+        Assert.Equal(string.Empty, store.Settings.WayMarkCustomDirectory);
 
         AppDataStore reloadedStore = CreateStore(() =>
         {
             detectCount++;
-            return Path.Combine(testDirectory, "Other");
+            return Path.Combine(testDirectory, "Other", "ffxiv_dx11.exe");
         });
         reloadedStore.Initialize();
-        bool reloadedUpdatedDirectory = await reloadedStore.AutoFillWayMarkCustomDirectoryAsync();
+        bool reloadedUpdatedPath = await reloadedStore.AutoDetectGameInstallDirectoryAsync();
 
-        Assert.False(reloadedUpdatedDirectory);
+        Assert.False(reloadedUpdatedPath);
         Assert.Equal(1, detectCount);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, reloadedStore.Settings.WayMarkOpenDirectoryMode);
-        Assert.Equal(Path.GetFullPath(detectedDirectory), reloadedStore.Settings.WayMarkCustomDirectory);
+        Assert.Equal(Path.GetFullPath(gameInstallDirectory), reloadedStore.Settings.GameInstallDirectory);
     }
 
     [Fact]
-    public async Task AutoFillWayMarkCustomDirectoryAsync_WhenNotDetected_PersistsAttemptAndDoesNotRetry()
+    public async Task AutoDetectGameInstallDirectoryAsync_WhenNotDetected_DoesNotPersistAttemptAndAllowsRetry()
     {
         int detectCount = 0;
         AppDataStore store = CreateStore(() =>
@@ -217,48 +244,234 @@ public sealed class AppDataStoreTests : IDisposable
         });
         store.Initialize();
 
-        bool updatedDirectory = await store.AutoFillWayMarkCustomDirectoryAsync();
+        bool updatedPath = await store.AutoDetectGameInstallDirectoryAsync();
 
-        Assert.False(updatedDirectory);
+        Assert.False(updatedPath);
         Assert.Equal(1, detectCount);
-        Assert.True(store.Settings.WayMarkCustomDirectoryAutoFillAttempted);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
-        Assert.Equal(string.Empty, store.Settings.WayMarkCustomDirectory);
+        Assert.Equal(string.Empty, store.Settings.GameInstallDirectory);
+
+        string gameInstallDirectory = Path.Combine(testDirectory, "FinalFantasyXIV");
+        string detectedGameExecutablePath = Path.Combine(gameInstallDirectory, "game", "ffxiv_dx11.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(detectedGameExecutablePath)!);
+        File.WriteAllText(detectedGameExecutablePath, string.Empty);
 
         AppDataStore reloadedStore = CreateStore(() =>
         {
             detectCount++;
-            return Path.Combine(testDirectory, "Game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
+            return detectedGameExecutablePath;
         });
         reloadedStore.Initialize();
-        bool reloadedUpdatedDirectory = await reloadedStore.AutoFillWayMarkCustomDirectoryAsync();
+        bool reloadedUpdatedPath = await reloadedStore.AutoDetectGameInstallDirectoryAsync();
 
-        Assert.False(reloadedUpdatedDirectory);
-        Assert.Equal(1, detectCount);
+        Assert.True(reloadedUpdatedPath);
+        Assert.Equal(2, detectCount);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, reloadedStore.Settings.WayMarkOpenDirectoryMode);
-        Assert.Equal(string.Empty, reloadedStore.Settings.WayMarkCustomDirectory);
+        Assert.Equal(Path.GetFullPath(gameInstallDirectory), reloadedStore.Settings.GameInstallDirectory);
     }
 
     [Fact]
-    public async Task AutoFillWayMarkCustomDirectoryAsync_DoesNotOverwriteExistingDirectoryOrMode()
+    public async Task AutoDetectGameInstallDirectoryAsync_WhenExistingDirectoryIsInvalid_ReplacesItWithDetectedDirectory()
     {
-        string manualDirectory = Path.Combine(testDirectory, "Manual", "FINAL FANTASY XIV - A Realm Reborn");
-        string detectedDirectory = Path.Combine(testDirectory, "Game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
-        AppDataStore store = CreateStore(() => detectedDirectory);
+        string invalidGameInstallDirectory = Path.Combine(testDirectory, "MissingGame");
+        string settingsPath = Path.Combine(testDirectory, "Data", "configs", "config.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
+        File.WriteAllText(
+            settingsPath,
+            JsonSerializer.Serialize(new AppSettings
+            {
+                GameInstallDirectory = invalidGameInstallDirectory
+            }));
+
+        string detectedGameInstallDirectory = Path.Combine(testDirectory, "DetectedGame");
+        string detectedGameExecutablePath = Path.Combine(detectedGameInstallDirectory, "game", "ffxiv_dx11.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(detectedGameExecutablePath)!);
+        File.WriteAllText(detectedGameExecutablePath, string.Empty);
+        AppDataStore store = CreateStore(() => detectedGameExecutablePath);
+        store.Initialize();
+
+        bool updatedPath = await store.AutoDetectGameInstallDirectoryAsync();
+
+        Assert.True(updatedPath);
+        Assert.Equal(Path.GetFullPath(detectedGameInstallDirectory), store.Settings.GameInstallDirectory);
+
+        AppDataStore reloadedStore = CreateStore();
+        reloadedStore.Initialize();
+        Assert.Equal(Path.GetFullPath(detectedGameInstallDirectory), reloadedStore.Settings.GameInstallDirectory);
+    }
+
+    [Fact]
+    public async Task AutoDetectGameInstallDirectoryAsync_DoesNotOverwriteExistingGameInstallDirectoryOrMode()
+    {
+        string manualGameInstallDirectory = Path.Combine(testDirectory, "Manual");
+        string manualGameExecutablePath = Path.Combine(manualGameInstallDirectory, "game", "ffxiv_dx11.exe");
+        string customDirectory = Path.Combine(testDirectory, "Manual", "OpenHere");
+        Directory.CreateDirectory(Path.GetDirectoryName(manualGameExecutablePath)!);
+        File.WriteAllText(manualGameExecutablePath, string.Empty);
+        int detectCount = 0;
+        AppDataStore store = CreateStore(() =>
+        {
+            detectCount++;
+            return Path.Combine(testDirectory, "Game", "ffxiv_dx11.exe");
+        });
         store.Initialize();
         store.SaveSettings(new AppSettings
         {
             WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.CustomDirectory,
-            WayMarkCustomDirectory = manualDirectory,
-            WayMarkCustomDirectoryAutoFillAttempted = false
+            GameInstallDirectory = manualGameInstallDirectory,
+            WayMarkCustomDirectory = customDirectory
         });
 
-        bool updatedDirectory = await store.AutoFillWayMarkCustomDirectoryAsync();
+        bool updatedPath = await store.AutoDetectGameInstallDirectoryAsync();
 
-        Assert.False(updatedDirectory);
-        Assert.True(store.Settings.WayMarkCustomDirectoryAutoFillAttempted);
+        Assert.False(updatedPath);
+        Assert.Equal(0, detectCount);
         Assert.Equal(WayMarkOpenDirectoryMode.CustomDirectory, store.Settings.WayMarkOpenDirectoryMode);
-        Assert.Equal(manualDirectory, store.Settings.WayMarkCustomDirectory);
+        Assert.Equal(Path.GetFullPath(manualGameInstallDirectory), store.Settings.GameInstallDirectory);
+        Assert.Equal(Path.GetFullPath(customDirectory), store.Settings.WayMarkCustomDirectory);
+    }
+
+    [Fact]
+    public void SetGameInstallDirectoryFromDetectedPath_WhenDirectoryIsSame_ReturnsUnchanged()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string gameInstallDirectory = Path.Combine(testDirectory, "FinalFantasyXIV");
+        string gameExecutablePath = Path.Combine(gameInstallDirectory, "game", "ffxiv_dx11.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(gameExecutablePath)!);
+        File.WriteAllText(gameExecutablePath, string.Empty);
+
+        GameInstallDirectoryUpdateResult firstResult = store.SetGameInstallDirectoryFromDetectedPath(gameExecutablePath);
+        GameInstallDirectoryUpdateResult secondResult = store.SetGameInstallDirectoryFromDetectedPath(
+            Path.GetDirectoryName(gameExecutablePath));
+
+        Assert.Equal(GameInstallDirectoryUpdateResult.Updated, firstResult);
+        Assert.Equal(GameInstallDirectoryUpdateResult.Unchanged, secondResult);
+        Assert.Equal(Path.GetFullPath(gameInstallDirectory), store.Settings.GameInstallDirectory);
+    }
+
+    [Fact]
+    public void SetGameInstallDirectoryFromLoadedSaveFile_WhenSettingsEmptyAndFileIsUnderGameDirectory_PersistsInstallDirectory()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string gameInstallDirectory = Path.Combine(testDirectory, "FinalFantasyXIV");
+        string gameExecutablePath = Path.Combine(gameInstallDirectory, "game", "ffxiv_dx11.exe");
+        string saveFilePath = Path.Combine(
+            gameInstallDirectory,
+            "game",
+            "My Games",
+            "FINAL FANTASY XIV - A Realm Reborn",
+            "FFXIV_CHR0011223344556677",
+            "UISAVE.DAT");
+        Directory.CreateDirectory(Path.GetDirectoryName(gameExecutablePath)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(saveFilePath)!);
+        File.WriteAllText(gameExecutablePath, string.Empty);
+        File.WriteAllText(saveFilePath, string.Empty);
+
+        GameInstallDirectoryUpdateResult result = store.SetGameInstallDirectoryFromLoadedSaveFile(saveFilePath);
+
+        Assert.Equal(GameInstallDirectoryUpdateResult.Updated, result);
+        Assert.Equal(Path.GetFullPath(gameInstallDirectory), store.Settings.GameInstallDirectory);
+
+        AppDataStore reloadedStore = CreateStore();
+        reloadedStore.Initialize();
+        Assert.Equal(Path.GetFullPath(gameInstallDirectory), reloadedStore.Settings.GameInstallDirectory);
+    }
+
+    [Fact]
+    public void SetGameInstallDirectoryFromLoadedSaveFile_WhenExistingDirectoryIsInvalid_ReplacesItWithInferredDirectory()
+    {
+        string invalidGameInstallDirectory = Path.Combine(testDirectory, "MissingGame");
+        string settingsPath = Path.Combine(testDirectory, "Data", "configs", "config.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
+        File.WriteAllText(
+            settingsPath,
+            JsonSerializer.Serialize(new AppSettings
+            {
+                GameInstallDirectory = invalidGameInstallDirectory
+            }));
+
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string gameInstallDirectory = Path.Combine(testDirectory, "FinalFantasyXIV");
+        string gameExecutablePath = Path.Combine(gameInstallDirectory, "game", "ffxiv_dx11.exe");
+        string saveFilePath = Path.Combine(
+            gameInstallDirectory,
+            "game",
+            "My Games",
+            "FINAL FANTASY XIV - A Realm Reborn",
+            "FFXIV_CHR0011223344556677",
+            "UISAVE.DAT");
+        Directory.CreateDirectory(Path.GetDirectoryName(gameExecutablePath)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(saveFilePath)!);
+        File.WriteAllText(gameExecutablePath, string.Empty);
+        File.WriteAllText(saveFilePath, string.Empty);
+
+        GameInstallDirectoryUpdateResult result = store.SetGameInstallDirectoryFromLoadedSaveFile(saveFilePath);
+
+        Assert.Equal(GameInstallDirectoryUpdateResult.Updated, result);
+        Assert.Equal(Path.GetFullPath(gameInstallDirectory), store.Settings.GameInstallDirectory);
+    }
+
+    [Fact]
+    public void SetGameInstallDirectoryFromLoadedSaveFile_WhenSettingsAlreadyHasDirectory_DoesNotOverwrite()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string existingInstallDirectory = Path.Combine(testDirectory, "ExistingGame");
+        string existingExecutablePath = Path.Combine(existingInstallDirectory, "game", "ffxiv_dx11.exe");
+        string otherInstallDirectory = Path.Combine(testDirectory, "OtherGame");
+        string otherExecutablePath = Path.Combine(otherInstallDirectory, "game", "ffxiv_dx11.exe");
+        string saveFilePath = Path.Combine(
+            otherInstallDirectory,
+            "game",
+            "My Games",
+            "FINAL FANTASY XIV - A Realm Reborn",
+            "FFXIV_CHR0011223344556677",
+            "UISAVE.DAT");
+        Directory.CreateDirectory(Path.GetDirectoryName(existingExecutablePath)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(otherExecutablePath)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(saveFilePath)!);
+        File.WriteAllText(existingExecutablePath, string.Empty);
+        File.WriteAllText(otherExecutablePath, string.Empty);
+        File.WriteAllText(saveFilePath, string.Empty);
+        store.SaveSettings(new AppSettings
+        {
+            GameInstallDirectory = existingExecutablePath
+        });
+
+        GameInstallDirectoryUpdateResult result = store.SetGameInstallDirectoryFromLoadedSaveFile(saveFilePath);
+
+        Assert.Equal(GameInstallDirectoryUpdateResult.Unchanged, result);
+        Assert.Equal(Path.GetFullPath(existingInstallDirectory), store.Settings.GameInstallDirectory);
+    }
+
+    [Fact]
+    public void SaveSettings_WhenGameInstallDirectoryInvalid_ThrowsAndDoesNotReplaceCurrentSettings()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string validGameInstallDirectory = Path.Combine(testDirectory, "ValidGame");
+        string validGameExecutablePath = Path.Combine(validGameInstallDirectory, "game", "ffxiv_dx11.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(validGameExecutablePath)!);
+        File.WriteAllText(validGameExecutablePath, string.Empty);
+        store.SaveSettings(new AppSettings
+        {
+            MaxBackupCount = 37,
+            GameInstallDirectory = validGameExecutablePath
+        });
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            store.SaveSettings(new AppSettings
+            {
+                MaxBackupCount = 7,
+                GameInstallDirectory = Path.Combine(testDirectory, "MissingGame")
+            }));
+
+        Assert.Contains("游戏安装目录无效", exception.Message);
+        Assert.Equal(37, store.Settings.MaxBackupCount);
+        Assert.Equal(Path.GetFullPath(validGameInstallDirectory), store.Settings.GameInstallDirectory);
     }
 
     [Fact]
@@ -272,16 +485,27 @@ public sealed class AppDataStoreTests : IDisposable
             "game",
             "My Games",
             "FINAL FANTASY XIV - A Realm Reborn");
+        string gameInstallDirectory = Path.Combine(
+            testDirectory,
+            "\u6700\u7EC8\u5E7B\u60F3XIV",
+            "game",
+            "ffxiv_dx11.exe");
+        string gameInstallRootDirectory = Path.GetDirectoryName(Path.GetDirectoryName(gameInstallDirectory)!)!;
+        Directory.CreateDirectory(Path.GetDirectoryName(gameInstallDirectory)!);
+        File.WriteAllText(gameInstallDirectory, string.Empty);
 
         store.SaveSettings(new AppSettings
         {
             UseWayMarkImageLabels = false,
             StartupWayMarkAction = StartupWayMarkAction.LoadMostRecentFile,
             WayMarkFavoriteSaveMode = WayMarkFavoriteSaveMode.Auto,
-            WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.Default,
+            WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.GameCharacterDirectory,
+            GameInstallDirectory = gameInstallDirectory,
             WayMarkCustomDirectory = customDirectory,
-            WayMarkCustomDirectoryAutoFillAttempted = true,
             AutoBackupAfterLoad = true,
+            AutoBackupBeforeRestore = false,
+            LimitBackupCountPerUser = false,
+            MaxBackupCountPerUser = 12,
             MaxLogFileSizeMb = 13,
             MaxLogFileCount = 4,
             LastServerListManualRefreshAttempt = new DateTime(2026, 6, 18, 8, 30, 0),
@@ -303,10 +527,13 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(reloadedStore.Settings.UseWayMarkImageLabels);
         Assert.Equal(StartupWayMarkAction.LoadMostRecentFile, reloadedStore.Settings.StartupWayMarkAction);
         Assert.Equal(WayMarkFavoriteSaveMode.Auto, reloadedStore.Settings.WayMarkFavoriteSaveMode);
-        Assert.Equal(WayMarkOpenDirectoryMode.Default, reloadedStore.Settings.WayMarkOpenDirectoryMode);
+        Assert.Equal(WayMarkOpenDirectoryMode.GameCharacterDirectory, reloadedStore.Settings.WayMarkOpenDirectoryMode);
+        Assert.Equal(Path.GetFullPath(gameInstallRootDirectory), reloadedStore.Settings.GameInstallDirectory);
         Assert.Equal(Path.GetFullPath(customDirectory), reloadedStore.Settings.WayMarkCustomDirectory);
-        Assert.True(reloadedStore.Settings.WayMarkCustomDirectoryAutoFillAttempted);
         Assert.True(reloadedStore.Settings.AutoBackupAfterLoad);
+        Assert.False(reloadedStore.Settings.AutoBackupBeforeRestore);
+        Assert.False(reloadedStore.Settings.LimitBackupCountPerUser);
+        Assert.Equal(12, reloadedStore.Settings.MaxBackupCountPerUser);
         Assert.Equal(13, reloadedStore.Settings.MaxLogFileSizeMb);
         Assert.Equal(4, reloadedStore.Settings.MaxLogFileCount);
         Assert.Equal(new DateTime(2026, 6, 18, 8, 30, 0), reloadedStore.Settings.LastServerListManualRefreshAttempt);
@@ -321,10 +548,16 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
-    public void Initialize_RepairsUtf8DecodedAsGbkWayMarkCustomDirectory()
+    public void Initialize_RepairsUtf8DecodedAsGbkConfiguredPaths()
     {
         AppDataStore store = CreateStore();
         store.Initialize();
+        string gameInstallDirectory = Path.Combine(
+            testDirectory,
+            "\u6700\u7EC8\u5E7B\u60F3XIV",
+            "game",
+            "ffxiv_dx11.exe");
+        string gameInstallRootDirectory = Path.GetDirectoryName(Path.GetDirectoryName(gameInstallDirectory)!)!;
         string customDirectory = Path.Combine(
             testDirectory,
             "\u6700\u7EC8\u5E7B\u60F3XIV",
@@ -332,20 +565,22 @@ public sealed class AppDataStoreTests : IDisposable
             "My Games",
             "FINAL FANTASY XIV - A Realm Reborn");
         string garbledDirectory = CreateUtf8DecodedAsGbk(customDirectory);
+        Directory.CreateDirectory(Path.GetDirectoryName(gameInstallDirectory)!);
+        File.WriteAllText(gameInstallDirectory, string.Empty);
         Directory.CreateDirectory(Path.GetDirectoryName(store.SettingsFilePath)!);
         File.WriteAllText(
             store.SettingsFilePath,
             JsonSerializer.Serialize(new AppSettings
             {
-                WayMarkCustomDirectory = garbledDirectory,
-                WayMarkCustomDirectoryAutoFillAttempted = true
+                GameInstallDirectory = CreateUtf8DecodedAsGbk(gameInstallDirectory),
+                WayMarkCustomDirectory = garbledDirectory
             }));
 
         AppDataStore reloadedStore = CreateStore();
         reloadedStore.Initialize();
 
+        Assert.Equal(Path.GetFullPath(gameInstallRootDirectory), reloadedStore.Settings.GameInstallDirectory);
         Assert.Equal(Path.GetFullPath(customDirectory), reloadedStore.Settings.WayMarkCustomDirectory);
-        Assert.True(reloadedStore.Settings.WayMarkCustomDirectoryAutoFillAttempted);
     }
 
     [Fact]
@@ -764,17 +999,127 @@ public sealed class AppDataStoreTests : IDisposable
         byte[] sourceBytes = CreateMinimalUISaveFile(regionId: 123);
         File.WriteAllBytes(sourceFilePath, sourceBytes);
 
-        BackupMetadata backup = store.CreateBackup(sourceFilePath, cleanupAfterCreate: false);
+        BackupMetadata backup = store.CreateBackup(
+            sourceFilePath,
+            cleanupAfterCreate: false,
+            creationTrigger: BackupCreationTriggers.BeforeSave);
 
         Assert.True(File.Exists(backup.BackupFilePath));
         byte[] backupBytes = File.ReadAllBytes(backup.BackupFilePath);
         Assert.Equal(sourceBytes, backupBytes);
         Assert.Equal(backupBytes.Length, backup.SourceFileSize);
         Assert.Equal(Convert.ToHexString(SHA256.HashData(backupBytes)), backup.SourceFileSha256);
+        Assert.Equal(BackupCreationTriggers.BeforeSave, backup.CreationTrigger);
+        Assert.Equal("保存前自动备份", backup.CreationTriggerDisplay);
         BackupMarkerSnapshot snapshot = Assert.Single(backup.MarkerSnapshots);
         Assert.Equal(123, snapshot.RegionID);
         Assert.Equal(1, snapshot.SlotIndex);
         Assert.Equal(8, snapshot.EnabledPointCount);
+    }
+
+    [Fact]
+    public void CreateBackup_WhenSourceIsTrustedCharacterFolder_UsesFolderUserIdAsEffectiveUserId()
+    {
+        string gameInstallDirectory = Path.Combine(testDirectory, "GameInstall");
+        string gameExecutablePath = Path.Combine(gameInstallDirectory, "game", "ffxiv_dx11.exe");
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        Directory.CreateDirectory(Path.GetDirectoryName(gameExecutablePath)!);
+        File.WriteAllText(gameExecutablePath, string.Empty);
+        store.SaveSettings(new AppSettings
+        {
+            GameInstallDirectory = gameExecutablePath
+        });
+        string gameConfigRoot = Path.Combine(gameInstallDirectory, "game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
+        string sourceDirectory = Path.Combine(gameConfigRoot, "FFXIV_CHRAAAABBBBCCCCDDDD");
+        Directory.CreateDirectory(sourceDirectory);
+        string sourceFilePath = Path.Combine(sourceDirectory, "UISAVE.DAT");
+        File.WriteAllBytes(sourceFilePath, CreateMinimalUISaveFile(regionId: 123));
+
+        BackupMetadata backup = store.CreateBackup(sourceFilePath, cleanupAfterCreate: false);
+
+        Assert.True(store.IsTrustedGameCharacterSaveFile(sourceFilePath));
+        Assert.Equal("AAAABBBBCCCCDDDD", backup.FolderUserID);
+        Assert.Equal("0123456789ABCDEF", backup.FileUserID);
+        Assert.True(backup.UseFolderUserIDAsEffectiveUserID);
+        Assert.Equal("AAAABBBBCCCCDDDD", backup.EffectiveUserID);
+        Assert.Contains("AAAABBBBCCCCDDDD", backup.Id);
+    }
+
+    [Fact]
+    public void CreateBackup_WhenSourceIsUntrustedCharacterFolder_UsesFileUserIdAsEffectiveUserId()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string sourceDirectory = Path.Combine(testDirectory, "Temporary", "FFXIV_CHRAAAABBBBCCCCDDDD");
+        Directory.CreateDirectory(sourceDirectory);
+        string sourceFilePath = Path.Combine(sourceDirectory, "UISAVE.DAT");
+        File.WriteAllBytes(sourceFilePath, CreateMinimalUISaveFile(regionId: 123));
+
+        BackupMetadata backup = store.CreateBackup(sourceFilePath, cleanupAfterCreate: false);
+
+        Assert.False(store.IsTrustedGameCharacterSaveFile(sourceFilePath));
+        Assert.Equal("AAAABBBBCCCCDDDD", backup.FolderUserID);
+        Assert.Equal("0123456789ABCDEF", backup.FileUserID);
+        Assert.False(backup.UseFolderUserIDAsEffectiveUserID);
+        Assert.Equal("0123456789ABCDEF", backup.EffectiveUserID);
+        Assert.Contains("0123456789ABCDEF", backup.Id);
+    }
+
+    [Fact]
+    public void CreateBackup_WhenSourceIsOutsideCharacterFolder_UsesFileUserIdAsEffectiveUserId()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string sourceDirectory = Path.Combine(testDirectory, "ManualFiles");
+        Directory.CreateDirectory(sourceDirectory);
+        string sourceFilePath = Path.Combine(sourceDirectory, "UISAVE.DAT");
+        File.WriteAllBytes(sourceFilePath, CreateMinimalUISaveFile(regionId: 123));
+
+        BackupMetadata backup = store.CreateBackup(sourceFilePath, cleanupAfterCreate: false);
+
+        Assert.False(store.IsTrustedGameCharacterSaveFile(sourceFilePath));
+        Assert.Equal(string.Empty, backup.FolderUserID);
+        Assert.Equal("0123456789ABCDEF", backup.FileUserID);
+        Assert.False(backup.UseFolderUserIDAsEffectiveUserID);
+        Assert.Equal("0123456789ABCDEF", backup.EffectiveUserID);
+        Assert.Contains("0123456789ABCDEF", backup.Id);
+    }
+
+    [Fact]
+    public void CleanupBackups_WhenPerUserLimitEnabled_DeletesOldestBackupsForEachUser()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        store.SaveSettings(new AppSettings
+        {
+            LimitBackupCount = false,
+            LimitBackupDays = false,
+            LimitBackupCountPerUser = true,
+            MaxBackupCountPerUser = 2
+        });
+        DateTime baseTime = new(2026, 6, 25, 10, 0, 0);
+        string userOldDirectory = WriteBackupMetadata(store, "user-old", folderUserId: "AAA111", fileUserId: "OTHER001", backupTime: baseTime);
+        string userMiddleDirectory = WriteBackupMetadata(store, "user-middle", folderUserId: "AAA111", fileUserId: "OTHER002", backupTime: baseTime.AddMinutes(1));
+        string userNewestDirectory = WriteBackupMetadata(store, "user-newest", folderUserId: "AAA111", fileUserId: "OTHER003", backupTime: baseTime.AddMinutes(2));
+        string otherUserOldDirectory = WriteBackupMetadata(store, "other-old", "BBB222", baseTime);
+        string otherUserNewDirectory = WriteBackupMetadata(store, "other-new", "BBB222", baseTime.AddMinutes(1));
+        string unknownUserDirectory = WriteBackupMetadata(store, "unknown-old", string.Empty, baseTime);
+
+        store.CleanupBackups(userNewestDirectory);
+
+        Assert.False(Directory.Exists(userOldDirectory));
+        Assert.True(Directory.Exists(userMiddleDirectory));
+        Assert.True(Directory.Exists(userNewestDirectory));
+        Assert.True(Directory.Exists(otherUserOldDirectory));
+        Assert.True(Directory.Exists(otherUserNewDirectory));
+        Assert.True(Directory.Exists(unknownUserDirectory));
+        List<BackupMetadata> remainingBackups = store.LoadBackups();
+        Assert.Equal(2, remainingBackups.Count(backup =>
+            string.Equals(backup.EffectiveUserID, "AAA111", StringComparison.OrdinalIgnoreCase)));
+        Assert.Equal(2, remainingBackups.Count(backup =>
+            string.Equals(backup.EffectiveUserID, "BBB222", StringComparison.OrdinalIgnoreCase)));
+        Assert.Contains(remainingBackups, backup => string.IsNullOrWhiteSpace(backup.EffectiveUserID));
     }
 
     [Fact]
@@ -1385,9 +1730,9 @@ public sealed class AppDataStoreTests : IDisposable
         return CreateStore(() => null);
     }
 
-    private AppDataStore CreateStore(Func<string?> wayMarkCustomDirectoryDetector)
+    private AppDataStore CreateStore(Func<string?> gameInstallDirectoryDetector)
     {
-        return new AppDataStore(testDirectory, wayMarkCustomDirectoryDetector);
+        return new AppDataStore(testDirectory, gameInstallDirectoryDetector);
     }
 
     private AppDataStore CreateStore(IAppDataNetworkClient networkClient)
@@ -1518,6 +1863,42 @@ public sealed class AppDataStoreTests : IDisposable
         typeof(AppDataStore)
             .GetMethod("RecoverInterruptedDataDirectoryMigration", BindingFlags.Instance | BindingFlags.NonPublic)!
             .Invoke(store, null);
+    }
+
+    private static string WriteBackupMetadata(
+        AppDataStore store,
+        string id,
+        string fileUserId,
+        DateTime backupTime)
+    {
+        return WriteBackupMetadata(
+            store,
+            id,
+            folderUserId: string.Empty,
+            fileUserId,
+            backupTime);
+    }
+
+    private static string WriteBackupMetadata(
+        AppDataStore store,
+        string id,
+        string folderUserId,
+        string fileUserId,
+        DateTime backupTime)
+    {
+        string backupDirectory = Path.Combine(store.BackupsDirectory, id);
+        Directory.CreateDirectory(backupDirectory);
+        File.WriteAllText(
+            Path.Combine(backupDirectory, "metadata.json"),
+            JsonSerializer.Serialize(new BackupMetadata
+            {
+                Id = id,
+                BackupTime = backupTime,
+                FolderUserID = folderUserId,
+                FileUserID = fileUserId,
+                UseFolderUserIDAsEffectiveUserID = !string.IsNullOrWhiteSpace(folderUserId)
+            }));
+        return backupDirectory;
     }
 
     private void WriteMapDataCache(

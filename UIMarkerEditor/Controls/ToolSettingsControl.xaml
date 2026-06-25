@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="UIMarkerEditor.Controls.ToolSettingsControl"
+<UserControl x:Class="UIMarkerEditor.Controls.ToolSettingsControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:UIMarkerEditor.Controls">
@@ -75,7 +75,7 @@
                                             VerticalAlignment="Center">
                                     <TextBlock Text="启动配置"
                                                Style="{StaticResource SettingsFormLabelStyle}"/>
-                                    <TextBlock Text="ⓘ"
+                                    <TextBlock Text="?"
                                                Foreground="{StaticResource AppMutedTextBrush}"
                                                VerticalAlignment="Center"
                                                Margin="-8,0,12,0"
@@ -93,7 +93,7 @@
                                             VerticalAlignment="Center">
                                     <TextBlock Text="迁移进度"
                                                Style="{StaticResource SettingsFormLabelStyle}"/>
-                                    <TextBlock Text="ⓘ"
+                                    <TextBlock Text="?"
                                                Foreground="{StaticResource AppMutedTextBrush}"
                                                VerticalAlignment="Center"
                                                Margin="-8,0,12,0"
@@ -147,6 +147,30 @@
                             <TextBlock Text="选择 UISAVE.DAT 时，文件选择器默认进入的位置。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
+                            <TextBlock Text="游戏安装目录"
+                                       Style="{StaticResource SettingsSubsectionTitleStyle}"/>
+                            <TextBlock Text="保存最终幻想 XIV 的安装根目录；也可以填写 game 目录或 ffxiv_dx11.exe，保存时会自动规范化为安装根目录。工具启动时会尝试从注册表自动读取，也可以扫描当前运行中的游戏；无法读取时请手动填写。"
+                                       Style="{StaticResource SettingsMutedTextStyle}"
+                                       Margin="0,-4,0,8"/>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="GameInstallDirectory_TextBox"
+                                         HorizontalContentAlignment="Left"
+                                         TextAlignment="Left"
+                                         LostFocus="GameInstallDirectory_TextBox_LostFocus"
+                                         PreviewKeyDown="GameInstallDirectory_TextBox_PreviewKeyDown"/>
+                                <Button x:Name="ScanRunningGameInstallDirectory_Button"
+                                        Grid.Column="1"
+                                        Content="扫描运行中的游戏"
+                                        Margin="8,0,0,0"
+                                        Click="ScanRunningGameInstallDirectory_Button_Click"/>
+                            </Grid>
+
+                            <TextBlock Text="打开位置"
+                                       Style="{StaticResource SettingsSubsectionTitleStyle}"/>
                             <RadioButton x:Name="OpenDirectoryDefault_RadioButton"
                                          GroupName="WayMarkOpenDirectoryMode"
                                          Content="默认"
@@ -156,12 +180,24 @@
                                        Style="{StaticResource SettingsMutedTextStyle}"
                                        Margin="22,-4,0,10"/>
 
-                            <RadioButton x:Name="OpenDirectoryCustom_RadioButton"
+                            <RadioButton x:Name="OpenDirectoryGameCharacter_RadioButton"
                                          GroupName="WayMarkOpenDirectoryMode"
-                                         Content="自定义路径"
+                                         Content="游戏角色目录"
                                          Margin="0,0,0,8"
                                          Checked="OpenDirectoryMode_RadioButton_Checked"/>
-                            <TextBlock Text="使用你指定的目录。首次启动时，工具会自动尝试把游戏角色目录预填到这里。"
+                            <TextBlock Text="使用游戏安装目录下的 game\My Games\FINAL FANTASY XIV - A Realm Reborn 目录。"
+                                       Style="{StaticResource SettingsMutedTextStyle}"
+                                       Margin="22,-4,0,8"/>
+                            <TextBox x:Name="GameCharacterDirectory_TextBox"
+                                     Style="{StaticResource SettingsReadOnlyTextBoxStyle}"
+                                     Margin="22,0,0,10"/>
+
+                            <RadioButton x:Name="OpenDirectoryCustom_RadioButton"
+                                         GroupName="WayMarkOpenDirectoryMode"
+                                         Content="自定义目录"
+                                         Margin="0,0,0,8"
+                                         Checked="OpenDirectoryMode_RadioButton_Checked"/>
+                            <TextBlock Text="使用你指定的目录。"
                                        Style="{StaticResource SettingsMutedTextStyle}"
                                        Margin="22,-4,0,8"/>
                             <Grid Margin="22,0,0,0">
@@ -354,7 +390,7 @@
                               Header="自动备份"
                               Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="按设置自动创建 UISAVE.DAT 工具备份；清理策略只影响工具生成的备份，不会删除游戏原始文件。"
+                            <TextBlock Text="按设置自动创建 UISAVE.DAT 工具备份；自动备份只作用于由游戏安装目录推导出的角色配置目录，临时文件和其他位置的文件会被跳过。清理策略只影响工具生成的备份，不会删除游戏原始文件。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
                             <TextBlock Text="备份时机"
@@ -365,7 +401,7 @@
                                           Margin="0,0,8,0"
                                           Checked="AutoBackup_CheckChanged"
                                           Unchecked="AutoBackup_CheckChanged"/>
-                                <TextBlock Text="保存修改前自动备份原始 UISAVE.DAT"
+                                <TextBlock Text="保存修改前，备份当前正在编辑的原始 UISAVE.DAT"
                                            VerticalAlignment="Center"
                                            Padding="0"/>
                             </StackPanel>
@@ -376,26 +412,34 @@
                                           Margin="0,0,8,0"
                                           Checked="AutoBackup_CheckChanged"
                                           Unchecked="AutoBackup_CheckChanged"/>
-                                <TextBlock Text="成功读取 UISAVE.DAT 后自动备份"
+                                <TextBlock Text="读取成功后，备份刚刚读取的 UISAVE.DAT"
                                            VerticalAlignment="Center"
                                            Padding="0"/>
                             </StackPanel>
-                            <TextBlock Text="读取后备份默认关闭，适合在开始编辑前保留一份原始状态。"
-                                       Style="{StaticResource SettingsMutedTextStyle}"
-                                       Margin="22,4,0,0"/>
+                            <StackPanel Orientation="Horizontal"
+                                        Margin="0,6,0,0">
+                                <CheckBox x:Name="AutoBackupBeforeRestore_CheckBox"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,8,0"
+                                          Checked="AutoBackup_CheckChanged"
+                                          Unchecked="AutoBackup_CheckChanged"/>
+                                <TextBlock Text="还原到原文件路径前，备份即将被覆盖的当前 UISAVE.DAT"
+                                           VerticalAlignment="Center"
+                                           Padding="0"/>
+                            </StackPanel>
 
                             <Separator Margin="0,12,0,12"/>
 
                             <TextBlock Text="自动清理"
                                        Style="{StaticResource SettingsSubsectionTitleStyle}"/>
-                            <TextBlock Text="关闭所有自动备份后仍会保留这些数值，重新启用时继续生效。"
+                            <TextBlock Text="达到数量上限后会从最老的备份开始删除；关闭所有自动备份后仍会保留这些数值，重新启用时继续生效。"
                                        Style="{StaticResource SettingsSectionDescriptionStyle}"/>
 
                             <StackPanel Orientation="Horizontal"
                                         Margin="0,0,0,8">
                                 <CheckBox x:Name="LimitBackupCount_CheckBox"
-                                          Content="限制备份数量"
-                                          Width="150"
+                                          Content="限制总备份数量"
+                                          Width="180"
                                           VerticalAlignment="Center"
                                           Checked="BackupLimit_CheckChanged"
                                           Unchecked="BackupLimit_CheckChanged"/>
@@ -411,10 +455,30 @@
                                            Margin="8,4,0,4"/>
                             </StackPanel>
 
+                            <StackPanel Orientation="Horizontal"
+                                        Margin="0,0,0,8">
+                                <CheckBox x:Name="LimitBackupCountPerUser_CheckBox"
+                                          Content="限制单个玩家备份数量"
+                                          Width="180"
+                                          VerticalAlignment="Center"
+                                          Checked="BackupLimit_CheckChanged"
+                                          Unchecked="BackupLimit_CheckChanged"/>
+                                <TextBox x:Name="MaxBackupCountPerUser_TextBox"
+                                         Width="120"
+                                         MaxLength="5"
+                                         LostFocus="MaxBackupCountPerUser_TextBox_LostFocus"
+                                         PreviewKeyDown="IntegerSetting_TextBox_PreviewKeyDown"
+                                         PreviewTextInput="IntegerTextBox_PreviewTextInput"
+                                         DataObject.Pasting="IntegerTextBox_Pasting"/>
+                                <TextBlock Text="个以内（每个玩家 ID）"
+                                           Style="{StaticResource SettingsMutedTextStyle}"
+                                           Margin="8,4,0,4"/>
+                            </StackPanel>
+
                             <StackPanel Orientation="Horizontal">
                                 <CheckBox x:Name="LimitBackupDays_CheckBox"
                                           Content="限制备份时间"
-                                          Width="150"
+                                          Width="180"
                                           VerticalAlignment="Center"
                                           Checked="BackupLimit_CheckChanged"
                                           Unchecked="BackupLimit_CheckChanged"/>

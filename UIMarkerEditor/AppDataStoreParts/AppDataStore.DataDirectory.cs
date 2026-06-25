@@ -49,6 +49,7 @@ public sealed partial class AppDataStore
         DataDirectoryMigrationState? migrationState = null;
         try
         {
+            AppLogger.SetLogFilePath(null);
             migrationState = CreateDataDirectoryMigrationState(oldDataDirectory, targetDirectory);
             SaveMigrationState(migrationState);
             CopyDataDirectoryFiles(migrationState);
@@ -124,6 +125,7 @@ public sealed partial class AppDataStore
         int totalSteps = 1;
         try
         {
+            AppLogger.SetLogFilePath(null);
             ReportMigrationProgress(progress, "准备迁移", "扫描可迁移目录。", completedSteps, totalSteps);
             migrationState = CreateDataDirectoryMigrationState(oldDataDirectory, targetDirectory);
             totalSteps = GetMigrationProgressTotalSteps(migrationState);

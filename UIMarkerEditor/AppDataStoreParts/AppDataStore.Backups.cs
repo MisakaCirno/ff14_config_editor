@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -13,7 +13,10 @@ namespace UIMarkerEditor;
 
 public sealed partial class AppDataStore
 {
-    public BackupMetadata CreateBackup(string sourceFilePath, bool cleanupAfterCreate = true)
+    public BackupMetadata CreateBackup(
+        string sourceFilePath,
+        bool cleanupAfterCreate = true,
+        string creationTrigger = "")
     {
         if (!File.Exists(sourceFilePath))
         {
@@ -37,7 +40,8 @@ public sealed partial class AppDataStore
                 stagingBackupFilePath,
                 backupConfig,
                 backupTime,
-                uniqueSuffix);
+                uniqueSuffix,
+                creationTrigger);
             WriteJson(Path.Combine(stagingDirectory, MetadataFileName), metadata);
 
             string backupDirectory = Path.Combine(BackupsDirectory, metadata.Id);
@@ -131,26 +135,87 @@ public sealed partial class AppDataStore
             DateTime cutoff = DateTime.Now.AddDays(-Settings.MaxBackupDays);
             foreach (BackupMetadata backup in backups.Where(b =>
                 b.BackupTime < cutoff &&
-                !preservedDirectories.Contains(NormalizeDirectoryPath(b.BackupDirectory))))
+                !IsPreservedBackup(b, preservedDirectories)))
             {
-                deleteDirectories.Add(backup.BackupDirectory);
+                AddDeleteDirectory(deleteDirectories, backup.BackupDirectory);
             }
         }
 
         if (Settings.LimitBackupCount && Settings.MaxBackupCount > 0)
         {
-            foreach (BackupMetadata backup in backups
-                .Where(b => !preservedDirectories.Contains(NormalizeDirectoryPath(b.BackupDirectory)))
-                .OrderByDescending(b => b.BackupTime)
-                .Skip(Settings.MaxBackupCount))
+            foreach (BackupMetadata backup in GetBackupsExceedingCountLimit(
+                backups,
+                Settings.MaxBackupCount,
+                preservedDirectories))
             {
-                deleteDirectories.Add(backup.BackupDirectory);
+                AddDeleteDirectory(deleteDirectories, backup.BackupDirectory);
+            }
+        }
+
+        if (Settings.LimitBackupCountPerUser && Settings.MaxBackupCountPerUser > 0)
+        {
+            foreach (IGrouping<string, BackupMetadata> backupsByUser in backups
+                .Where(b => !string.IsNullOrWhiteSpace(b.EffectiveUserID))
+                .GroupBy(b => b.EffectiveUserID.Trim(), StringComparer.OrdinalIgnoreCase))
+            {
+                foreach (BackupMetadata backup in GetBackupsExceedingCountLimit(
+                    backupsByUser,
+                    Settings.MaxBackupCountPerUser,
+                    preservedDirectories))
+                {
+                    AddDeleteDirectory(deleteDirectories, backup.BackupDirectory);
+                }
             }
         }
 
         foreach (string directory in deleteDirectories.Where(Directory.Exists))
         {
             Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    public bool IsTrustedGameCharacterSaveFile(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            return false;
+        }
+
+        try
+        {
+            return string.Equals(Path.GetFileName(filePath), BackupDataFileName, StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(GetUserIDFromCharacterFolder(filePath)) &&
+                IsInTrustedGameCharacterRootDirectory(filePath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
+    }
+
+    private static IEnumerable<BackupMetadata> GetBackupsExceedingCountLimit(
+        IEnumerable<BackupMetadata> backups,
+        int maxBackupCount,
+        HashSet<string> preservedDirectories)
+    {
+        return backups
+            .OrderByDescending(b => b.BackupTime)
+            .ThenByDescending(b => b.Id, StringComparer.OrdinalIgnoreCase)
+            .Skip(maxBackupCount)
+            .Where(b => !IsPreservedBackup(b, preservedDirectories));
+    }
+
+    private static bool IsPreservedBackup(BackupMetadata backup, HashSet<string> preservedDirectories)
+    {
+        return !string.IsNullOrWhiteSpace(backup.BackupDirectory) &&
+            preservedDirectories.Contains(NormalizeDirectoryPath(backup.BackupDirectory));
+    }
+
+    private static void AddDeleteDirectory(HashSet<string> deleteDirectories, string directory)
+    {
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            deleteDirectories.Add(directory);
         }
     }
 
@@ -171,12 +236,14 @@ public sealed partial class AppDataStore
         string backedUpFilePath,
         ConfigUISave backupConfig,
         DateTime backupTime,
-        string uniqueSuffix)
+        string uniqueSuffix,
+        string creationTrigger)
     {
         string backupTimeId = backupTime.ToString("yyyyMMdd_HHmmss_fff");
         string folderUserID = GetUserIDFromCharacterFolder(sourceFilePath) ?? string.Empty;
         string fileUserID = backupConfig.UserIDHex;
-        string userIDForName = !string.IsNullOrWhiteSpace(fileUserID) ? fileUserID : folderUserID;
+        bool useFolderUserID = IsTrustedGameCharacterSaveFile(sourceFilePath);
+        string userIDForName = useFolderUserID ? folderUserID : fileUserID;
 
         return new BackupMetadata
         {
@@ -186,10 +253,43 @@ public sealed partial class AppDataStore
             OriginalDirectory = Path.GetDirectoryName(sourceFilePath) ?? string.Empty,
             FolderUserID = folderUserID,
             FileUserID = fileUserID,
+            UseFolderUserIDAsEffectiveUserID = useFolderUserID,
+            CreationTrigger = creationTrigger ?? string.Empty,
             SourceFileSize = new FileInfo(backedUpFilePath).Length,
             SourceFileSha256 = ComputeSha256(backedUpFilePath),
             MarkerSnapshots = CreateMarkerSnapshots(backupConfig.Marks)
         };
+    }
+
+    private bool IsInTrustedGameCharacterRootDirectory(string filePath)
+    {
+        string? characterDirectory = Path.GetDirectoryName(filePath);
+        if (string.IsNullOrWhiteSpace(characterDirectory))
+        {
+            return false;
+        }
+
+        string? rootDirectory = Path.GetDirectoryName(characterDirectory);
+        if (string.IsNullOrWhiteSpace(rootDirectory))
+        {
+            return false;
+        }
+
+        string normalizedRootDirectory = NormalizeDirectoryPath(rootDirectory);
+        return EnumerateTrustedGameCharacterRootDirectories()
+            .Any(directory => string.Equals(directory, normalizedRootDirectory, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private IEnumerable<string> EnumerateTrustedGameCharacterRootDirectories()
+    {
+        if (WayMarkOpenDirectoryResolver.TryResolveGameCharacterRootDirectory(
+            Settings.GameInstallDirectory,
+            out string? configuredRootDirectory) &&
+            !string.IsNullOrWhiteSpace(configuredRootDirectory))
+        {
+            yield return NormalizeDirectoryPath(configuredRootDirectory);
+        }
+
     }
 
     private static List<BackupMarkerSnapshot> CreateMarkerSnapshots(SectionFMARKER? marks)

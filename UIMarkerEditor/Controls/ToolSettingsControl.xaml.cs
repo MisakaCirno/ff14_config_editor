@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+using FF14ConfigEditor;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Windows;
@@ -64,18 +65,23 @@ public partial class ToolSettingsControl : UserControl
             MigrationStateFilePath_TextBox.Visibility = migrationStateVisibility;
             UpdateCurrentLogFilePathText();
             MaxBackupCount_TextBox.Text = appDataStore.Settings.MaxBackupCount.ToString(CultureInfo.InvariantCulture);
+            MaxBackupCountPerUser_TextBox.Text = appDataStore.Settings.MaxBackupCountPerUser.ToString(CultureInfo.InvariantCulture);
             MaxBackupDays_TextBox.Text = appDataStore.Settings.MaxBackupDays.ToString(CultureInfo.InvariantCulture);
             MaxLogFileSizeMb_TextBox.Text = appDataStore.Settings.MaxLogFileSizeMb.ToString(CultureInfo.InvariantCulture);
             MaxLogFileCount_TextBox.Text = appDataStore.Settings.MaxLogFileCount.ToString(CultureInfo.InvariantCulture);
             AutoBackupBeforeSave_CheckBox.IsChecked = appDataStore.Settings.AutoBackupBeforeSave;
             AutoBackupAfterLoad_CheckBox.IsChecked = appDataStore.Settings.AutoBackupAfterLoad;
+            AutoBackupBeforeRestore_CheckBox.IsChecked = appDataStore.Settings.AutoBackupBeforeRestore;
             WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.UseWayMarkImageLabels;
             WayMarkFavoriteSaveMode_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.WayMarkFavoriteSaveMode == WayMarkFavoriteSaveMode.Manual;
             LimitBackupCount_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCount;
+            LimitBackupCountPerUser_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCountPerUser;
             LimitBackupDays_CheckBox.IsChecked = appDataStore.Settings.LimitBackupDays;
             ApplyStartupWayMarkActionToUi(appDataStore.Settings.StartupWayMarkAction);
+            GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
             WayMarkCustomDirectory_TextBox.Text = appDataStore.Settings.WayMarkCustomDirectory;
             ApplyWayMarkOpenDirectoryModeToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
+            UpdateGameCharacterDirectoryState();
             UpdateBackupLimitInputState();
             RefreshStatusFields();
         });
@@ -86,14 +92,14 @@ public partial class ToolSettingsControl : UserControl
         RefreshStatusFields();
     }
 
-    public void RefreshWayMarkCustomDirectoryFromSettings()
+    public void RefreshGameInstallDirectoryFromSettings()
     {
         if (appDataStore == null) return;
-        if (string.IsNullOrWhiteSpace(appDataStore.Settings.WayMarkCustomDirectory)) return;
-        if (WayMarkCustomDirectory_TextBox.IsKeyboardFocusWithin) return;
-        if (!string.IsNullOrWhiteSpace(WayMarkCustomDirectory_TextBox.Text)) return;
+        if (string.IsNullOrWhiteSpace(appDataStore.Settings.GameInstallDirectory)) return;
+        if (GameInstallDirectory_TextBox.IsKeyboardFocusWithin) return;
 
-        WayMarkCustomDirectory_TextBox.Text = appDataStore.Settings.WayMarkCustomDirectory;
+        GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
+        UpdateGameCharacterDirectoryState();
     }
 
     private void SettingsNavigation_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -248,6 +254,7 @@ public partial class ToolSettingsControl : UserControl
             settings =>
             {
                 settings.LimitBackupCount = LimitBackupCount_CheckBox.IsChecked == true;
+                settings.LimitBackupCountPerUser = LimitBackupCountPerUser_CheckBox.IsChecked == true;
                 settings.LimitBackupDays = LimitBackupDays_CheckBox.IsChecked == true;
             },
             "保存自动清理设置",
@@ -264,6 +271,7 @@ public partial class ToolSettingsControl : UserControl
             {
                 settings.AutoBackupBeforeSave = AutoBackupBeforeSave_CheckBox.IsChecked == true;
                 settings.AutoBackupAfterLoad = AutoBackupAfterLoad_CheckBox.IsChecked == true;
+                settings.AutoBackupBeforeRestore = AutoBackupBeforeRestore_CheckBox.IsChecked == true;
             },
             "保存自动备份设置",
             CleanupBackupsIfEnabled);
@@ -280,6 +288,49 @@ public partial class ToolSettingsControl : UserControl
                 settings.WayMarkOpenDirectoryMode = ReadWayMarkOpenDirectoryModeFromUi();
             },
             "保存文件打开设置");
+    }
+
+    private void ScanRunningGameInstallDirectory_Button_Click(object sender, RoutedEventArgs e)
+    {
+        if (appDataStore == null) return;
+
+        try
+        {
+            GameInstallDirectoryUpdateResult result = appDataStore.SetGameInstallDirectoryFromRunningGameProcess();
+            if (result == GameInstallDirectoryUpdateResult.NotFound)
+            {
+                AppMessageBox.Show(
+                    ownerWindow,
+                    "没有找到可识别的最终幻想 XIV 游戏安装目录。请确认游戏正在运行，或手动填写安装目录。",
+                    "扫描游戏安装目录",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            SetSettingsUiSilently(() =>
+            {
+                GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
+                UpdateGameCharacterDirectoryState();
+            });
+            if (result == GameInstallDirectoryUpdateResult.Unchanged)
+            {
+                AppMessageBox.Show(
+                    ownerWindow,
+                    "扫描到的游戏安装目录与当前设置一致，无需修改。",
+                    "扫描游戏安装目录",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            ToastService.ShowSuccess("游戏安装目录已更新。");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException or IOException or UnauthorizedAccessException)
+        {
+            LoadSettingsIntoUi();
+            AppMessageBox.Show(ownerWindow, $"保存游戏安装目录失败：{ex.Message}", "设置保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void BrowseWayMarkCustomDirectory_Button_Click(object sender, RoutedEventArgs e)
@@ -299,7 +350,7 @@ public partial class ToolSettingsControl : UserControl
 
         Microsoft.Win32.OpenFolderDialog dialog = new()
         {
-            Title = "选择自定义路径",
+            Title = "选择自定义目录",
             InitialDirectory = initialDirectory
         };
 
@@ -316,9 +367,8 @@ public partial class ToolSettingsControl : UserControl
                 {
                     settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.CustomDirectory;
                     settings.WayMarkCustomDirectory = dialog.FolderName.Trim();
-                    settings.WayMarkCustomDirectoryAutoFillAttempted = true;
                 },
-                "保存自定义打开路径");
+                "保存自定义目录");
         }
     }
 
@@ -386,6 +436,19 @@ public partial class ToolSettingsControl : UserControl
             CleanupBackupsIfEnabled);
     }
 
+    private void MaxBackupCountPerUser_TextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        CommitIntegerSetting(
+            MaxBackupCountPerUser_TextBox,
+            "每个玩家最多保留备份数量",
+            AppSettings.MinBackupCount,
+            AppSettings.MaxBackupCountLimit,
+            settings => settings.MaxBackupCountPerUser,
+            (settings, value) => settings.MaxBackupCountPerUser = value,
+            "保存单个玩家备份数量设置",
+            CleanupBackupsIfEnabled);
+    }
+
     private void MaxLogFileSizeMb_TextBox_LostFocus(object sender, RoutedEventArgs e)
     {
         CommitIntegerSetting(
@@ -428,6 +491,15 @@ public partial class ToolSettingsControl : UserControl
                 (settings, value) => settings.MaxBackupCount = value,
                 "保存备份数量设置",
                 CleanupBackupsIfEnabled) ||
+            ReferenceEquals(textBox, MaxBackupCountPerUser_TextBox) && CommitIntegerSetting(
+                MaxBackupCountPerUser_TextBox,
+                "每个玩家最多保留备份数量",
+                AppSettings.MinBackupCount,
+                AppSettings.MaxBackupCountLimit,
+                settings => settings.MaxBackupCountPerUser,
+                (settings, value) => settings.MaxBackupCountPerUser = value,
+                "保存单个玩家备份数量设置",
+                CleanupBackupsIfEnabled) ||
             ReferenceEquals(textBox, MaxBackupDays_TextBox) && CommitIntegerSetting(
                 MaxBackupDays_TextBox,
                 "最多保留备份天数",
@@ -455,6 +527,25 @@ public partial class ToolSettingsControl : UserControl
                 "保存日志数量设置");
 
         if (committed)
+        {
+            Keyboard.ClearFocus();
+        }
+    }
+
+    private void GameInstallDirectory_TextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        CommitGameInstallDirectory();
+    }
+
+    private void GameInstallDirectory_TextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        if (CommitGameInstallDirectory())
         {
             Keyboard.ClearFocus();
         }
@@ -784,10 +875,15 @@ public partial class ToolSettingsControl : UserControl
 
     private void UpdateBackupLimitInputState()
     {
-        bool autoBackupEnabled = AutoBackupBeforeSave_CheckBox.IsChecked == true || AutoBackupAfterLoad_CheckBox.IsChecked == true;
+        bool autoBackupEnabled =
+            AutoBackupBeforeSave_CheckBox.IsChecked == true ||
+            AutoBackupAfterLoad_CheckBox.IsChecked == true ||
+            AutoBackupBeforeRestore_CheckBox.IsChecked == true;
         LimitBackupCount_CheckBox.IsEnabled = autoBackupEnabled;
+        LimitBackupCountPerUser_CheckBox.IsEnabled = autoBackupEnabled;
         LimitBackupDays_CheckBox.IsEnabled = autoBackupEnabled;
         MaxBackupCount_TextBox.IsEnabled = autoBackupEnabled && LimitBackupCount_CheckBox.IsChecked == true;
+        MaxBackupCountPerUser_TextBox.IsEnabled = autoBackupEnabled && LimitBackupCountPerUser_CheckBox.IsChecked == true;
         MaxBackupDays_TextBox.IsEnabled = autoBackupEnabled && LimitBackupDays_CheckBox.IsChecked == true;
     }
 
@@ -847,8 +943,6 @@ public partial class ToolSettingsControl : UserControl
         try
         {
             appDataStore.SaveSettings(settings);
-            afterSave?.Invoke();
-            return true;
         }
         catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException or IOException or UnauthorizedAccessException)
         {
@@ -861,6 +955,23 @@ public partial class ToolSettingsControl : UserControl
             AppMessageBox.Show(ownerWindow, $"{actionName}失败：{ex.Message}", "设置保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
+
+        try
+        {
+            afterSave?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning(AppLogCategory.IO, $"{actionName}后的附加处理失败", ex);
+            AppMessageBox.Show(
+                ownerWindow,
+                $"{actionName}已完成，但后续处理失败：{ex.Message}",
+                "后续处理失败",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+
+        return true;
     }
 
     private bool CommitIntegerSetting(
@@ -899,6 +1010,29 @@ public partial class ToolSettingsControl : UserControl
         return saved;
     }
 
+    private bool CommitGameInstallDirectory()
+    {
+        if (appDataStore == null || isLoadingSettingsIntoUi) return false;
+
+        string gameInstallDirectory = GameInstallDirectory_TextBox.Text.Trim();
+        if (string.Equals(gameInstallDirectory, appDataStore.Settings.GameInstallDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
+            UpdateGameCharacterDirectoryState();
+            return true;
+        }
+
+        bool saved = SaveSettingsMutation(
+            settings =>
+            {
+                settings.GameInstallDirectory = gameInstallDirectory;
+            },
+            "保存游戏安装目录");
+        GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
+        UpdateGameCharacterDirectoryState(persistFallbackToDefault: true);
+        return saved;
+    }
+
     private bool CommitWayMarkCustomDirectory()
     {
         if (appDataStore == null || isLoadingSettingsIntoUi) return false;
@@ -914,15 +1048,19 @@ public partial class ToolSettingsControl : UserControl
             settings =>
             {
                 settings.WayMarkCustomDirectory = directory;
-                settings.WayMarkCustomDirectoryAutoFillAttempted = true;
             },
-            "保存自定义打开路径");
+            "保存自定义目录");
     }
 
     private void CleanupBackupsIfEnabled()
     {
         if (appDataStore == null) return;
-        if (!appDataStore.Settings.AutoBackupBeforeSave && !appDataStore.Settings.AutoBackupAfterLoad) return;
+        if (!appDataStore.Settings.AutoBackupBeforeSave &&
+            !appDataStore.Settings.AutoBackupAfterLoad &&
+            !appDataStore.Settings.AutoBackupBeforeRestore)
+        {
+            return;
+        }
 
         appDataStore.CleanupBackups();
         refreshBackupList();
@@ -943,7 +1081,9 @@ public partial class ToolSettingsControl : UserControl
     private void ApplyWayMarkOpenDirectoryModeToUi(WayMarkOpenDirectoryMode mode)
     {
         OpenDirectoryCustom_RadioButton.IsChecked = mode == WayMarkOpenDirectoryMode.CustomDirectory;
+        OpenDirectoryGameCharacter_RadioButton.IsChecked = mode == WayMarkOpenDirectoryMode.GameCharacterDirectory;
         OpenDirectoryDefault_RadioButton.IsChecked = mode == WayMarkOpenDirectoryMode.Default;
+        UpdateGameCharacterDirectoryState();
         UpdateWayMarkCustomDirectoryInputState();
     }
 
@@ -954,11 +1094,61 @@ public partial class ToolSettingsControl : UserControl
         BrowseWayMarkCustomDirectory_Button.IsEnabled = isCustomDirectoryMode;
     }
 
+    private void UpdateGameCharacterDirectoryState(bool persistFallbackToDefault = false)
+    {
+        string gameInstallDirectory = GameInstallDirectory_TextBox.Text.Trim();
+        bool hasGameInstallDirectory = !string.IsNullOrWhiteSpace(gameInstallDirectory);
+        string? gameCharacterDirectory = null;
+        bool canUseGameCharacterDirectory = false;
+        if (hasGameInstallDirectory &&
+            WayMarkOpenDirectoryResolver.TryResolveGameCharacterRootDirectory(
+                gameInstallDirectory,
+                out string? resolvedGameCharacterDirectory))
+        {
+            gameCharacterDirectory = resolvedGameCharacterDirectory;
+            canUseGameCharacterDirectory = true;
+        }
+
+        OpenDirectoryGameCharacter_RadioButton.IsEnabled = canUseGameCharacterDirectory;
+        GameCharacterDirectory_TextBox.IsEnabled = canUseGameCharacterDirectory;
+        GameCharacterDirectory_TextBox.Text = canUseGameCharacterDirectory
+            ? gameCharacterDirectory
+            : hasGameInstallDirectory
+                ? "未找到。请确认游戏安装目录是否正确，且角色目录已存在。"
+                : "请先填写游戏安装目录。";
+
+        if (canUseGameCharacterDirectory || OpenDirectoryGameCharacter_RadioButton.IsChecked != true)
+        {
+            return;
+        }
+
+        SetSettingsUiSilently(() =>
+        {
+            OpenDirectoryDefault_RadioButton.IsChecked = true;
+        });
+        UpdateWayMarkCustomDirectoryInputState();
+        if (persistFallbackToDefault && appDataStore?.Settings.WayMarkOpenDirectoryMode == WayMarkOpenDirectoryMode.GameCharacterDirectory)
+        {
+            SaveSettingsMutation(
+                settings =>
+                {
+                    settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.Default;
+                },
+                "保存文件打开设置");
+        }
+    }
+
     private WayMarkOpenDirectoryMode ReadWayMarkOpenDirectoryModeFromUi()
     {
-        return OpenDirectoryDefault_RadioButton.IsChecked == true
-            ? WayMarkOpenDirectoryMode.Default
-            : WayMarkOpenDirectoryMode.CustomDirectory;
+        if (OpenDirectoryGameCharacter_RadioButton.IsEnabled &&
+            OpenDirectoryGameCharacter_RadioButton.IsChecked == true)
+        {
+            return WayMarkOpenDirectoryMode.GameCharacterDirectory;
+        }
+
+        return OpenDirectoryCustom_RadioButton.IsChecked == true
+            ? WayMarkOpenDirectoryMode.CustomDirectory
+            : WayMarkOpenDirectoryMode.Default;
     }
 
     private void ApplyStartupWayMarkActionToUi(StartupWayMarkAction action)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 
 namespace UIMarkerEditor;
@@ -15,7 +15,7 @@ public sealed partial class AppDataStore
         }
 
         AppSettings nextSettings = CloneSettings(settings);
-        NormalizeSettingsReferences(nextSettings);
+        NormalizeSettingsForSave(nextSettings);
         ValidateSettingsForSave(nextSettings);
         EnsureDataDirectory();
         WriteJson(SettingsFilePath, nextSettings);
@@ -55,7 +55,15 @@ public sealed partial class AppDataStore
     private static void NormalizeSettingsForLoad(AppSettings settings)
     {
         NormalizeSettingsReferences(settings);
-        settings.WayMarkCustomDirectory = NormalizeOptionalDirectoryPath(settings.WayMarkCustomDirectory);
+        settings.GameInstallDirectory = NormalizeOptionalPath(settings.GameInstallDirectory);
+        if (WayMarkOpenDirectoryResolver.TryNormalizeGameInstallDirectory(
+            settings.GameInstallDirectory,
+            out string? normalizedGameInstallDirectory))
+        {
+            settings.GameInstallDirectory = normalizedGameInstallDirectory;
+        }
+
+        settings.WayMarkCustomDirectory = NormalizeOptionalPath(settings.WayMarkCustomDirectory);
         if (!Enum.IsDefined(settings.StartupWayMarkAction))
         {
             settings.StartupWayMarkAction = StartupWayMarkAction.None;
@@ -76,6 +84,11 @@ public sealed partial class AppDataStore
             AppSettings.MinBackupCount,
             AppSettings.MaxBackupCountLimit,
             AppSettings.DefaultMaxBackupCount);
+        settings.MaxBackupCountPerUser = NormalizeIntRange(
+            settings.MaxBackupCountPerUser,
+            AppSettings.MinBackupCount,
+            AppSettings.MaxBackupCountLimit,
+            AppSettings.DefaultMaxBackupCountPerUser);
         settings.MaxBackupDays = NormalizeIntRange(
             settings.MaxBackupDays,
             AppSettings.MinBackupDays,
@@ -97,23 +110,38 @@ public sealed partial class AppDataStore
     {
         settings.WindowLayout ??= new WindowLayoutSettings();
         settings.RecentFiles ??= [];
+        settings.GameInstallDirectory ??= string.Empty;
         settings.WayMarkCustomDirectory ??= string.Empty;
     }
 
-    private static string NormalizeOptionalDirectoryPath(string? directory)
+    private static void NormalizeSettingsForSave(AppSettings settings)
     {
-        if (string.IsNullOrWhiteSpace(directory))
+        NormalizeSettingsReferences(settings);
+        settings.GameInstallDirectory = NormalizeOptionalPath(settings.GameInstallDirectory);
+        if (WayMarkOpenDirectoryResolver.TryNormalizeGameInstallDirectory(
+            settings.GameInstallDirectory,
+            out string? normalizedGameInstallDirectory))
+        {
+            settings.GameInstallDirectory = normalizedGameInstallDirectory;
+        }
+
+        settings.WayMarkCustomDirectory = NormalizeOptionalPath(settings.WayMarkCustomDirectory);
+    }
+
+    private static string NormalizeOptionalPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
         {
             return string.Empty;
         }
 
         try
         {
-            return Path.GetFullPath(PathTextRepair.RepairCommonUtf8Mojibake(directory.Trim()));
+            return Path.GetFullPath(PathTextRepair.RepairCommonUtf8Mojibake(path.Trim()));
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {
-            return directory.Trim();
+            return path.Trim();
         }
     }
 
@@ -147,49 +175,90 @@ public sealed partial class AppDataStore
         }
     }
 
-    public async Task<bool> AutoFillWayMarkCustomDirectoryAsync()
+    public async Task<bool> AutoDetectGameInstallDirectoryAsync()
     {
-        if (Settings.WayMarkCustomDirectoryAutoFillAttempted)
+        if (HasValidGameInstallDirectory())
         {
             return false;
         }
 
-        string? detectedDirectory = await Task.Run(TryDetectWayMarkCustomDirectory);
-        if (Settings.WayMarkCustomDirectoryAutoFillAttempted)
+        string? detectedGameInstallDirectory = await Task.Run(TryDetectGameInstallDirectory);
+        if (HasValidGameInstallDirectory() ||
+            string.IsNullOrWhiteSpace(detectedGameInstallDirectory))
         {
             return false;
         }
 
         AppSettings settings = CloneSettings(Settings);
-        settings.WayMarkCustomDirectoryAutoFillAttempted = true;
-        bool updatedDirectory = false;
-        if (!string.IsNullOrWhiteSpace(detectedDirectory) &&
-            string.IsNullOrWhiteSpace(settings.WayMarkCustomDirectory))
-        {
-            settings.WayMarkCustomDirectory = detectedDirectory;
-            updatedDirectory = true;
-        }
+        settings.GameInstallDirectory = detectedGameInstallDirectory;
 
         try
         {
             SaveSettings(settings);
-            return updatedDirectory;
+            return true;
         }
         catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
         {
             AddJsonReadWarning(
                 SettingsFilePath,
-                "自定义路径自动填充结果无法保存，本次启动将继续使用当前设置。",
+                "游戏安装目录自动检测结果无法保存，本次启动将继续使用当前设置。",
                 ex);
             return false;
         }
     }
 
-    private string? TryDetectWayMarkCustomDirectory()
+    public GameInstallDirectoryUpdateResult SetGameInstallDirectoryFromRunningGameProcess()
+    {
+        string? detectedGameInstallDirectory = WayMarkOpenDirectoryResolver.DetectRunningGameInstallDirectory();
+        return SetGameInstallDirectoryFromDetectedPath(detectedGameInstallDirectory);
+    }
+
+    public GameInstallDirectoryUpdateResult SetGameInstallDirectoryFromLoadedSaveFile(string filePath)
+    {
+        if (HasValidGameInstallDirectory())
+        {
+            return GameInstallDirectoryUpdateResult.Unchanged;
+        }
+
+        return WayMarkOpenDirectoryResolver.TryInferGameInstallDirectoryFromSaveFile(
+            filePath,
+            out string? detectedGameInstallDirectory)
+                ? SetGameInstallDirectoryFromDetectedPath(detectedGameInstallDirectory)
+                : GameInstallDirectoryUpdateResult.NotFound;
+    }
+
+    internal GameInstallDirectoryUpdateResult SetGameInstallDirectoryFromDetectedPath(string? detectedGameInstallDirectory)
+    {
+        if (!WayMarkOpenDirectoryResolver.TryNormalizeGameInstallDirectory(
+            detectedGameInstallDirectory,
+            out string? normalizedGameInstallDirectory))
+        {
+            return GameInstallDirectoryUpdateResult.NotFound;
+        }
+
+        if (string.Equals(normalizedGameInstallDirectory, Settings.GameInstallDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            return GameInstallDirectoryUpdateResult.Unchanged;
+        }
+
+        AppSettings settings = CloneSettings(Settings);
+        settings.GameInstallDirectory = normalizedGameInstallDirectory;
+        SaveSettings(settings);
+        return GameInstallDirectoryUpdateResult.Updated;
+    }
+
+    private bool HasValidGameInstallDirectory()
+    {
+        return WayMarkOpenDirectoryResolver.TryNormalizeGameInstallDirectory(
+            Settings.GameInstallDirectory,
+            out _);
+    }
+
+    private string? TryDetectGameInstallDirectory()
     {
         try
         {
-            return wayMarkCustomDirectoryDetector();
+            return gameInstallDirectoryDetector();
         }
         catch (Exception)
         {
@@ -200,6 +269,7 @@ public sealed partial class AppDataStore
     private static void ValidateSettingsForSave(AppSettings settings)
     {
         ValidateIntRange(settings.MaxBackupCount, "最多保留备份数量", AppSettings.MinBackupCount, AppSettings.MaxBackupCountLimit);
+        ValidateIntRange(settings.MaxBackupCountPerUser, "每个玩家最多保留备份数量", AppSettings.MinBackupCount, AppSettings.MaxBackupCountLimit);
         ValidateIntRange(settings.MaxBackupDays, "最多保留备份天数", AppSettings.MinBackupDays, AppSettings.MaxBackupDaysLimit);
         ValidateIntRange(settings.MaxLogFileSizeMb, "日志文件大小", AppSettings.MinLogFileSizeMb, AppSettings.MaxLogFileSizeMbLimit);
         ValidateIntRange(settings.MaxLogFileCount, "日志文件最多保存数量", AppSettings.MinLogFileCount, AppSettings.MaxLogFileCountLimit);
@@ -217,6 +287,12 @@ public sealed partial class AppDataStore
         {
             throw new InvalidOperationException("标点文件打开目录设置不是有效选项。");
         }
+
+        if (!string.IsNullOrWhiteSpace(settings.GameInstallDirectory) &&
+            !WayMarkOpenDirectoryResolver.TryNormalizeGameInstallDirectory(settings.GameInstallDirectory, out _))
+        {
+            throw new InvalidOperationException("游戏安装目录无效。请选择包含 game 文件夹和 ffxiv_dx11.exe 或 ffxiv.exe 的最终幻想 XIV 安装目录。");
+        }
     }
 
     private static void ValidateIntRange(int value, string displayName, int min, int max)
@@ -232,19 +308,22 @@ public sealed partial class AppDataStore
         return new AppSettings
         {
             MaxBackupCount = settings.MaxBackupCount,
+            MaxBackupCountPerUser = settings.MaxBackupCountPerUser,
             MaxBackupDays = settings.MaxBackupDays,
             LimitBackupCount = settings.LimitBackupCount,
+            LimitBackupCountPerUser = settings.LimitBackupCountPerUser,
             LimitBackupDays = settings.LimitBackupDays,
             AutoBackupBeforeSave = settings.AutoBackupBeforeSave,
             AutoBackupAfterLoad = settings.AutoBackupAfterLoad,
+            AutoBackupBeforeRestore = settings.AutoBackupBeforeRestore,
             MaxLogFileSizeMb = settings.MaxLogFileSizeMb,
             MaxLogFileCount = settings.MaxLogFileCount,
             UseWayMarkImageLabels = settings.UseWayMarkImageLabels,
             StartupWayMarkAction = settings.StartupWayMarkAction,
             WayMarkFavoriteSaveMode = settings.WayMarkFavoriteSaveMode,
             WayMarkOpenDirectoryMode = settings.WayMarkOpenDirectoryMode,
+            GameInstallDirectory = settings.GameInstallDirectory,
             WayMarkCustomDirectory = settings.WayMarkCustomDirectory,
-            WayMarkCustomDirectoryAutoFillAttempted = settings.WayMarkCustomDirectoryAutoFillAttempted,
             LastMapDataManualRefreshAttempt = settings.LastMapDataManualRefreshAttempt,
             LastServerListManualRefreshAttempt = settings.LastServerListManualRefreshAttempt,
             WindowLayout = CloneWindowLayout(settings.WindowLayout),

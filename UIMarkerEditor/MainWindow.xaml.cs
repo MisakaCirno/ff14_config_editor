@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -136,21 +136,21 @@ namespace UIMarkerEditor
             ShowDataLoadWarnings();
             ShowMigrationReports();
             ScheduleStartupWayMarkAction();
-            _ = AutoFillWayMarkCustomDirectoryAsync();
+            _ = AutoDetectGameInstallDirectoryAsync();
         }
 
-        private async Task AutoFillWayMarkCustomDirectoryAsync()
+        private async Task AutoDetectGameInstallDirectoryAsync()
         {
             try
             {
-                if (await appDataStore.AutoFillWayMarkCustomDirectoryAsync())
+                if (await appDataStore.AutoDetectGameInstallDirectoryAsync())
                 {
-                    ToolSettings_Control.RefreshWayMarkCustomDirectoryFromSettings();
+                    ToolSettings_Control.RefreshGameInstallDirectoryFromSettings();
                 }
             }
             catch (Exception ex)
             {
-                AppLogger.Warning(AppLogCategory.IO, "自动填充自定义路径失败", ex);
+                AppLogger.Warning(AppLogCategory.IO, "自动检测游戏安装目录失败", ex);
             }
         }
     }

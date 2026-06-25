@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -32,7 +33,8 @@ namespace UIMarkerEditor
 
             string? initialDirectory = WayMarkOpenDirectoryResolver.Resolve(
                 appDataStore.Settings.WayMarkOpenDirectoryMode,
-                appDataStore.Settings.WayMarkCustomDirectory);
+                appDataStore.Settings.WayMarkCustomDirectory,
+                appDataStore.Settings.GameInstallDirectory);
             if (!string.IsNullOrWhiteSpace(initialDirectory))
             {
                 openFileDialog.InitialDirectory = initialDirectory;
@@ -119,16 +121,21 @@ namespace UIMarkerEditor
 
                 if (appDataStore.Settings.AutoBackupBeforeSave)
                 {
-                    try
+                    if (appDataStore.IsTrustedGameCharacterSaveFile(configUISave.FilePath))
                     {
-                        appDataStore.CreateBackup(configUISave.FilePath);
-                        RefreshBackupList();
-                    }
-                    catch (Exception ex)
-                    {
-                        AppLogger.Error(AppLogCategory.IO, $"保存前自动备份失败：{configUISave.FilePath}", ex);
-                        AppMessageBox.Show($"保存前自动备份失败，已取消保存。\n{ex.Message}", "备份失败", MessageBoxButton.OK, MessageBoxImage.Error);
-                        return false;
+                        try
+                        {
+                            appDataStore.CreateBackup(
+                                configUISave.FilePath,
+                                creationTrigger: BackupCreationTriggers.BeforeSave);
+                            RefreshBackupList();
+                        }
+                        catch (Exception ex)
+                        {
+                            AppLogger.Error(AppLogCategory.IO, $"保存前自动备份失败：{configUISave.FilePath}", ex);
+                            AppMessageBox.Show($"保存前自动备份失败，已取消保存。\n{ex.Message}", "备份失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                            return false;
+                        }
                     }
                 }
 
@@ -173,9 +180,16 @@ namespace UIMarkerEditor
                 return;
             }
 
+            if (!appDataStore.IsTrustedGameCharacterSaveFile(filePath))
+            {
+                return;
+            }
+
             try
             {
-                appDataStore.CreateBackup(filePath);
+                appDataStore.CreateBackup(
+                    filePath,
+                    creationTrigger: BackupCreationTriggers.AfterLoad);
                 RefreshBackupList();
             }
             catch (Exception ex)
@@ -269,6 +283,7 @@ namespace UIMarkerEditor
 
                 SetWayMarkDirty(false);
                 UpdateWindowTitle();
+                TryRecordGameInstallDirectoryFromLoadedSaveFile(filePath);
                 CreateAutomaticBackupAfterLoad(filePath);
 
                 AppLogger.Info(AppLogCategory.UI, $"已读取 UISAVE.DAT：{filePath}，可编辑标点槽位 {wayMarks.Count} 个。");
@@ -282,6 +297,24 @@ namespace UIMarkerEditor
 
             CommandManager.InvalidateRequerySuggested();
             return true;
+        }
+
+        private void TryRecordGameInstallDirectoryFromLoadedSaveFile(string filePath)
+        {
+            try
+            {
+                if (appDataStore.SetGameInstallDirectoryFromLoadedSaveFile(filePath) != GameInstallDirectoryUpdateResult.Updated)
+                {
+                    return;
+                }
+
+                ToolSettings_Control.RefreshGameInstallDirectoryFromSettings();
+                ToastService.ShowSuccess("已根据当前文件记录游戏安装目录。");
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException or IOException or UnauthorizedAccessException)
+            {
+                AppLogger.Warning(AppLogCategory.IO, $"根据 UISAVE.DAT 路径记录游戏安装目录失败：{filePath}", ex);
+            }
         }
 
     }

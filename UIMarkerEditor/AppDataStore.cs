@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -35,7 +35,7 @@ public sealed partial class AppDataStore
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
     private readonly IAppDataNetworkClient networkClient;
-    private readonly Func<string?> wayMarkCustomDirectoryDetector;
+    private readonly Func<string?> gameInstallDirectoryDetector;
     private readonly List<string> dataLoadWarnings = [];
     private readonly HashSet<string> dataLoadWarningKeys = [];
     private readonly List<DataDirectoryMigrationResult> migrationReports = [];
@@ -83,15 +83,15 @@ public sealed partial class AppDataStore
     {
     }
 
-    internal AppDataStore(string bootstrapDirectory, Func<string?> wayMarkCustomDirectoryDetector)
-        : this(bootstrapDirectory, new HttpAppDataNetworkClient(), wayMarkCustomDirectoryDetector)
+    internal AppDataStore(string bootstrapDirectory, Func<string?> gameInstallDirectoryDetector)
+        : this(bootstrapDirectory, new HttpAppDataNetworkClient(), gameInstallDirectoryDetector)
     {
     }
 
     internal AppDataStore(
         string bootstrapDirectory,
         IAppDataNetworkClient networkClient,
-        Func<string?>? wayMarkCustomDirectoryDetector = null)
+        Func<string?>? gameInstallDirectoryDetector = null)
     {
         if (string.IsNullOrWhiteSpace(bootstrapDirectory))
         {
@@ -99,7 +99,7 @@ public sealed partial class AppDataStore
         }
 
         this.networkClient = networkClient ?? throw new ArgumentNullException(nameof(networkClient));
-        this.wayMarkCustomDirectoryDetector = wayMarkCustomDirectoryDetector ?? WayMarkOpenDirectoryResolver.AutoDetectGameCharacterRootDirectory;
+        this.gameInstallDirectoryDetector = gameInstallDirectoryDetector ?? WayMarkOpenDirectoryResolver.AutoDetectGameInstallDirectory;
         BootstrapDirectory = Path.GetFullPath(bootstrapDirectory);
         DataDirectory = DefaultDataDirectory;
     }
