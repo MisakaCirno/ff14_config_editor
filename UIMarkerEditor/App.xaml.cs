@@ -14,6 +14,7 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
         singleInstanceService = SingleInstanceService.Create();
         if (!singleInstanceService.IsFirstInstance)
@@ -93,7 +94,7 @@ public partial class App : Application
                 ? "未知版本"
                 : mapDataLoadResult.Version;
             AppMessageBox.Show(
-                $"地图数据已更新到版本：{versionText}",
+                $"地图数据已更新并重新加载到版本：{versionText}",
                 "地图数据更新完成",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -102,6 +103,7 @@ public partial class App : Application
         MainWindow mainWindow = new(appDataStore);
         MainWindow = mainWindow;
         mainWindow.Show();
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
 
         if (activateMainWindowWhenReady)
         {
