@@ -62,15 +62,45 @@ namespace UIMarkerEditor
 
             bool isNewProfile = !appDataStore.Characters.Any(character =>
                 string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase));
-            appDataStore.GetOrCreateCharacter(userID);
-            if (isNewProfile)
+            CharacterProfile profile = appDataStore.GetOrCreateCharacter(userID);
+            string previousCharacterName = profile.CharacterName;
+            DateTime previousUpdatedAt = profile.UpdatedAt;
+            bool filledCharacterNameFromLog = false;
+            if (string.IsNullOrWhiteSpace(profile.CharacterName))
+            {
+                ClientLogCharacterNameMatch? logNameMatch = ClientLogCharacterNameResolver.FindLatestFromSaveFile(
+                    filePath,
+                    userID);
+                if (logNameMatch != null)
+                {
+                    profile.CharacterName = logNameMatch.CharacterName;
+                    profile.UpdatedAt = DateTime.Now;
+                    filledCharacterNameFromLog = true;
+                }
+            }
+
+            if (isNewProfile || filledCharacterNameFromLog)
             {
                 try
                 {
                     appDataStore.SaveCharacters();
+                    if (filledCharacterNameFromLog)
+                    {
+                        ToastService.ShowSuccess($"已从客户端日志识别角色昵称：{profile.CharacterName}");
+                    }
                 }
                 catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
                 {
+                    if (isNewProfile)
+                    {
+                        appDataStore.Characters.Remove(profile);
+                    }
+                    else
+                    {
+                        profile.CharacterName = previousCharacterName;
+                        profile.UpdatedAt = previousUpdatedAt;
+                    }
+
                     AppLogger.Warning(AppLogCategory.IO, $"自动保存角色备注失败：{userID}", ex);
                 }
             }

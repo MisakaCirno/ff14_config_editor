@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FF14ConfigEditor\FF14ConfigEditor.csproj" />
+    <ProjectReference Include="..\FF14LogParser\FF14LogParser.csproj" />
   </ItemGroup>
 
   <ItemGroup>

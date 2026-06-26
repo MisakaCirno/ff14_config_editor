@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using FF14ConfigEditor;
 
 namespace UIMarkerEditor.Controls;
 
@@ -219,6 +220,163 @@ public partial class CharacterProfilesControl : UserControl
 
         ReloadCharacterList(createdUserID);
         refreshBackupList();
+    }
+
+    private async void ScanClientLogs_Button_Click(object sender, RoutedEventArgs e)
+    {
+        if (appDataStore == null || !ConfirmSaveOrDiscardCharacterChanges()) return;
+
+        if (!ClientLogCharacterNameResolver.TryResolveGameCharacterRootDirectory(
+            appDataStore.Settings.GameInstallDirectory,
+            out string? gameCharacterRootDirectory))
+        {
+            AppMessageBox.Show(
+                ownerWindow,
+                "无法定位游戏角色目录。请先在工具设置中填写正确的游戏安装目录。",
+                "获取所有本地角色",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        object originalContent = ScanClientLogs_Button.Content;
+        ScanClientLogs_Button.IsEnabled = false;
+        ScanClientLogs_Button.Content = "获取中...";
+        List<ClientLogCharacterNameScanError> errors = [];
+        IReadOnlyList<ClientLogCharacterNameMatch> matches;
+        try
+        {
+            matches = await Task.Run(() =>
+                ClientLogCharacterNameResolver.ScanGameCharacterRootDirectory(gameCharacterRootDirectory, errors));
+        }
+        finally
+        {
+            ScanClientLogs_Button.Content = originalContent;
+            ScanClientLogs_Button.IsEnabled = true;
+        }
+
+        foreach (ClientLogCharacterNameScanError error in errors)
+        {
+            AppLogger.Warning(AppLogCategory.IO, $"客户端日志昵称扫描跳过：{error.Path}；{error.Message}");
+        }
+
+        List<CharacterLogNameImportItem> importItems = BuildLogNameImportItems(matches, out int unchangedCount);
+        if (importItems.Count == 0)
+        {
+            string detail = unchangedCount > 0
+                ? $"已识别的 {unchangedCount} 个角色昵称都与现有备注一致。"
+                : "没有从客户端日志中识别到可导入的本地角色昵称。";
+            if (errors.Count > 0)
+            {
+                detail += $"\n\n另有 {errors.Count} 个日志文件或目录读取失败，已跳过。";
+            }
+
+            AppMessageBox.Show(ownerWindow, detail, "获取所有本地角色", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        CharacterLogNameImportDialog dialog = new(importItems, unchangedCount, errors.Count);
+        DialogOwnerHelper.ConfigureOwnedDialog(dialog, ownerWindow ?? Window.GetWindow(this));
+        if (dialog.ShowDialog() != true) return;
+
+        IReadOnlyList<CharacterLogNameImportItem> selectedItems = dialog.SelectedItems;
+        if (!TryApplyLogNameImportItems(selectedItems, out string? preferredUserID)) return;
+
+        ReloadCharacterList(preferredUserID);
+        refreshBackupList();
+        ToastService.ShowSuccess($"已应用 {selectedItems.Count} 个客户端日志昵称。");
+    }
+
+    private List<CharacterLogNameImportItem> BuildLogNameImportItems(
+        IEnumerable<ClientLogCharacterNameMatch> matches,
+        out int unchangedCount)
+    {
+        unchangedCount = 0;
+        List<CharacterLogNameImportItem> importItems = [];
+        if (appDataStore == null) return importItems;
+
+        foreach (ClientLogCharacterNameMatch match in matches.OrderBy(static item => item.UserID, StringComparer.OrdinalIgnoreCase))
+        {
+            CharacterProfile? existingProfile = appDataStore.Characters.FirstOrDefault(character =>
+                string.Equals(character.UserID, match.UserID, StringComparison.OrdinalIgnoreCase));
+            string currentCharacterName = existingProfile?.CharacterName ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(currentCharacterName) &&
+                string.Equals(currentCharacterName.Trim(), match.CharacterName, StringComparison.OrdinalIgnoreCase))
+            {
+                unchangedCount++;
+                continue;
+            }
+
+            bool isConflict = !string.IsNullOrWhiteSpace(currentCharacterName);
+            importItems.Add(new CharacterLogNameImportItem
+            {
+                UserID = match.UserID,
+                CurrentCharacterName = currentCharacterName,
+                LogCharacterName = match.CharacterName,
+                JobName = match.JobName,
+                Source = match.Source,
+                Timestamp = match.Timestamp,
+                LogFilePath = match.LogFilePath,
+                EntryIndex = match.EntryIndex,
+                HasExistingProfile = existingProfile != null,
+                IsConflict = isConflict,
+                IsSelected = !isConflict
+            });
+        }
+
+        return importItems;
+    }
+
+    private bool TryApplyLogNameImportItems(
+        IReadOnlyList<CharacterLogNameImportItem> selectedItems,
+        out string? preferredUserID)
+    {
+        preferredUserID = selectedItems.FirstOrDefault()?.UserID;
+        if (appDataStore == null || selectedItems.Count == 0) return false;
+
+        List<CharacterProfile> snapshot = CloneCharacterProfiles(appDataStore.Characters);
+        try
+        {
+            foreach (CharacterLogNameImportItem item in selectedItems)
+            {
+                CharacterProfile profile = appDataStore.GetOrCreateCharacter(item.UserID);
+                profile.CharacterName = item.LogCharacterName;
+                profile.UpdatedAt = DateTime.Now;
+            }
+
+            appDataStore.SaveCharacters();
+            return true;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
+        {
+            RestoreCharacterProfiles(snapshot);
+            AppMessageBox.Show(ownerWindow, $"保存角色备注失败：{ex.Message}", "角色备注保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+    }
+
+    private static List<CharacterProfile> CloneCharacterProfiles(IEnumerable<CharacterProfile> profiles)
+    {
+        return profiles.Select(static profile => new CharacterProfile
+        {
+            UserID = profile.UserID,
+            CharacterName = profile.CharacterName,
+            DataCenter = profile.DataCenter,
+            World = profile.World,
+            Note = profile.Note,
+            UpdatedAt = profile.UpdatedAt
+        }).ToList();
+    }
+
+    private void RestoreCharacterProfiles(IEnumerable<CharacterProfile> snapshot)
+    {
+        if (appDataStore == null) return;
+
+        appDataStore.Characters.Clear();
+        foreach (CharacterProfile profile in snapshot)
+        {
+            appDataStore.Characters.Add(profile);
+        }
     }
 
     private bool TryCreateCharacterProfile(BackupCharacterProfileDialog dialog, out string createdUserID)
