@@ -1149,7 +1149,7 @@ public partial class ToolSettingsControl : UserControl
         GameCharacterDirectory_TextBox.Text = canUseGameCharacterDirectory
             ? gameCharacterDirectory
             : hasGameInstallDirectory
-                ? "未找到。请确认游戏安装目录是否正确，且角色目录已存在。"
+                ? "未找到。请确认游戏安装目录是否正确；若是首次使用，建议先启动一次游戏后再尝试使用本工具。"
                 : "请先填写游戏安装目录。";
 
         if (canUseGameCharacterDirectory || OpenDirectoryGameCharacter_RadioButton.IsChecked != true)

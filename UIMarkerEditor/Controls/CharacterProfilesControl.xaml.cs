@@ -238,7 +238,7 @@ public partial class CharacterProfilesControl : UserControl
         {
             AppMessageBox.Show(
                 ownerWindow,
-                "无法定位游戏角色目录。请先在工具设置中填写正确的游戏安装目录。",
+                "无法定位游戏角色目录。请确认游戏安装目录正确；若是首次使用，建议先启动一次游戏后再尝试使用本工具。",
                 "获取所有本地角色",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -290,7 +290,7 @@ public partial class CharacterProfilesControl : UserControl
         {
             AppMessageBox.Show(
                 ownerWindow,
-                "没有找到包含 UISAVE.DAT 的本地角色目录。",
+                "没有找到包含 UISAVE.DAT 的本地角色目录。建议先启动一次游戏并进入角色后再尝试使用本工具。",
                 "获取所有本地角色",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);

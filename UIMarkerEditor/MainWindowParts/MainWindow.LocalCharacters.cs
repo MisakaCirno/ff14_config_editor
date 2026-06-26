@@ -72,7 +72,7 @@ namespace UIMarkerEditor
                 RefreshLocalCharacterSelectionAvailability();
                 AppMessageBox.Show(
                     this,
-                    "当前没有可直接打开的本地角色。请确认游戏安装目录正确，并且角色目录下存在 UISAVE.DAT。",
+                    "当前没有可直接打开的本地角色。请确认游戏安装目录正确，并且角色目录下存在 UISAVE.DAT。若是首次使用，建议先启动一次游戏并进入角色后再尝试使用本工具。",
                     "选择游戏角色",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
