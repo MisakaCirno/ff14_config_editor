@@ -131,7 +131,8 @@ public enum GameInstallDirectoryUpdateResult
 {
     NotFound = 0,
     Unchanged = 1,
-    Updated = 2
+    Updated = 2,
+    Relocated = 3
 }
 
 public sealed class AppSettings
@@ -165,6 +166,7 @@ public sealed class AppSettings
     public StartupWayMarkAction StartupWayMarkAction { get; set; } = StartupWayMarkAction.None;
     public WayMarkFavoriteSaveMode WayMarkFavoriteSaveMode { get; set; } = WayMarkFavoriteSaveMode.Manual;
     public WayMarkOpenDirectoryMode WayMarkOpenDirectoryMode { get; set; } = WayMarkOpenDirectoryMode.Default;
+    public bool WayMarkOpenDirectoryModeInitialized { get; set; }
     public string GameInstallDirectory { get; set; } = string.Empty;
     public string WayMarkCustomDirectory { get; set; } = string.Empty;
     public DateTime LastMapDataManualRefreshAttempt { get; set; } = DateTime.MinValue;

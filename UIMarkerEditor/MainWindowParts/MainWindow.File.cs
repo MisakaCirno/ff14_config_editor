@@ -303,13 +303,25 @@ namespace UIMarkerEditor
         {
             try
             {
-                if (appDataStore.SetGameInstallDirectoryFromLoadedSaveFile(filePath) != GameInstallDirectoryUpdateResult.Updated)
+                GameInstallDirectoryUpdateResult result = appDataStore.SetGameInstallDirectoryFromLoadedSaveFile(filePath);
+                if (result is not (GameInstallDirectoryUpdateResult.Updated or GameInstallDirectoryUpdateResult.Relocated))
                 {
                     return;
                 }
 
                 ToolSettings_Control.RefreshGameInstallDirectoryFromSettings();
                 StartLocalCharacterScan();
+                if (result == GameInstallDirectoryUpdateResult.Relocated)
+                {
+                    AppMessageBox.Show(
+                        this,
+                        "检测到游戏位置移动，已重新获取游戏位置。",
+                        "游戏位置已更新",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+                }
+
                 ToastService.ShowSuccess("已根据当前文件记录游戏安装目录。");
             }
             catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException or IOException or UnauthorizedAccessException)

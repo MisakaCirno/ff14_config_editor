@@ -79,6 +79,8 @@ public sealed partial class AppDataStore
             settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.Default;
         }
 
+        NormalizeWayMarkOpenDirectoryModeInitialized(settings);
+
         settings.MaxBackupCount = NormalizeIntRange(
             settings.MaxBackupCount,
             AppSettings.MinBackupCount,
@@ -126,6 +128,48 @@ public sealed partial class AppDataStore
         }
 
         settings.WayMarkCustomDirectory = NormalizeOptionalPath(settings.WayMarkCustomDirectory);
+        NormalizeWayMarkOpenDirectoryModeInitialized(settings);
+    }
+
+    private static void NormalizeWayMarkOpenDirectoryModeInitialized(AppSettings settings)
+    {
+        if (!Enum.IsDefined(settings.WayMarkOpenDirectoryMode))
+        {
+            return;
+        }
+
+        if (settings.WayMarkOpenDirectoryMode != WayMarkOpenDirectoryMode.Default)
+        {
+            settings.WayMarkOpenDirectoryModeInitialized = true;
+        }
+    }
+
+    private static void InitializeWayMarkOpenDirectoryModeForGameInstallDirectory(
+        AppSettings settings,
+        bool force)
+    {
+        if (!Enum.IsDefined(settings.WayMarkOpenDirectoryMode))
+        {
+            settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.Default;
+        }
+
+        if (!force && settings.WayMarkOpenDirectoryModeInitialized)
+        {
+            return;
+        }
+
+        settings.WayMarkOpenDirectoryModeInitialized = true;
+        if (settings.WayMarkOpenDirectoryMode == WayMarkOpenDirectoryMode.CustomDirectory)
+        {
+            return;
+        }
+
+        if (WayMarkOpenDirectoryResolver.TryResolveGameCharacterRootDirectory(
+            settings.GameInstallDirectory,
+            out _))
+        {
+            settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.GameCharacterDirectory;
+        }
     }
 
     private static string NormalizeOptionalPath(string? path)
@@ -175,27 +219,23 @@ public sealed partial class AppDataStore
         }
     }
 
-    public async Task<bool> AutoDetectGameInstallDirectoryAsync()
+    public async Task<GameInstallDirectoryUpdateResult> AutoDetectGameInstallDirectoryAsync()
     {
         if (HasValidGameInstallDirectory())
         {
-            return false;
+            return GameInstallDirectoryUpdateResult.Unchanged;
         }
 
         string? detectedGameInstallDirectory = await Task.Run(TryDetectGameInstallDirectory);
         if (HasValidGameInstallDirectory() ||
             string.IsNullOrWhiteSpace(detectedGameInstallDirectory))
         {
-            return false;
+            return GameInstallDirectoryUpdateResult.NotFound;
         }
-
-        AppSettings settings = CloneSettings(Settings);
-        settings.GameInstallDirectory = detectedGameInstallDirectory;
 
         try
         {
-            SaveSettings(settings);
-            return true;
+            return SetGameInstallDirectoryFromDetectedPath(detectedGameInstallDirectory);
         }
         catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
         {
@@ -203,7 +243,7 @@ public sealed partial class AppDataStore
                 SettingsFilePath,
                 "游戏安装目录自动检测结果无法保存，本次启动将继续使用当前设置。",
                 ex);
-            return false;
+            return GameInstallDirectoryUpdateResult.NotFound;
         }
     }
 
@@ -236,15 +276,28 @@ public sealed partial class AppDataStore
             return GameInstallDirectoryUpdateResult.NotFound;
         }
 
-        if (string.Equals(normalizedGameInstallDirectory, Settings.GameInstallDirectory, StringComparison.OrdinalIgnoreCase))
+        bool hadConfiguredGameInstallDirectory = !string.IsNullOrWhiteSpace(Settings.GameInstallDirectory);
+        bool hadValidGameInstallDirectory = HasValidGameInstallDirectory();
+        if (hadValidGameInstallDirectory &&
+            string.Equals(normalizedGameInstallDirectory, Settings.GameInstallDirectory, StringComparison.OrdinalIgnoreCase))
         {
             return GameInstallDirectoryUpdateResult.Unchanged;
         }
 
+        bool isRelocatedGameInstallDirectory = hadConfiguredGameInstallDirectory && !hadValidGameInstallDirectory;
         AppSettings settings = CloneSettings(Settings);
         settings.GameInstallDirectory = normalizedGameInstallDirectory;
+        if (!hadConfiguredGameInstallDirectory || isRelocatedGameInstallDirectory)
+        {
+            InitializeWayMarkOpenDirectoryModeForGameInstallDirectory(
+                settings,
+                force: isRelocatedGameInstallDirectory);
+        }
+
         SaveSettings(settings);
-        return GameInstallDirectoryUpdateResult.Updated;
+        return isRelocatedGameInstallDirectory
+            ? GameInstallDirectoryUpdateResult.Relocated
+            : GameInstallDirectoryUpdateResult.Updated;
     }
 
     private bool HasValidGameInstallDirectory()
@@ -322,6 +375,7 @@ public sealed partial class AppDataStore
             StartupWayMarkAction = settings.StartupWayMarkAction,
             WayMarkFavoriteSaveMode = settings.WayMarkFavoriteSaveMode,
             WayMarkOpenDirectoryMode = settings.WayMarkOpenDirectoryMode,
+            WayMarkOpenDirectoryModeInitialized = settings.WayMarkOpenDirectoryModeInitialized,
             GameInstallDirectory = settings.GameInstallDirectory,
             WayMarkCustomDirectory = settings.WayMarkCustomDirectory,
             LastMapDataManualRefreshAttempt = settings.LastMapDataManualRefreshAttempt,

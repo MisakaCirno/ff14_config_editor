@@ -54,6 +54,7 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(store.Settings.AutoBackupAfterLoad);
         Assert.True(store.Settings.AutoBackupBeforeRestore);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.False(store.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(string.Empty, store.Settings.GameInstallDirectory);
         Assert.Equal(string.Empty, store.Settings.WayMarkCustomDirectory);
     }
@@ -197,12 +198,10 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task AutoDetectGameInstallDirectoryAsync_WhenDetected_PersistsGameInstallDirectoryAndKeepsDefaultMode()
+    public async Task AutoDetectGameInstallDirectoryAsync_WhenCharacterDirectoryExists_SelectsGameCharacterDirectory()
     {
-        string gameInstallDirectory = Path.Combine(testDirectory, "FinalFantasyXIV");
+        string gameInstallDirectory = CreateGameInstallDirectory("FinalFantasyXIV");
         string detectedGameExecutablePath = Path.Combine(gameInstallDirectory, "game", "ffxiv_dx11.exe");
-        Directory.CreateDirectory(Path.GetDirectoryName(detectedGameExecutablePath)!);
-        File.WriteAllText(detectedGameExecutablePath, string.Empty);
         int detectCount = 0;
         AppDataStore store = CreateStore(() =>
         {
@@ -211,11 +210,12 @@ public sealed class AppDataStoreTests : IDisposable
         });
         store.Initialize();
 
-        bool updatedPath = await store.AutoDetectGameInstallDirectoryAsync();
+        GameInstallDirectoryUpdateResult result = await store.AutoDetectGameInstallDirectoryAsync();
 
-        Assert.True(updatedPath);
+        Assert.Equal(GameInstallDirectoryUpdateResult.Updated, result);
         Assert.Equal(1, detectCount);
-        Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.Equal(WayMarkOpenDirectoryMode.GameCharacterDirectory, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.True(store.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(Path.GetFullPath(gameInstallDirectory), store.Settings.GameInstallDirectory);
         Assert.Equal(string.Empty, store.Settings.WayMarkCustomDirectory);
 
@@ -225,11 +225,12 @@ public sealed class AppDataStoreTests : IDisposable
             return Path.Combine(testDirectory, "Other", "ffxiv_dx11.exe");
         });
         reloadedStore.Initialize();
-        bool reloadedUpdatedPath = await reloadedStore.AutoDetectGameInstallDirectoryAsync();
+        GameInstallDirectoryUpdateResult reloadedResult = await reloadedStore.AutoDetectGameInstallDirectoryAsync();
 
-        Assert.False(reloadedUpdatedPath);
+        Assert.Equal(GameInstallDirectoryUpdateResult.Unchanged, reloadedResult);
         Assert.Equal(1, detectCount);
-        Assert.Equal(WayMarkOpenDirectoryMode.Default, reloadedStore.Settings.WayMarkOpenDirectoryMode);
+        Assert.Equal(WayMarkOpenDirectoryMode.GameCharacterDirectory, reloadedStore.Settings.WayMarkOpenDirectoryMode);
+        Assert.True(reloadedStore.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(Path.GetFullPath(gameInstallDirectory), reloadedStore.Settings.GameInstallDirectory);
     }
 
@@ -244,9 +245,9 @@ public sealed class AppDataStoreTests : IDisposable
         });
         store.Initialize();
 
-        bool updatedPath = await store.AutoDetectGameInstallDirectoryAsync();
+        GameInstallDirectoryUpdateResult result = await store.AutoDetectGameInstallDirectoryAsync();
 
-        Assert.False(updatedPath);
+        Assert.Equal(GameInstallDirectoryUpdateResult.NotFound, result);
         Assert.Equal(1, detectCount);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
         Assert.Equal(string.Empty, store.Settings.GameInstallDirectory);
@@ -262,11 +263,12 @@ public sealed class AppDataStoreTests : IDisposable
             return detectedGameExecutablePath;
         });
         reloadedStore.Initialize();
-        bool reloadedUpdatedPath = await reloadedStore.AutoDetectGameInstallDirectoryAsync();
+        GameInstallDirectoryUpdateResult reloadedResult = await reloadedStore.AutoDetectGameInstallDirectoryAsync();
 
-        Assert.True(reloadedUpdatedPath);
+        Assert.Equal(GameInstallDirectoryUpdateResult.Updated, reloadedResult);
         Assert.Equal(2, detectCount);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, reloadedStore.Settings.WayMarkOpenDirectoryMode);
+        Assert.True(reloadedStore.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(Path.GetFullPath(gameInstallDirectory), reloadedStore.Settings.GameInstallDirectory);
     }
 
@@ -290,9 +292,11 @@ public sealed class AppDataStoreTests : IDisposable
         AppDataStore store = CreateStore(() => detectedGameExecutablePath);
         store.Initialize();
 
-        bool updatedPath = await store.AutoDetectGameInstallDirectoryAsync();
+        GameInstallDirectoryUpdateResult result = await store.AutoDetectGameInstallDirectoryAsync();
 
-        Assert.True(updatedPath);
+        Assert.Equal(GameInstallDirectoryUpdateResult.Relocated, result);
+        Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.True(store.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(Path.GetFullPath(detectedGameInstallDirectory), store.Settings.GameInstallDirectory);
 
         AppDataStore reloadedStore = CreateStore();
@@ -322,13 +326,34 @@ public sealed class AppDataStoreTests : IDisposable
             WayMarkCustomDirectory = customDirectory
         });
 
-        bool updatedPath = await store.AutoDetectGameInstallDirectoryAsync();
+        GameInstallDirectoryUpdateResult result = await store.AutoDetectGameInstallDirectoryAsync();
 
-        Assert.False(updatedPath);
+        Assert.Equal(GameInstallDirectoryUpdateResult.Unchanged, result);
         Assert.Equal(0, detectCount);
         Assert.Equal(WayMarkOpenDirectoryMode.CustomDirectory, store.Settings.WayMarkOpenDirectoryMode);
         Assert.Equal(Path.GetFullPath(manualGameInstallDirectory), store.Settings.GameInstallDirectory);
         Assert.Equal(Path.GetFullPath(customDirectory), store.Settings.WayMarkCustomDirectory);
+    }
+
+    [Fact]
+    public void SetGameInstallDirectoryFromDetectedPath_WhenDefaultModeIsExplicit_KeepsDefaultMode()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        store.SaveSettings(new AppSettings
+        {
+            WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.Default,
+            WayMarkOpenDirectoryModeInitialized = true
+        });
+        string gameInstallDirectory = CreateGameInstallDirectory("FinalFantasyXIV");
+        string gameExecutablePath = Path.Combine(gameInstallDirectory, "game", "ffxiv_dx11.exe");
+
+        GameInstallDirectoryUpdateResult result = store.SetGameInstallDirectoryFromDetectedPath(gameExecutablePath);
+
+        Assert.Equal(GameInstallDirectoryUpdateResult.Updated, result);
+        Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.True(store.Settings.WayMarkOpenDirectoryModeInitialized);
+        Assert.Equal(Path.GetFullPath(gameInstallDirectory), store.Settings.GameInstallDirectory);
     }
 
     [Fact]
@@ -347,6 +372,34 @@ public sealed class AppDataStoreTests : IDisposable
 
         Assert.Equal(GameInstallDirectoryUpdateResult.Updated, firstResult);
         Assert.Equal(GameInstallDirectoryUpdateResult.Unchanged, secondResult);
+        Assert.Equal(Path.GetFullPath(gameInstallDirectory), store.Settings.GameInstallDirectory);
+    }
+
+    [Fact]
+    public void SetGameInstallDirectoryFromDetectedPath_WhenDirectoryIsSameAndCharacterRootAppears_DoesNotSelectGameCharacterDirectory()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string gameInstallDirectory = Path.Combine(testDirectory, "FinalFantasyXIV");
+        string gameExecutablePath = Path.Combine(gameInstallDirectory, "game", "ffxiv_dx11.exe");
+        string gameCharacterRootDirectory = Path.Combine(
+            gameInstallDirectory,
+            "game",
+            "My Games",
+            "FINAL FANTASY XIV - A Realm Reborn");
+        Directory.CreateDirectory(Path.GetDirectoryName(gameExecutablePath)!);
+        File.WriteAllText(gameExecutablePath, string.Empty);
+        GameInstallDirectoryUpdateResult firstResult = store.SetGameInstallDirectoryFromDetectedPath(gameExecutablePath);
+        Assert.Equal(GameInstallDirectoryUpdateResult.Updated, firstResult);
+        Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.True(store.Settings.WayMarkOpenDirectoryModeInitialized);
+
+        Directory.CreateDirectory(gameCharacterRootDirectory);
+        GameInstallDirectoryUpdateResult result = store.SetGameInstallDirectoryFromDetectedPath(gameExecutablePath);
+
+        Assert.Equal(GameInstallDirectoryUpdateResult.Unchanged, result);
+        Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.True(store.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(Path.GetFullPath(gameInstallDirectory), store.Settings.GameInstallDirectory);
     }
 
@@ -372,10 +425,14 @@ public sealed class AppDataStoreTests : IDisposable
         GameInstallDirectoryUpdateResult result = store.SetGameInstallDirectoryFromLoadedSaveFile(saveFilePath);
 
         Assert.Equal(GameInstallDirectoryUpdateResult.Updated, result);
+        Assert.Equal(WayMarkOpenDirectoryMode.GameCharacterDirectory, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.True(store.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(Path.GetFullPath(gameInstallDirectory), store.Settings.GameInstallDirectory);
 
         AppDataStore reloadedStore = CreateStore();
         reloadedStore.Initialize();
+        Assert.Equal(WayMarkOpenDirectoryMode.GameCharacterDirectory, reloadedStore.Settings.WayMarkOpenDirectoryMode);
+        Assert.True(reloadedStore.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(Path.GetFullPath(gameInstallDirectory), reloadedStore.Settings.GameInstallDirectory);
     }
 
@@ -410,7 +467,9 @@ public sealed class AppDataStoreTests : IDisposable
 
         GameInstallDirectoryUpdateResult result = store.SetGameInstallDirectoryFromLoadedSaveFile(saveFilePath);
 
-        Assert.Equal(GameInstallDirectoryUpdateResult.Updated, result);
+        Assert.Equal(GameInstallDirectoryUpdateResult.Relocated, result);
+        Assert.Equal(WayMarkOpenDirectoryMode.GameCharacterDirectory, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.True(store.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(Path.GetFullPath(gameInstallDirectory), store.Settings.GameInstallDirectory);
     }
 
@@ -528,6 +587,7 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal(StartupWayMarkAction.LoadMostRecentFile, reloadedStore.Settings.StartupWayMarkAction);
         Assert.Equal(WayMarkFavoriteSaveMode.Auto, reloadedStore.Settings.WayMarkFavoriteSaveMode);
         Assert.Equal(WayMarkOpenDirectoryMode.GameCharacterDirectory, reloadedStore.Settings.WayMarkOpenDirectoryMode);
+        Assert.True(reloadedStore.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(Path.GetFullPath(gameInstallRootDirectory), reloadedStore.Settings.GameInstallDirectory);
         Assert.Equal(Path.GetFullPath(customDirectory), reloadedStore.Settings.WayMarkCustomDirectory);
         Assert.True(reloadedStore.Settings.AutoBackupAfterLoad);
@@ -567,6 +627,7 @@ public sealed class AppDataStoreTests : IDisposable
         string garbledDirectory = CreateUtf8DecodedAsGbk(customDirectory);
         Directory.CreateDirectory(Path.GetDirectoryName(gameInstallDirectory)!);
         File.WriteAllText(gameInstallDirectory, string.Empty);
+        Directory.CreateDirectory(customDirectory);
         Directory.CreateDirectory(Path.GetDirectoryName(store.SettingsFilePath)!);
         File.WriteAllText(
             store.SettingsFilePath,
@@ -581,6 +642,8 @@ public sealed class AppDataStoreTests : IDisposable
 
         Assert.Equal(Path.GetFullPath(gameInstallRootDirectory), reloadedStore.Settings.GameInstallDirectory);
         Assert.Equal(Path.GetFullPath(customDirectory), reloadedStore.Settings.WayMarkCustomDirectory);
+        Assert.Equal(WayMarkOpenDirectoryMode.Default, reloadedStore.Settings.WayMarkOpenDirectoryMode);
+        Assert.False(reloadedStore.Settings.WayMarkOpenDirectoryModeInitialized);
     }
 
     [Fact]

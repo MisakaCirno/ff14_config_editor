@@ -150,9 +150,20 @@ namespace UIMarkerEditor
         {
             try
             {
-                if (await appDataStore.AutoDetectGameInstallDirectoryAsync())
+                GameInstallDirectoryUpdateResult result = await appDataStore.AutoDetectGameInstallDirectoryAsync();
+                if (result is GameInstallDirectoryUpdateResult.Updated or GameInstallDirectoryUpdateResult.Relocated)
                 {
                     ToolSettings_Control.RefreshGameInstallDirectoryFromSettings();
+                }
+
+                if (result == GameInstallDirectoryUpdateResult.Relocated)
+                {
+                    AppMessageBox.Show(
+                        this,
+                        "检测到游戏位置移动，已重新获取游戏位置。",
+                        "游戏位置已更新",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
                 }
 
                 await ScanLocalCharactersAsync();

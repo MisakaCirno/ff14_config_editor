@@ -101,8 +101,11 @@ public partial class ToolSettingsControl : UserControl
         if (string.IsNullOrWhiteSpace(appDataStore.Settings.GameInstallDirectory)) return;
         if (GameInstallDirectory_TextBox.IsKeyboardFocusWithin) return;
 
-        GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
-        UpdateGameCharacterDirectoryState();
+        SetSettingsUiSilently(() =>
+        {
+            GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
+            ApplyWayMarkOpenDirectoryModeToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
+        });
     }
 
     private void SettingsNavigation_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -289,6 +292,7 @@ public partial class ToolSettingsControl : UserControl
             settings =>
             {
                 settings.WayMarkOpenDirectoryMode = ReadWayMarkOpenDirectoryModeFromUi();
+                settings.WayMarkOpenDirectoryModeInitialized = true;
             },
             "保存文件打开设置");
     }
@@ -314,7 +318,7 @@ public partial class ToolSettingsControl : UserControl
             SetSettingsUiSilently(() =>
             {
                 GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
-                UpdateGameCharacterDirectoryState();
+                ApplyWayMarkOpenDirectoryModeToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
             });
             if (result == GameInstallDirectoryUpdateResult.Unchanged)
             {
@@ -329,6 +333,17 @@ public partial class ToolSettingsControl : UserControl
             }
 
             scanLocalCharacters();
+            if (result == GameInstallDirectoryUpdateResult.Relocated)
+            {
+                AppMessageBox.Show(
+                    ownerWindow,
+                    "检测到游戏位置移动，已重新获取游戏位置。",
+                    "游戏位置已更新",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
             ToastService.ShowSuccess("游戏安装目录已更新。");
         }
         catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException or IOException or UnauthorizedAccessException)
@@ -371,6 +386,7 @@ public partial class ToolSettingsControl : UserControl
                 settings =>
                 {
                     settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.CustomDirectory;
+                    settings.WayMarkOpenDirectoryModeInitialized = true;
                     settings.WayMarkCustomDirectory = dialog.FolderName.Trim();
                 },
                 "保存自定义目录");
@@ -1033,7 +1049,11 @@ public partial class ToolSettingsControl : UserControl
                 settings.GameInstallDirectory = gameInstallDirectory;
             },
             "保存游戏安装目录");
-        GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
+        SetSettingsUiSilently(() =>
+        {
+            GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
+            ApplyWayMarkOpenDirectoryModeSelectionToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
+        });
         UpdateGameCharacterDirectoryState(persistFallbackToDefault: true);
         if (saved)
         {
@@ -1090,10 +1110,15 @@ public partial class ToolSettingsControl : UserControl
 
     private void ApplyWayMarkOpenDirectoryModeToUi(WayMarkOpenDirectoryMode mode)
     {
+        ApplyWayMarkOpenDirectoryModeSelectionToUi(mode);
+        UpdateGameCharacterDirectoryState();
+    }
+
+    private void ApplyWayMarkOpenDirectoryModeSelectionToUi(WayMarkOpenDirectoryMode mode)
+    {
         OpenDirectoryCustom_RadioButton.IsChecked = mode == WayMarkOpenDirectoryMode.CustomDirectory;
         OpenDirectoryGameCharacter_RadioButton.IsChecked = mode == WayMarkOpenDirectoryMode.GameCharacterDirectory;
         OpenDirectoryDefault_RadioButton.IsChecked = mode == WayMarkOpenDirectoryMode.Default;
-        UpdateGameCharacterDirectoryState();
         UpdateWayMarkCustomDirectoryInputState();
     }
 
@@ -1143,6 +1168,7 @@ public partial class ToolSettingsControl : UserControl
                 settings =>
                 {
                     settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.Default;
+                    settings.WayMarkOpenDirectoryModeInitialized = false;
                 },
                 "保存文件打开设置");
         }
