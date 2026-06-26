@@ -309,6 +309,7 @@ namespace UIMarkerEditor
                 }
 
                 ToolSettings_Control.RefreshGameInstallDirectoryFromSettings();
+                StartLocalCharacterScan();
                 ToastService.ShowSuccess("已根据当前文件记录游戏安装目录。");
             }
             catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException or IOException or UnauthorizedAccessException)

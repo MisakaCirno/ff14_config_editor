@@ -28,7 +28,9 @@ public partial class WayMarkEditorControl : UserControl
     private bool isWayMarkContextMenuOpen;
     private bool isWatchingWayMarkListDragSuppressionRelease;
     private List<WayMark>? wayMarks;
+    private bool canSelectLocalCharacter;
     public event EventHandler? WayMarksChanged;
+    public event EventHandler? SelectLocalCharacterRequested;
 
     public WayMarkEditorControl()
     {
@@ -106,11 +108,25 @@ public partial class WayMarkEditorControl : UserControl
         UpdateMoveButtonState();
     }
 
+    public void SetLocalCharacterSelectionAvailable(bool isAvailable)
+    {
+        canSelectLocalCharacter = isAvailable;
+        RefreshOpenFileOverlay();
+    }
+
     private void RefreshOpenFileOverlay()
     {
         OpenFileOverlay_Grid.Visibility = wayMarks == null
             ? Visibility.Visible
             : Visibility.Collapsed;
+        OpenLocalCharacter_Button.Visibility = canSelectLocalCharacter
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private void OpenLocalCharacter_Button_Click(object sender, RoutedEventArgs e)
+    {
+        SelectLocalCharacterRequested?.Invoke(this, EventArgs.Empty);
     }
 
     public void ApplyLayoutSettings(WindowLayoutSettings layout)

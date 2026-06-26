@@ -304,6 +304,11 @@
                                           Command="{x:Static local:MainWindow.OpenWayMarkFileCommand}"
                                           CommandTarget="{Binding ElementName=RootWindow}"
                                           InputGestureText="Ctrl+O"/>
+                            <MenuItem x:Name="OpenLocalCharacter_MenuItem"
+                                      Header="直接选择游戏角色..."
+                                      Style="{StaticResource TitleBarSubMenuItemStyle}"
+                                      Click="OpenLocalCharacter_MenuItem_Click"
+                                      Visibility="Collapsed"/>
                             <MenuItem x:Name="RecentFiles_MenuItem"
                                           Header="最近打开"
                                           Style="{StaticResource TitleBarSubMenuItemStyle}"/>

@@ -966,6 +966,85 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public void ScanLocalGameCharacters_CreatesProfilesForEveryLocalSaveFile()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string gameInstallDirectory = CreateGameInstallDirectory("LocalCharactersGame");
+        CreateLocalCharacterSaveFile(gameInstallDirectory, "0011223344556677");
+        CreateLocalCharacterSaveFile(gameInstallDirectory, "8899AABBCCDDEEFF");
+        CreateLocalCharacterDirectory(gameInstallDirectory, "1122334455667788");
+        CreateLocalCharacterSaveFile(gameInstallDirectory, "FFEEDDCCBBAA9988_Manual");
+        store.SaveSettings(new AppSettings
+        {
+            GameInstallDirectory = gameInstallDirectory
+        });
+
+        LocalGameCharacterScanResult result = store.ScanLocalGameCharacters();
+
+        Assert.Equal(2, result.LocalCharacterCount);
+        Assert.Equal(2, result.CreatedProfileCount);
+        Assert.Empty(result.Errors);
+        Assert.Contains(store.Characters, character => character.UserID == "0011223344556677");
+        Assert.Contains(store.Characters, character => character.UserID == "8899AABBCCDDEEFF");
+        Assert.DoesNotContain(store.Characters, character => character.UserID == "1122334455667788");
+        Assert.DoesNotContain(store.Characters, character => character.UserID.StartsWith("FFEEDDCCBBAA9988", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void GetAvailableLocalGameCharacters_ReturnsOnlyRecordedCharactersWithExistingSaveFiles()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string gameInstallDirectory = CreateGameInstallDirectory("AvailableCharactersGame");
+        string firstSaveFile = CreateLocalCharacterSaveFile(gameInstallDirectory, "0011223344556677");
+        CreateLocalCharacterSaveFile(gameInstallDirectory, "8899AABBCCDDEEFF");
+        store.SaveSettings(new AppSettings
+        {
+            GameInstallDirectory = gameInstallDirectory
+        });
+
+        Assert.Empty(store.GetAvailableLocalGameCharacters());
+
+        LocalGameCharacterScanPreparation preparation = store.PrepareLocalGameCharacterScan();
+        LocalGameCharacterScanResult result = store.ApplyLocalGameCharacterScan(preparation);
+        File.Delete(firstSaveFile);
+
+        IReadOnlyList<LocalGameCharacter> availableCharacters = store.GetAvailableLocalGameCharacters();
+
+        Assert.Equal(2, result.CreatedProfileCount);
+        LocalGameCharacter character = Assert.Single(availableCharacters);
+        Assert.Equal("8899AABBCCDDEEFF", character.UserID);
+        Assert.Equal(string.Empty, character.CharacterName);
+        Assert.True(File.Exists(character.SaveFilePath));
+    }
+
+    [Fact]
+    public void ApplyLocalGameCharacterScan_WhenGameInstallDirectoryChanged_SkipsStaleResult()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string firstGameInstallDirectory = CreateGameInstallDirectory("FirstLocalCharactersGame");
+        string secondGameInstallDirectory = CreateGameInstallDirectory("SecondLocalCharactersGame");
+        CreateLocalCharacterSaveFile(firstGameInstallDirectory, "0011223344556677");
+        store.SaveSettings(new AppSettings
+        {
+            GameInstallDirectory = firstGameInstallDirectory
+        });
+        LocalGameCharacterScanPreparation preparation = store.PrepareLocalGameCharacterScan();
+        store.SaveSettings(new AppSettings
+        {
+            GameInstallDirectory = secondGameInstallDirectory
+        });
+
+        LocalGameCharacterScanResult result = store.ApplyLocalGameCharacterScan(preparation);
+
+        Assert.True(result.SkippedBecauseGameInstallDirectoryChanged);
+        Assert.False(result.Changed);
+        Assert.Empty(store.Characters);
+    }
+
+    [Fact]
     public void AddRecentFile_DeduplicatesLimitsAndPersistsRecentFiles()
     {
         AppDataStore store = CreateStore();
@@ -1758,6 +1837,36 @@ public sealed class AppDataStoreTests : IDisposable
     private AppDataStore CreateStore()
     {
         return CreateStore(() => null);
+    }
+
+    private string CreateGameInstallDirectory(string directoryName)
+    {
+        string gameInstallDirectory = Path.Combine(testDirectory, directoryName);
+        string gameDirectory = Path.Combine(gameInstallDirectory, "game");
+        Directory.CreateDirectory(gameDirectory);
+        File.WriteAllText(Path.Combine(gameDirectory, "ffxiv_dx11.exe"), string.Empty);
+        Directory.CreateDirectory(Path.Combine(gameDirectory, "My Games", "FINAL FANTASY XIV - A Realm Reborn"));
+        return gameInstallDirectory;
+    }
+
+    private string CreateLocalCharacterDirectory(string gameInstallDirectory, string userID)
+    {
+        string characterDirectory = Path.Combine(
+            gameInstallDirectory,
+            "game",
+            "My Games",
+            "FINAL FANTASY XIV - A Realm Reborn",
+            $"FFXIV_CHR{userID}");
+        Directory.CreateDirectory(characterDirectory);
+        return characterDirectory;
+    }
+
+    private string CreateLocalCharacterSaveFile(string gameInstallDirectory, string userID)
+    {
+        string characterDirectory = CreateLocalCharacterDirectory(gameInstallDirectory, userID);
+        string saveFilePath = Path.Combine(characterDirectory, "UISAVE.DAT");
+        File.WriteAllText(saveFilePath, string.Empty);
+        return saveFilePath;
     }
 
     private AppDataStore CreateStore(Func<string?> gameInstallDirectoryDetector)

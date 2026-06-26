@@ -70,6 +70,7 @@ namespace UIMarkerEditor
             AddDeveloperToolsTab();
             InitializeCurrentFileChangeMonitor();
             WayMarkEditor_Control.WayMarksChanged += (_, _) => MarkWayMarkDirty();
+            WayMarkEditor_Control.SelectLocalCharacterRequested += (_, _) => OpenLocalGameCharacterPicker();
             Title = DefaultWindowTitle;
             ApplySavedLayoutSettings();
             UpdateMaximizeRestoreButton();
@@ -112,7 +113,11 @@ namespace UIMarkerEditor
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             UpdateDataVersionText();
-            CharacterProfiles_Control.Initialize(appDataStore, this, RefreshBackupList);
+            CharacterProfiles_Control.Initialize(
+                appDataStore,
+                this,
+                RefreshBackupList,
+                RefreshLocalCharacterSelectionAvailability);
             BackupRestore_Control.Initialize(
                 appDataStore,
                 this,
@@ -129,17 +134,19 @@ namespace UIMarkerEditor
                 RefreshCharacterList,
                 RefreshServerListConsumers,
                 RefreshMapDataConsumers,
-                RefreshAppearanceSettings);
+                RefreshAppearanceSettings,
+                StartLocalCharacterScan);
             LoadSettingsIntoUi();
             RefreshBackupList();
             RefreshCharacterList();
             ShowDataLoadWarnings();
             ShowMigrationReports();
             ScheduleStartupWayMarkAction();
-            _ = AutoDetectGameInstallDirectoryAsync();
+            RefreshLocalCharacterSelectionAvailability();
+            _ = AutoDetectGameInstallDirectoryAndScanLocalCharactersAsync();
         }
 
-        private async Task AutoDetectGameInstallDirectoryAsync()
+        private async Task AutoDetectGameInstallDirectoryAndScanLocalCharactersAsync()
         {
             try
             {
@@ -147,6 +154,8 @@ namespace UIMarkerEditor
                 {
                     ToolSettings_Control.RefreshGameInstallDirectoryFromSettings();
                 }
+
+                await ScanLocalCharactersAsync();
             }
             catch (Exception ex)
             {

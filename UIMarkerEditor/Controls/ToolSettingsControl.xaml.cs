@@ -24,6 +24,7 @@ public partial class ToolSettingsControl : UserControl
     private Action refreshServerListConsumers = () => { };
     private Action refreshMapDataConsumers = () => { };
     private Action refreshAppearance = () => { };
+    private Action scanLocalCharacters = () => { };
 
     public ToolSettingsControl()
     {
@@ -38,7 +39,8 @@ public partial class ToolSettingsControl : UserControl
         Action refreshCharacterList,
         Action refreshServerListConsumers,
         Action refreshMapDataConsumers,
-        Action refreshAppearance)
+        Action refreshAppearance,
+        Action scanLocalCharacters)
     {
         this.appDataStore = appDataStore;
         this.ownerWindow = ownerWindow;
@@ -47,6 +49,7 @@ public partial class ToolSettingsControl : UserControl
         this.refreshServerListConsumers = refreshServerListConsumers;
         this.refreshMapDataConsumers = refreshMapDataConsumers;
         this.refreshAppearance = refreshAppearance;
+        this.scanLocalCharacters = scanLocalCharacters;
     }
 
     public void LoadSettingsIntoUi()
@@ -315,6 +318,7 @@ public partial class ToolSettingsControl : UserControl
             });
             if (result == GameInstallDirectoryUpdateResult.Unchanged)
             {
+                scanLocalCharacters();
                 AppMessageBox.Show(
                     ownerWindow,
                     "扫描到的游戏安装目录与当前设置一致，无需修改。",
@@ -324,6 +328,7 @@ public partial class ToolSettingsControl : UserControl
                 return;
             }
 
+            scanLocalCharacters();
             ToastService.ShowSuccess("游戏安装目录已更新。");
         }
         catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException or IOException or UnauthorizedAccessException)
@@ -1030,6 +1035,11 @@ public partial class ToolSettingsControl : UserControl
             "保存游戏安装目录");
         GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
         UpdateGameCharacterDirectoryState(persistFallbackToDefault: true);
+        if (saved)
+        {
+            scanLocalCharacters();
+        }
+
         return saved;
     }
 

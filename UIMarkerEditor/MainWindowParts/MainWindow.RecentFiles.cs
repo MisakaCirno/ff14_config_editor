@@ -11,6 +11,7 @@ namespace UIMarkerEditor
         private void File_MenuItem_SubmenuOpened(object sender, RoutedEventArgs e)
         {
             CommandManager.InvalidateRequerySuggested();
+            RefreshLocalCharacterSelectionAvailability();
             RefreshRecentFileMenu();
         }
 

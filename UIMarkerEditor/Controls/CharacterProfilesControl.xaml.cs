@@ -13,6 +13,7 @@ public partial class CharacterProfilesControl : UserControl
     private AppDataStore? appDataStore;
     private Window? ownerWindow;
     private Action refreshBackupList = () => { };
+    private Action refreshLocalCharacterSelectionAvailability = () => { };
     private CharacterProfile? loadedCharacterProfile;
     private string selectedCharacterDataCenter = string.Empty;
     private string selectedCharacterWorld = string.Empty;
@@ -28,11 +29,16 @@ public partial class CharacterProfilesControl : UserControl
         UpdateCharacterDetailVisibility(showDetail: false);
     }
 
-    public void Initialize(AppDataStore appDataStore, Window ownerWindow, Action refreshBackupList)
+    public void Initialize(
+        AppDataStore appDataStore,
+        Window ownerWindow,
+        Action refreshBackupList,
+        Action refreshLocalCharacterSelectionAvailability)
     {
         this.appDataStore = appDataStore;
         this.ownerWindow = ownerWindow;
         this.refreshBackupList = refreshBackupList;
+        this.refreshLocalCharacterSelectionAvailability = refreshLocalCharacterSelectionAvailability;
         RefreshServerPicker();
     }
 
@@ -226,9 +232,9 @@ public partial class CharacterProfilesControl : UserControl
     {
         if (appDataStore == null || !ConfirmSaveOrDiscardCharacterChanges()) return;
 
-        if (!ClientLogCharacterNameResolver.TryResolveGameCharacterRootDirectory(
+        if (!WayMarkOpenDirectoryResolver.TryResolveGameCharacterRootDirectory(
             appDataStore.Settings.GameInstallDirectory,
-            out string? gameCharacterRootDirectory))
+            out _))
         {
             AppMessageBox.Show(
                 ownerWindow,
@@ -242,12 +248,17 @@ public partial class CharacterProfilesControl : UserControl
         object originalContent = ScanClientLogs_Button.Content;
         ScanClientLogs_Button.IsEnabled = false;
         ScanClientLogs_Button.Content = "获取中...";
-        List<ClientLogCharacterNameScanError> errors = [];
-        IReadOnlyList<ClientLogCharacterNameMatch> matches;
+        LocalGameCharacterScanResult result;
+        LocalGameCharacterScanPreparation preparation;
         try
         {
-            matches = await Task.Run(() =>
-                ClientLogCharacterNameResolver.ScanGameCharacterRootDirectory(gameCharacterRootDirectory, errors));
+            preparation = await Task.Run(appDataStore.PrepareLocalGameCharacterScan);
+            result = appDataStore.ApplyLocalGameCharacterScan(preparation);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
+        {
+            AppMessageBox.Show(ownerWindow, $"获取所有本地角色失败：{ex.Message}", "角色备注保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
         }
         finally
         {
@@ -255,128 +266,56 @@ public partial class CharacterProfilesControl : UserControl
             ScanClientLogs_Button.IsEnabled = true;
         }
 
-        foreach (ClientLogCharacterNameScanError error in errors)
+        foreach (ClientLogCharacterNameScanError error in result.Errors)
         {
             AppLogger.Warning(AppLogCategory.IO, $"客户端日志昵称扫描跳过：{error.Path}；{error.Message}");
         }
 
-        List<CharacterLogNameImportItem> importItems = BuildLogNameImportItems(matches, out int unchangedCount);
-        if (importItems.Count == 0)
+        if (result.SkippedBecauseGameInstallDirectoryChanged)
         {
-            string detail = unchangedCount > 0
-                ? $"已识别的 {unchangedCount} 个角色昵称都与现有备注一致。"
-                : "没有从客户端日志中识别到可导入的本地角色昵称。";
-            if (errors.Count > 0)
-            {
-                detail += $"\n\n另有 {errors.Count} 个日志文件或目录读取失败，已跳过。";
-            }
-
-            AppMessageBox.Show(ownerWindow, detail, "获取所有本地角色", MessageBoxButton.OK, MessageBoxImage.Information);
+            refreshLocalCharacterSelectionAvailability();
+            AppMessageBox.Show(
+                ownerWindow,
+                "游戏安装目录已变化，本次本地角色扫描结果已跳过。请重新获取所有本地角色。",
+                "获取所有本地角色",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
             return;
         }
 
-        CharacterLogNameImportDialog dialog = new(importItems, unchangedCount, errors.Count);
-        DialogOwnerHelper.ConfigureOwnedDialog(dialog, ownerWindow ?? Window.GetWindow(this));
-        if (dialog.ShowDialog() != true) return;
-
-        IReadOnlyList<CharacterLogNameImportItem> selectedItems = dialog.SelectedItems;
-        if (!TryApplyLogNameImportItems(selectedItems, out string? preferredUserID)) return;
-
-        ReloadCharacterList(preferredUserID);
+        ReloadCharacterList(null);
         refreshBackupList();
-        ToastService.ShowSuccess($"已应用 {selectedItems.Count} 个客户端日志昵称。");
-    }
-
-    private List<CharacterLogNameImportItem> BuildLogNameImportItems(
-        IEnumerable<ClientLogCharacterNameMatch> matches,
-        out int unchangedCount)
-    {
-        unchangedCount = 0;
-        List<CharacterLogNameImportItem> importItems = [];
-        if (appDataStore == null) return importItems;
-
-        foreach (ClientLogCharacterNameMatch match in matches.OrderBy(static item => item.UserID, StringComparer.OrdinalIgnoreCase))
+        refreshLocalCharacterSelectionAvailability();
+        if (result.LocalCharacterCount == 0)
         {
-            CharacterProfile? existingProfile = appDataStore.Characters.FirstOrDefault(character =>
-                string.Equals(character.UserID, match.UserID, StringComparison.OrdinalIgnoreCase));
-            string currentCharacterName = existingProfile?.CharacterName ?? string.Empty;
-            if (!string.IsNullOrWhiteSpace(currentCharacterName) &&
-                string.Equals(currentCharacterName.Trim(), match.CharacterName, StringComparison.OrdinalIgnoreCase))
-            {
-                unchangedCount++;
-                continue;
-            }
-
-            bool isConflict = !string.IsNullOrWhiteSpace(currentCharacterName);
-            importItems.Add(new CharacterLogNameImportItem
-            {
-                UserID = match.UserID,
-                CurrentCharacterName = currentCharacterName,
-                LogCharacterName = match.CharacterName,
-                JobName = match.JobName,
-                Source = match.Source,
-                Timestamp = match.Timestamp,
-                LogFilePath = match.LogFilePath,
-                EntryIndex = match.EntryIndex,
-                HasExistingProfile = existingProfile != null,
-                IsConflict = isConflict,
-                IsSelected = !isConflict
-            });
+            AppMessageBox.Show(
+                ownerWindow,
+                "没有找到包含 UISAVE.DAT 的本地角色目录。",
+                "获取所有本地角色",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
         }
 
-        return importItems;
-    }
-
-    private bool TryApplyLogNameImportItems(
-        IReadOnlyList<CharacterLogNameImportItem> selectedItems,
-        out string? preferredUserID)
-    {
-        preferredUserID = selectedItems.FirstOrDefault()?.UserID;
-        if (appDataStore == null || selectedItems.Count == 0) return false;
-
-        List<CharacterProfile> snapshot = CloneCharacterProfiles(appDataStore.Characters);
-        try
+        string message = $"已找到 {result.LocalCharacterCount} 个本地角色。";
+        if (result.CreatedProfileCount > 0)
         {
-            foreach (CharacterLogNameImportItem item in selectedItems)
-            {
-                CharacterProfile profile = appDataStore.GetOrCreateCharacter(item.UserID);
-                profile.CharacterName = item.LogCharacterName;
-                profile.UpdatedAt = DateTime.Now;
-            }
-
-            appDataStore.SaveCharacters();
-            return true;
+            message += $" 新增 {result.CreatedProfileCount} 条角色备注。";
         }
-        catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
+        if (result.ImportedCharacterNameCount > 0)
         {
-            RestoreCharacterProfiles(snapshot);
-            AppMessageBox.Show(ownerWindow, $"保存角色备注失败：{ex.Message}", "角色备注保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return false;
+            message += $" 补全 {result.ImportedCharacterNameCount} 个角色名。";
         }
-    }
-
-    private static List<CharacterProfile> CloneCharacterProfiles(IEnumerable<CharacterProfile> profiles)
-    {
-        return profiles.Select(static profile => new CharacterProfile
+        if (!result.Changed)
         {
-            UserID = profile.UserID,
-            CharacterName = profile.CharacterName,
-            DataCenter = profile.DataCenter,
-            World = profile.World,
-            Note = profile.Note,
-            UpdatedAt = profile.UpdatedAt
-        }).ToList();
-    }
-
-    private void RestoreCharacterProfiles(IEnumerable<CharacterProfile> snapshot)
-    {
-        if (appDataStore == null) return;
-
-        appDataStore.Characters.Clear();
-        foreach (CharacterProfile profile in snapshot)
-        {
-            appDataStore.Characters.Add(profile);
+            message += " 当前角色备注无需更新。";
         }
+        if (result.Errors.Count > 0)
+        {
+            message += $" 另有 {result.Errors.Count} 个日志文件或目录读取失败，已跳过。";
+        }
+
+        ToastService.ShowSuccess(message);
     }
 
     private bool TryCreateCharacterProfile(BackupCharacterProfileDialog dialog, out string createdUserID)

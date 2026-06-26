@@ -220,9 +220,18 @@
                                Foreground="{StaticResource AppMutedTextBrush}"/>
                     <Button Content="读取 UISAVE.DAT..."
                             Style="{StaticResource PrimaryButtonStyle}"
+                            Width="196"
                             HorizontalAlignment="Center"
                             Command="{x:Static local:MainWindow.OpenWayMarkFileCommand}"
                             CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+                    <Button x:Name="OpenLocalCharacter_Button"
+                            Content="或直接选择游戏角色..."
+                            Style="{StaticResource SuccessButtonStyle}"
+                            Width="196"
+                            HorizontalAlignment="Center"
+                            Margin="0,8,0,0"
+                            Click="OpenLocalCharacter_Button_Click"
+                            Visibility="Collapsed"/>
                 </StackPanel>
             </Border>
         </Grid>

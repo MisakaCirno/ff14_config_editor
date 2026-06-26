@@ -5,6 +5,7 @@
         private void RefreshCharacterList()
         {
             CharacterProfiles_Control.RefreshCharacterList();
+            RefreshLocalCharacterSelectionAvailability();
         }
 
         private async Task SyncServerListIfNeededAsync(bool showFailureMessage = false)
