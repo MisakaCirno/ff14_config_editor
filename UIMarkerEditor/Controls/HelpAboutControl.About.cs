@@ -9,10 +9,22 @@ namespace UIMarkerEditor.Controls;
 
 public partial class HelpAboutControl
 {
+    private const string Repository = "https://github.com/MisakaCirno/ff14_config_editor";
+    private const string BilibiliName = "@御琪幽然";
+    private const string Bilibili = "https://space.bilibili.com/2908365";
+    private const string QqGroupNumber = "1075777023";
+    private const string QqGroup = "http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=_Y7Glbc9stUFXNyiTKKYuBGBiusMrtY8&authKey=WfD6QlORkZPLuCqHxb0G7HWIxi3jZSJ10Ss4%2FWYvQb3hdp9IyJi8CuZ7R1BU4H%2BV&noverify=0&group_code=1075777023";
     private const string DieMoe = "https://act.diemoe.net";
     private const string Souma = "https://souma.diemoe.net";
     private const string LucideLicense = "https://lucide.dev/license";
     private const string FfxivMaterialUsageLicense = "https://support.na.square-enix.com/rule.php?id=5382&tag=authc";
+    private const string UisaveReader = "https://github.com/PunishedPineapple/UISAVE_Reader";
+    private const string FfxivUisaveParser = "https://github.com/Lujiang0111/FFxivUisaveParser";
+    private const string FfxivClientStructsUiSavePackModule = "https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Client/UI/Misc/UiSavePackModule.cs";
+    private const string HaselDebugUiModuleTab = "https://github.com/Haselnussbomber/HaselDebug/blob/main/HaselDebug/Tabs/Disabled/UIModuleTab.cs";
+    private const string FfxivDataminingCnContentFinderCondition = "https://github.com/thewakingsands/ffxiv-datamining-cn/blob/master/ContentFinderCondition.csv";
+    private const string FfxivLogViewer = "https://ffxivlog.orz.tools/";
+    private const string FfxivLogParser = "https://github.com/ffxiv-cyou/ffxiv-log-parser";
 
     private int aboutGridRowIndex;
 
@@ -26,9 +38,9 @@ public partial class HelpAboutControl
         AddInfoRow("软件名称", "FF14 标点预设编辑工具");
         AddInfoRow("版本号", GetVersionText());
         AddInfoRow("发布日期", "2026年6月19日");
-        AddInfoRow("Git 仓库", ExternalLinks.Repository, ExternalLinks.Repository);
-        AddInfoRow("Bilibili", ExternalLinks.BilibiliName, ExternalLinks.Bilibili);
-        AddInfoRow("QQ交流群", ExternalLinks.QqGroupNumber, ExternalLinks.QqGroup);
+        AddInfoRow("Git 仓库", Repository, Repository);
+        AddInfoRow("Bilibili", BilibiliName, Bilibili);
+        AddInfoRow("QQ交流群", QqGroupNumber, QqGroup);
 
         AddSectionTitle("友情链接");
         AddInfoRow("呆萌", DieMoe, DieMoe);
@@ -44,11 +56,13 @@ public partial class HelpAboutControl
         AddTextLine("FINAL FANTASY XIV 及相关素材版权、商标归 Square Enix Holdings Co., Ltd. / Square Enix Co., Ltd. 所有。本工具为非官方工具，与 Square Enix 无从属或授权关系。");
 
         AddSectionTitle("参考项目");
-        AddInfoRow("解析算法", ExternalLinks.UisaveReader, ExternalLinks.UisaveReader);
-        AddInfoRow("解析算法", ExternalLinks.FfxivUisaveParser, ExternalLinks.FfxivUisaveParser);
-        AddInfoRow("文件结构", ExternalLinks.FfxivClientStructsUiSavePackModule, ExternalLinks.FfxivClientStructsUiSavePackModule);
-        AddInfoRow("文件结构", ExternalLinks.HaselDebugUiModuleTab, ExternalLinks.HaselDebugUiModuleTab);
-        AddInfoRow("地图数据", ExternalLinks.FfxivDataminingCnContentFinderCondition, ExternalLinks.FfxivDataminingCnContentFinderCondition);
+        AddInfoRow("解析算法", UisaveReader, UisaveReader);
+        AddInfoRow("解析算法", FfxivUisaveParser, FfxivUisaveParser);
+        AddInfoRow("文件结构", FfxivClientStructsUiSavePackModule, FfxivClientStructsUiSavePackModule);
+        AddInfoRow("文件结构", HaselDebugUiModuleTab, HaselDebugUiModuleTab);
+        AddInfoRow("地图数据", FfxivDataminingCnContentFinderCondition, FfxivDataminingCnContentFinderCondition);
+        AddInfoRow("日志解析", FfxivLogViewer, FfxivLogViewer);
+        AddInfoRow("日志解析", FfxivLogParser, FfxivLogParser);
     }
 
     private void AddSectionTitle(string title)
