@@ -1047,6 +1047,36 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public void CreateBackup_WhenSourceCharacterFolderHasSuffix_UsesFileUserIdAsEffectiveUserId()
+    {
+        string gameInstallDirectory = Path.Combine(testDirectory, "GameInstall");
+        string gameExecutablePath = Path.Combine(gameInstallDirectory, "game", "ffxiv_dx11.exe");
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        Directory.CreateDirectory(Path.GetDirectoryName(gameExecutablePath)!);
+        File.WriteAllText(gameExecutablePath, string.Empty);
+        store.SaveSettings(new AppSettings
+        {
+            GameInstallDirectory = gameExecutablePath
+        });
+        string gameConfigRoot = Path.Combine(gameInstallDirectory, "game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");
+        string sourceDirectory = Path.Combine(gameConfigRoot, "FFXIV_CHRAAAABBBBCCCCDDDD_Manual");
+        Directory.CreateDirectory(sourceDirectory);
+        string sourceFilePath = Path.Combine(sourceDirectory, "UISAVE.DAT");
+        File.WriteAllBytes(sourceFilePath, CreateMinimalUISaveFile(regionId: 123));
+
+        BackupMetadata backup = store.CreateBackup(sourceFilePath, cleanupAfterCreate: false);
+
+        Assert.False(store.IsTrustedGameCharacterSaveFile(sourceFilePath));
+        Assert.Null(AppDataStore.GetUserIDFromCharacterFolder(sourceFilePath));
+        Assert.Equal(string.Empty, backup.FolderUserID);
+        Assert.Equal("0123456789ABCDEF", backup.FileUserID);
+        Assert.False(backup.UseFolderUserIDAsEffectiveUserID);
+        Assert.Equal("0123456789ABCDEF", backup.EffectiveUserID);
+        Assert.Contains("0123456789ABCDEF", backup.Id);
+    }
+
+    [Fact]
     public void CreateBackup_WhenSourceIsUntrustedCharacterFolder_UsesFileUserIdAsEffectiveUserId()
     {
         AppDataStore store = CreateStore();

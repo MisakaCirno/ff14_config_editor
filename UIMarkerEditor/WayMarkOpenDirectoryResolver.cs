@@ -17,7 +17,6 @@ internal static class WayMarkOpenDirectoryResolver
     private const string GameDirectoryName = "game";
     private const string MyGamesDirectoryName = "My Games";
     private const string SaveFileName = "UISAVE.DAT";
-    private const string CharacterDirectoryPrefix = "FFXIV_CHR";
     private const uint ProcessQueryLimitedInformation = 0x1000;
     private static readonly string[] GameExecutableNames = ["ffxiv_dx11.exe", "ffxiv.exe"];
     private static readonly string[] GameProcessNames = ["ffxiv_dx11", "ffxiv"];
@@ -270,7 +269,7 @@ internal static class WayMarkOpenDirectoryResolver
             }
 
             string? characterDirectory = Path.GetDirectoryName(fullPath);
-            if (!HasDirectoryNamePrefix(characterDirectory, CharacterDirectoryPrefix))
+            if (!GameCharacterDirectoryName.TryGetUserIDFromDirectoryPath(characterDirectory, out _))
             {
                 return false;
             }
@@ -575,24 +574,6 @@ internal static class WayMarkOpenDirectoryResolver
         {
             string trimmedPath = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             return string.Equals(Path.GetFileName(trimmedPath), expectedName, StringComparison.OrdinalIgnoreCase);
-        }
-        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
-        {
-            return false;
-        }
-    }
-
-    private static bool HasDirectoryNamePrefix(string? path, string expectedPrefix)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return false;
-        }
-
-        try
-        {
-            string trimmedPath = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            return Path.GetFileName(trimmedPath).StartsWith(expectedPrefix, StringComparison.OrdinalIgnoreCase);
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {

@@ -218,6 +218,31 @@ public sealed class WayMarkOpenDirectoryResolverTests : IDisposable
     }
 
     [Fact]
+    public void TryInferGameInstallDirectoryFromSaveFile_WhenCharacterDirectoryHasSuffix_ReturnsFalse()
+    {
+        string installDirectory = Path.Combine(testDirectory, "Software", "鏈€缁堝够鎯砐IV");
+        string gameExecutablePath = Path.Combine(installDirectory, "game", "ffxiv_dx11.exe");
+        string saveFilePath = Path.Combine(
+            installDirectory,
+            "game",
+            "My Games",
+            "FINAL FANTASY XIV - A Realm Reborn",
+            "FFXIV_CHR0011223344556677_Manual",
+            "UISAVE.DAT");
+        Directory.CreateDirectory(Path.GetDirectoryName(gameExecutablePath)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(saveFilePath)!);
+        File.WriteAllText(gameExecutablePath, string.Empty);
+        File.WriteAllText(saveFilePath, string.Empty);
+
+        bool inferred = WayMarkOpenDirectoryResolver.TryInferGameInstallDirectoryFromSaveFile(
+            saveFilePath,
+            out string? inferredInstallDirectory);
+
+        Assert.False(inferred);
+        Assert.Null(inferredInstallDirectory);
+    }
+
+    [Fact]
     public void TryInferGameInstallDirectoryFromSaveFile_WhenFileIsNotUnderGameCharacterDirectory_ReturnsFalse()
     {
         string installDirectory = Path.Combine(testDirectory, "Software", "最终幻想XIV");

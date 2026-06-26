@@ -224,10 +224,8 @@ public sealed partial class AppDataStore
         string? folderPath = Path.GetDirectoryName(filePath);
         if (string.IsNullOrEmpty(folderPath)) return null;
 
-        string folderName = new DirectoryInfo(folderPath).Name;
-        const string prefix = "FFXIV_CHR";
-        return folderName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-            ? folderName[prefix.Length..].ToUpperInvariant()
+        return GameCharacterDirectoryName.TryGetUserIDFromDirectoryPath(folderPath, out string? userID)
+            ? userID
             : null;
     }
 
