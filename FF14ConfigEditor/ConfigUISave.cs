@@ -84,6 +84,7 @@ namespace FF14ConfigEditor
         public override void Save()
         {
             ValidateEnvelopeForSave();
+            List<UISaveSection.PreparedSave> preparedSections = PrepareSectionsForSave();
 
             byte[] encryptedData;
             using (MemoryStream ms = new())
@@ -93,9 +94,9 @@ namespace FF14ConfigEditor
                     writer.Write(payloadUnknownRaw);
                     writer.Write(userIDRaw);
 
-                    foreach (UISaveSection section in Sections)
+                    foreach (UISaveSection.PreparedSave preparedSection in preparedSections)
                     {
-                        writer.Write(section.ToRawBytes());
+                        writer.Write(preparedSection.RawBytes);
                     }
 
                     if (payloadTailRaw.Length > 0)
@@ -127,6 +128,11 @@ namespace FF14ConfigEditor
             }
 
             SafeFileWriter.WriteAllBytes(FilePath, fileBytes);
+
+            foreach (UISaveSection.PreparedSave preparedSection in preparedSections)
+            {
+                preparedSection.CommitRawState();
+            }
         }
 
         /// <summary>
@@ -367,6 +373,17 @@ namespace FF14ConfigEditor
             ValidateRawLength(userIDRaw, UserIdByteLength, "加密部分用户 ID");
             ValidateRawNotNull(payloadTailRaw, "加密部分尾部填充");
             ValidateSectionsForSave();
+        }
+
+        private List<UISaveSection.PreparedSave> PrepareSectionsForSave()
+        {
+            List<UISaveSection.PreparedSave> preparedSections = new(Sections.Count);
+            foreach (UISaveSection section in Sections)
+            {
+                preparedSections.Add(section.PrepareSave());
+            }
+
+            return preparedSections;
         }
 
         private void ValidateSectionsForSave()

@@ -238,6 +238,29 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
     }
 
     [Fact]
+    public void Save_WhenLaterSectionFails_DoesNotCommitFMarkerRawState()
+    {
+        byte[] markerData = UISaveTestData.BuildMarkerData(1, UISaveTestData.MarkerTail());
+        byte[] fMarkerSection = UISaveTestData.BuildSection(17, markerData);
+        byte[] laterSection = UISaveTestData.BuildSection(1, [0xAA, 0xBB]);
+        string path = WritePayloadFile(UISaveTestData.BuildPayload([fMarkerSection, laterSection]));
+        byte[] originalFileBytes = File.ReadAllBytes(path);
+        ConfigUISave config = new(path);
+        SectionFMARKER section = Assert.IsType<SectionFMARKER>(config.Sections[0]);
+        int originalFMarkerLength = section.length;
+        byte[] originalFMarkerData = section.data.ToArray();
+        section.WayMarks.Add(new WayMark());
+        config.Sections[1].length++;
+
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(config.Save);
+
+        Assert.Equal(originalFMarkerLength, section.length);
+        Assert.Equal(originalFMarkerData, section.data);
+        Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "段长度");
+    }
+
+    [Fact]
     public void Save_NullFileTail_ThrowsAndLeavesFileUnchanged()
     {
         string path = WritePayloadFile(UISaveTestData.BuildPayload(

@@ -79,19 +79,34 @@ namespace FF14ConfigEditor.UISave
 
         public override byte[] ToRawBytes()
         {
+            PreparedSave preparedSave = PrepareSave();
+            preparedSave.CommitRawState();
+
+            return preparedSave.RawBytes;
+        }
+
+        internal override PreparedSave PrepareSave()
+        {
             ValidateMarkerForSave();
             ValidateSectionFields();
 
-            data = BuildMarkerDataForSave();
-            length = data.Length;
+            byte[] markerData = BuildMarkerDataForSave();
+            int markerLength = markerData.Length;
+            byte[] rawBytes = BuildRawBytes(markerLength, markerData);
 
-            return base.ToRawBytes();
+            return new PreparedSave(rawBytes, () => CommitRawState(markerLength, markerData));
         }
 
         public override void ValidateForSave()
         {
             ValidateMarkerForSave();
             ValidateSectionFields();
+        }
+
+        private void CommitRawState(int markerLength, byte[] markerData)
+        {
+            length = markerLength;
+            data = markerData;
         }
 
         private void ValidateMarkerForSave()

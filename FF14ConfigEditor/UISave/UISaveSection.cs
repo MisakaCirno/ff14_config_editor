@@ -41,14 +41,25 @@ namespace FF14ConfigEditor.UISave
         {
             ValidateForSave();
 
+            return BuildRawBytes(length, data);
+        }
+
+        internal virtual PreparedSave PrepareSave()
+        {
+            // 默认保持 ToRawBytes() 兼容性；内部有保存副作用的派生段应重写 PrepareSave()。
+            return new PreparedSave(ToRawBytes());
+        }
+
+        protected byte[] BuildRawBytes(int sectionLength, byte[] sectionData)
+        {
             using MemoryStream ms = new();
             using BinaryWriter writer = new(ms);
 
             writer.Write(index);
             writer.Write(unknown1);
-            writer.Write(length);
+            writer.Write(sectionLength);
             writer.Write(unknown2);
-            writer.Write(data);
+            writer.Write(sectionData);
             writer.Write(endFlag);
 
             return ms.ToArray();
@@ -133,6 +144,24 @@ namespace FF14ConfigEditor.UISave
             AppLogger.Debug(AppLogCategory.General, $"Section Unknown2: {BitConverter.ToString(unknown2)}");
             AppLogger.Debug(AppLogCategory.General, $"Section Data: {BitConverter.ToString(data)}");
             AppLogger.Debug(AppLogCategory.General, $"Section End Flag: {BitConverter.ToString(endFlag)}");
+        }
+
+        internal sealed class PreparedSave
+        {
+            private readonly Action? commitRawState;
+
+            public PreparedSave(byte[] rawBytes, Action? commitRawState = null)
+            {
+                RawBytes = rawBytes ?? throw new ArgumentNullException(nameof(rawBytes));
+                this.commitRawState = commitRawState;
+            }
+
+            public byte[] RawBytes { get; }
+
+            public void CommitRawState()
+            {
+                commitRawState?.Invoke();
+            }
         }
     }
 }
