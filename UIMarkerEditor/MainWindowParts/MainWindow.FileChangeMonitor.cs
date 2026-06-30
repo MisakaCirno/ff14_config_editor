@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Windows;
@@ -36,23 +36,36 @@ namespace UIMarkerEditor
 
         private void StartCurrentFileChangeMonitor(string filePath)
         {
-            StopCurrentFileChangeMonitor();
-
-            loadedFileSnapshot = TryCreateCurrentFileSnapshot(filePath);
-            if (loadedFileSnapshot == null)
+            PreparedCurrentFileChangeMonitor? preparedMonitor = null;
+            try
             {
-                return;
+                preparedMonitor = PrepareCurrentFileChangeMonitor(filePath);
+                CommitCurrentFileChangeMonitor(preparedMonitor);
+                preparedMonitor = null;
+            }
+            finally
+            {
+                DisposePreparedCurrentFileChangeMonitor(preparedMonitor);
+            }
+        }
+
+        private PreparedCurrentFileChangeMonitor PrepareCurrentFileChangeMonitor(string filePath)
+        {
+            CurrentFileSnapshot? snapshot = TryCreateCurrentFileSnapshot(filePath);
+            if (snapshot == null)
+            {
+                return new PreparedCurrentFileChangeMonitor(null, null);
             }
 
-            string fullPath = loadedFileSnapshot.Metadata.FullPath;
+            string fullPath = snapshot.Metadata.FullPath;
             string? directory = Path.GetDirectoryName(fullPath);
             string fileName = Path.GetFileName(fullPath);
             if (string.IsNullOrWhiteSpace(directory) || string.IsNullOrWhiteSpace(fileName))
             {
-                return;
+                return new PreparedCurrentFileChangeMonitor(snapshot, null);
             }
 
-            currentFileWatcher = new FileSystemWatcher(directory, fileName)
+            FileSystemWatcher watcher = new(directory, fileName)
             {
                 IncludeSubdirectories = false,
                 NotifyFilter = NotifyFilters.FileName |
@@ -60,14 +73,38 @@ namespace UIMarkerEditor
                                NotifyFilters.Size |
                                NotifyFilters.CreationTime
             };
-            currentFileWatcher.Changed += CurrentFileWatcher_FileChanged;
-            currentFileWatcher.Created += CurrentFileWatcher_FileChanged;
-            currentFileWatcher.Deleted += CurrentFileWatcher_FileChanged;
-            currentFileWatcher.Renamed += CurrentFileWatcher_Renamed;
-            currentFileWatcher.Error += CurrentFileWatcher_Error;
-            currentFileWatcher.EnableRaisingEvents = true;
-            currentFilePollingTimer.Start();
-            AppLogger.Info(AppLogCategory.IO, $"开始监听当前 UISAVE.DAT：{fullPath}，{FormatCurrentFileMetadata(loadedFileSnapshot.Metadata)}");
+            watcher.Changed += CurrentFileWatcher_FileChanged;
+            watcher.Created += CurrentFileWatcher_FileChanged;
+            watcher.Deleted += CurrentFileWatcher_FileChanged;
+            watcher.Renamed += CurrentFileWatcher_Renamed;
+            watcher.Error += CurrentFileWatcher_Error;
+
+            return new PreparedCurrentFileChangeMonitor(snapshot, watcher);
+        }
+
+        private void CommitCurrentFileChangeMonitor(PreparedCurrentFileChangeMonitor preparedMonitor)
+        {
+            StopCurrentFileChangeMonitor();
+
+            loadedFileSnapshot = preparedMonitor.Snapshot;
+            currentFileWatcher = preparedMonitor.Watcher;
+            if (currentFileWatcher == null || loadedFileSnapshot == null)
+            {
+                return;
+            }
+
+            try
+            {
+                currentFileWatcher.EnableRaisingEvents = true;
+                currentFilePollingTimer.Start();
+                AppLogger.Info(AppLogCategory.IO, $"开始监听当前 UISAVE.DAT：{loadedFileSnapshot.Metadata.FullPath}，{FormatCurrentFileMetadata(loadedFileSnapshot.Metadata)}");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                AppLogger.Warning(AppLogCategory.IO, $"监听当前 UISAVE.DAT 文件变化失败：{loadedFileSnapshot.Metadata.FullPath}", ex);
+                DisposeCurrentFileWatcher(currentFileWatcher);
+                currentFileWatcher = null;
+            }
         }
 
         private void StopCurrentFileChangeMonitor()
@@ -75,21 +112,42 @@ namespace UIMarkerEditor
             currentFileChangeDebounceTimer.Stop();
             currentFilePollingTimer.Stop();
 
-            if (currentFileWatcher != null)
+            FileSystemWatcher? watcher = currentFileWatcher;
+            currentFileWatcher = null;
+            if (watcher != null)
             {
-                currentFileWatcher.EnableRaisingEvents = false;
-                currentFileWatcher.Changed -= CurrentFileWatcher_FileChanged;
-                currentFileWatcher.Created -= CurrentFileWatcher_FileChanged;
-                currentFileWatcher.Deleted -= CurrentFileWatcher_FileChanged;
-                currentFileWatcher.Renamed -= CurrentFileWatcher_Renamed;
-                currentFileWatcher.Error -= CurrentFileWatcher_Error;
-                currentFileWatcher.Dispose();
-                currentFileWatcher = null;
+                DisposeCurrentFileWatcher(watcher);
             }
 
             loadedFileSnapshot = null;
             promptedExternalFileSnapshot = null;
             hasPromptedCurrentFileMissing = false;
+        }
+
+        private void DisposePreparedCurrentFileChangeMonitor(PreparedCurrentFileChangeMonitor? preparedMonitor)
+        {
+            if (preparedMonitor?.Watcher != null)
+            {
+                DisposeCurrentFileWatcher(preparedMonitor.Watcher);
+            }
+        }
+
+        private void DisposeCurrentFileWatcher(FileSystemWatcher watcher)
+        {
+            try
+            {
+                watcher.EnableRaisingEvents = false;
+                watcher.Changed -= CurrentFileWatcher_FileChanged;
+                watcher.Created -= CurrentFileWatcher_FileChanged;
+                watcher.Deleted -= CurrentFileWatcher_FileChanged;
+                watcher.Renamed -= CurrentFileWatcher_Renamed;
+                watcher.Error -= CurrentFileWatcher_Error;
+                watcher.Dispose();
+            }
+            catch (Exception ex) when (ex is IOException or InvalidOperationException or ObjectDisposedException)
+            {
+                AppLogger.Warning(AppLogCategory.IO, "释放当前 UISAVE.DAT 文件监听器失败", ex);
+            }
         }
 
         private void RefreshLoadedFileSnapshot()
@@ -373,5 +431,9 @@ namespace UIMarkerEditor
         private sealed record CurrentFileSnapshot(
             CurrentFileMetadata Metadata,
             string Hash);
+
+        private sealed record PreparedCurrentFileChangeMonitor(
+            CurrentFileSnapshot? Snapshot,
+            FileSystemWatcher? Watcher);
     }
 }

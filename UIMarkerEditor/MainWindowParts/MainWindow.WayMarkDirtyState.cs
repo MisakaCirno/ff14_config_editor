@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
 using FF14ConfigEditor.UISave;
@@ -7,55 +7,13 @@ namespace UIMarkerEditor
 {
     public partial class MainWindow
     {
-        private readonly List<WayMark> trackedWayMarks = [];
+        private readonly WayMarkChangeTracker wayMarkChangeTracker;
         private bool isWayMarkDirty;
         private bool suppressWayMarkDirtyTracking;
 
         private void TrackWayMarkChanges(IEnumerable<WayMark> wayMarks)
         {
-            UntrackWayMarkChanges();
-
-            foreach (WayMark wayMark in wayMarks)
-            {
-                trackedWayMarks.Add(wayMark);
-                wayMark.PropertyChanged += WayMarkModel_PropertyChanged;
-                SubscribeWayMarkPoints(wayMark);
-            }
-        }
-
-        private void UntrackWayMarkChanges()
-        {
-            foreach (WayMark wayMark in trackedWayMarks)
-            {
-                wayMark.PropertyChanged -= WayMarkModel_PropertyChanged;
-                UnsubscribeWayMarkPoints(wayMark);
-            }
-
-            trackedWayMarks.Clear();
-        }
-
-        private void SubscribeWayMarkPoints(WayMark wayMark)
-        {
-            wayMark.A.PropertyChanged += WayMarkModel_PropertyChanged;
-            wayMark.B.PropertyChanged += WayMarkModel_PropertyChanged;
-            wayMark.C.PropertyChanged += WayMarkModel_PropertyChanged;
-            wayMark.D.PropertyChanged += WayMarkModel_PropertyChanged;
-            wayMark.One.PropertyChanged += WayMarkModel_PropertyChanged;
-            wayMark.Two.PropertyChanged += WayMarkModel_PropertyChanged;
-            wayMark.Three.PropertyChanged += WayMarkModel_PropertyChanged;
-            wayMark.Four.PropertyChanged += WayMarkModel_PropertyChanged;
-        }
-
-        private void UnsubscribeWayMarkPoints(WayMark wayMark)
-        {
-            wayMark.A.PropertyChanged -= WayMarkModel_PropertyChanged;
-            wayMark.B.PropertyChanged -= WayMarkModel_PropertyChanged;
-            wayMark.C.PropertyChanged -= WayMarkModel_PropertyChanged;
-            wayMark.D.PropertyChanged -= WayMarkModel_PropertyChanged;
-            wayMark.One.PropertyChanged -= WayMarkModel_PropertyChanged;
-            wayMark.Two.PropertyChanged -= WayMarkModel_PropertyChanged;
-            wayMark.Three.PropertyChanged -= WayMarkModel_PropertyChanged;
-            wayMark.Four.PropertyChanged -= WayMarkModel_PropertyChanged;
+            wayMarkChangeTracker.Track(wayMarks);
         }
 
         private void WayMarkModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)

@@ -259,28 +259,37 @@ namespace UIMarkerEditor
             }
 
             SectionFMARKER? markerSection = loadedConfig.Marks;
-            if (markerSection != null)
+            if (markerSection == null)
             {
-                currentFilePath = filePath;
-                configUISave = loadedConfig;
-                RegisterLoadedCharacter(loadedConfig, filePath);
-                UpdateCurrentFileStatus(filePath);
-                StartCurrentFileChangeMonitor(filePath);
-                appDataStore.AddRecentFile(filePath);
-                RefreshRecentFileMenu();
-                List<WayMark> wayMarks = markerSection.WayMarks;
+                AppMessageBox.Show(this, "无法在这个 UISAVE.DAT 中找到可编辑的 FMARKER 标点数据，当前已加载文件保持不变。", "加载失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                CommandManager.InvalidateRequerySuggested();
+                return false;
+            }
+
+            List<WayMark> wayMarks = markerSection.WayMarks;
+            PreparedCurrentFileChangeMonitor? preparedMonitor = null;
+            try
+            {
+                preparedMonitor = PrepareCurrentFileChangeMonitor(filePath);
 
                 try
                 {
-                    suppressWayMarkDirtyTracking = true;
-                    WayMarkEditor_Control.SetWayMarks(wayMarks);
-                    TrackWayMarkChanges(wayMarks);
+                    ApplyLoadedWayMarksToEditor(wayMarks);
                 }
-                finally
+                catch
                 {
-                    suppressWayMarkDirtyTracking = false;
+                    RestoreWayMarkEditorAfterLoadFailure();
+                    throw;
                 }
 
+                currentFilePath = filePath;
+                configUISave = loadedConfig;
+                CommitCurrentFileChangeMonitor(preparedMonitor);
+                preparedMonitor = null;
+                TryRegisterLoadedCharacter(loadedConfig, filePath);
+                UpdateCurrentFileStatus(filePath);
+                appDataStore.AddRecentFile(filePath);
+                RefreshRecentFileMenu();
                 SetWayMarkDirty(false);
                 UpdateWindowTitle();
                 TryRecordGameInstallDirectoryFromLoadedSaveFile(filePath);
@@ -288,15 +297,62 @@ namespace UIMarkerEditor
 
                 AppLogger.Info(AppLogCategory.UI, $"已读取 UISAVE.DAT：{filePath}，可编辑标点槽位 {wayMarks.Count} 个。");
             }
-            else
+            finally
             {
-                AppMessageBox.Show(this, "无法在这个 UISAVE.DAT 中找到可编辑的 FMARKER 标点数据，当前已加载文件保持不变。", "加载失败", MessageBoxButton.OK, MessageBoxImage.Error);
-                CommandManager.InvalidateRequerySuggested();
-                return false;
+                DisposePreparedCurrentFileChangeMonitor(preparedMonitor);
             }
 
             CommandManager.InvalidateRequerySuggested();
             return true;
+        }
+
+        private void ApplyLoadedWayMarksToEditor(List<WayMark> wayMarks)
+        {
+            try
+            {
+                suppressWayMarkDirtyTracking = true;
+                WayMarkEditor_Control.SetWayMarks(wayMarks);
+                TrackWayMarkChanges(wayMarks);
+            }
+            finally
+            {
+                suppressWayMarkDirtyTracking = false;
+            }
+        }
+
+        private void RestoreWayMarkEditorAfterLoadFailure()
+        {
+            try
+            {
+                suppressWayMarkDirtyTracking = true;
+                if (configUISave?.Marks?.WayMarks is List<WayMark> currentWayMarks)
+                {
+                    WayMarkEditor_Control.SetWayMarks(currentWayMarks);
+                    return;
+                }
+
+                WayMarkEditor_Control.ClearWayMarks();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning(AppLogCategory.UI, "加载 UISAVE.DAT 失败后恢复旧标点界面失败", ex);
+            }
+            finally
+            {
+                suppressWayMarkDirtyTracking = false;
+            }
+        }
+
+        private void TryRegisterLoadedCharacter(ConfigUISave loadedConfig, string filePath)
+        {
+            try
+            {
+                RegisterLoadedCharacter(loadedConfig, filePath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or AppDataStoreException or ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                AppLogger.Warning(AppLogCategory.IO, $"自动登记已加载角色失败：{filePath}", ex);
+            }
         }
 
         private void TryRecordGameInstallDirectoryFromLoadedSaveFile(string filePath)

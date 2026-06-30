@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -62,6 +62,7 @@ namespace UIMarkerEditor
         public MainWindow(AppDataStore appDataStore)
         {
             this.appDataStore = appDataStore;
+            wayMarkChangeTracker = new(WayMarkModel_PropertyChanged);
             InitializeComponent();
             ToastItems_Control.ItemsSource = toastNotifications;
             ToastService.RegisterSuccessHandler(ShowSuccessToast);
