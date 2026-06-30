@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -1008,17 +1009,17 @@ public partial class ToolSettingsControl : UserControl
 
         ApplyMapDataSnapshotGridVisibility(appDataStore.Settings.MapDataTableMode, appDataStore.Settings.MapDataSource);
         OnlineMapDataSnapshotId_TextBox.Text = snapshotIdText;
-        OnlineMapDataSnapshotCount_TextBox.Text = mapCountText;
+        SetMapDataSnapshotCountLink(OnlineMapDataSnapshotCount_Hyperlink, OnlineMapDataSnapshotCount_Run, mapCountText, mapCount > 0);
         OnlineMapDataSnapshotCheckedAt_TextBox.Text = checkedAtText;
         OnlineMapDataSnapshotUpdatedAt_TextBox.Text = updatedAtText;
         OnlineMapDataSnapshotContentSource_TextBox.Text = contentSourceText;
         LocalGameMapDataSnapshotId_TextBox.Text = snapshotIdText;
-        LocalGameMapDataSnapshotCount_TextBox.Text = mapCountText;
+        SetMapDataSnapshotCountLink(LocalGameMapDataSnapshotCount_Hyperlink, LocalGameMapDataSnapshotCount_Run, mapCountText, mapCount > 0);
         LocalGameMapDataSnapshotReadAt_TextBox.Text = readAtText;
         LocalGameMapDataSnapshotUpdatedAt_TextBox.Text = updatedAtText;
         LocalGameMapDataSnapshotContentSource_TextBox.Text = contentSourceText;
         UserMapDataSnapshotId_TextBox.Text = snapshotIdText;
-        UserMapDataSnapshotCount_TextBox.Text = mapCountText;
+        SetMapDataSnapshotCountLink(UserMapDataSnapshotCount_Hyperlink, UserMapDataSnapshotCount_Run, mapCountText, mapCount > 0);
         UserMapDataSnapshotReadAt_TextBox.Text = readAtText;
         UserMapDataSnapshotUpdatedAt_TextBox.Text = FormatOptionalTime(appDataStore.MapDataLastUpdated, "尚未读取文件");
         UserMapDataSnapshotContentSource_TextBox.Text = contentSourceText;
@@ -1031,6 +1032,38 @@ public partial class ToolSettingsControl : UserControl
         ServerListSource_TextBox.Text = string.IsNullOrWhiteSpace(appDataStore.ServerList.SourceUrl)
             ? "未知"
             : appDataStore.ServerList.SourceUrl;
+    }
+
+    private static void SetMapDataSnapshotCountLink(Hyperlink hyperlink, Run textRun, string text, bool isEnabled)
+    {
+        textRun.Text = text;
+        hyperlink.IsEnabled = isEnabled;
+    }
+
+    private void MapDataSnapshotCount_Hyperlink_Click(object sender, RoutedEventArgs e)
+    {
+        if (appDataStore == null) return;
+
+        Dictionary<ushort, string> mapNames = MapData.GetKnownMapIds()
+            .OrderBy(mapId => mapId)
+            .ToDictionary(mapId => mapId, MapData.GetName);
+        if (mapNames.Count == 0)
+        {
+            AppMessageBox.Show(ownerWindow, "当前没有已加载的地图数据。", "地图详情", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        string selectionText = FormatMapDataSelection(appDataStore.Settings);
+        UserMapDataEditorDialog dialog = new(
+            $"{selectionText}地图详情",
+            "当前已加载地图数据的只读详情。这里显示的是工具正在使用的内存快照，不会保存或修改任何地图数据文件。",
+            mapNames,
+            appDataStore.MapDataContentSourceText)
+        {
+            Owner = ownerWindow
+        };
+        dialog.ShowDialog();
+        e.Handled = true;
     }
 
     private void ApplyMapDataSnapshotGridVisibility(MapDataTableMode tableMode, MapDataSource source)

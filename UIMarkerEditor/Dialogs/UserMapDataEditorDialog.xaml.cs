@@ -12,6 +12,7 @@ public partial class UserMapDataEditorDialog : Window
     private static readonly Encoding CsvEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
     private readonly string filePath;
     private readonly ObservableCollection<UserMapDataRow> rows = [];
+    private readonly bool isReadOnly;
 
     public UserMapDataEditorDialog(string filePath)
     {
@@ -25,6 +26,32 @@ public partial class UserMapDataEditorDialog : Window
         FilePath_TextBox.Text = filePath;
         MapDataRows_DataGrid.ItemsSource = rows;
         LoadRowsFromFile();
+    }
+
+    public UserMapDataEditorDialog(
+        string title,
+        string description,
+        IReadOnlyDictionary<ushort, string> mapNames,
+        string sourceText)
+    {
+        ArgumentNullException.ThrowIfNull(mapNames);
+
+        filePath = string.Empty;
+        isReadOnly = true;
+        InitializeComponent();
+        Title = title;
+        Description_TextBlock.Text = description;
+        SourceLabel_TextBlock.Text = "来源";
+        FilePath_TextBox.Text = string.IsNullOrWhiteSpace(sourceText) ? "当前地图快照" : sourceText;
+        Add_Button.Visibility = Visibility.Collapsed;
+        DeleteSelected_Button.Visibility = Visibility.Collapsed;
+        Save_Button.Visibility = Visibility.Collapsed;
+        Save_Button.IsDefault = false;
+        Close_Button.Content = "关闭";
+        Close_Button.IsDefault = true;
+        MapDataRows_DataGrid.IsReadOnly = true;
+        MapDataRows_DataGrid.ItemsSource = rows;
+        LoadRows(mapNames);
     }
 
     private void LoadRowsFromFile()
@@ -60,6 +87,8 @@ public partial class UserMapDataEditorDialog : Window
 
     private void Add_Button_Click(object sender, RoutedEventArgs e)
     {
+        if (isReadOnly) return;
+
         UserMapDataRow row = new();
         rows.Add(row);
         MapDataRows_DataGrid.SelectedItem = row;
@@ -69,6 +98,8 @@ public partial class UserMapDataEditorDialog : Window
 
     private void DeleteSelected_Button_Click(object sender, RoutedEventArgs e)
     {
+        if (isReadOnly) return;
+
         List<UserMapDataRow> selectedRows = MapDataRows_DataGrid.SelectedItems
             .OfType<UserMapDataRow>()
             .ToList();
@@ -80,6 +111,8 @@ public partial class UserMapDataEditorDialog : Window
 
     private void Save_Button_Click(object sender, RoutedEventArgs e)
     {
+        if (isReadOnly) return;
+
         if (!TryBuildMapData(out Dictionary<ushort, string> mapNames))
         {
             return;

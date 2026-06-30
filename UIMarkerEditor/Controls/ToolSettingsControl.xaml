@@ -617,9 +617,16 @@
                                 <TextBlock Grid.Column="2"
                                            Text="已加载数量"
                                            Style="{StaticResource SettingsDataSyncLabelStyle}"/>
-                                <TextBox x:Name="OnlineMapDataSnapshotCount_TextBox"
-                                         Grid.Column="3"
-                                         Style="{StaticResource SettingsReadOnlyTextBoxStyle}"/>
+                                <TextBlock Grid.Column="3"
+                                           VerticalAlignment="Center"
+                                           Margin="0,4,0,4">
+                                    <Hyperlink x:Name="OnlineMapDataSnapshotCount_Hyperlink"
+                                               Click="MapDataSnapshotCount_Hyperlink_Click"
+                                               ToolTip="查看已加载地图详情">
+                                        <Run x:Name="OnlineMapDataSnapshotCount_Run"
+                                             Text="未加载"/>
+                                    </Hyperlink>
+                                </TextBlock>
 
                                 <TextBlock Grid.Row="1"
                                            Text="最近成功检查时间"
@@ -679,9 +686,16 @@
                                 <TextBlock Grid.Column="2"
                                            Text="已加载数量"
                                            Style="{StaticResource SettingsDataSyncLabelStyle}"/>
-                                <TextBox x:Name="LocalGameMapDataSnapshotCount_TextBox"
-                                         Grid.Column="3"
-                                         Style="{StaticResource SettingsReadOnlyTextBoxStyle}"/>
+                                <TextBlock Grid.Column="3"
+                                           VerticalAlignment="Center"
+                                           Margin="0,4,0,4">
+                                    <Hyperlink x:Name="LocalGameMapDataSnapshotCount_Hyperlink"
+                                               Click="MapDataSnapshotCount_Hyperlink_Click"
+                                               ToolTip="查看已加载地图详情">
+                                        <Run x:Name="LocalGameMapDataSnapshotCount_Run"
+                                             Text="未加载"/>
+                                    </Hyperlink>
+                                </TextBlock>
 
                                 <TextBlock Grid.Row="1"
                                            Text="最近成功读取时间"
@@ -741,9 +755,16 @@
                                 <TextBlock Grid.Column="2"
                                            Text="已加载数量"
                                            Style="{StaticResource SettingsDataSyncLabelStyle}"/>
-                                <TextBox x:Name="UserMapDataSnapshotCount_TextBox"
-                                         Grid.Column="3"
-                                         Style="{StaticResource SettingsReadOnlyTextBoxStyle}"/>
+                                <TextBlock Grid.Column="3"
+                                           VerticalAlignment="Center"
+                                           Margin="0,4,0,4">
+                                    <Hyperlink x:Name="UserMapDataSnapshotCount_Hyperlink"
+                                               Click="MapDataSnapshotCount_Hyperlink_Click"
+                                               ToolTip="查看已加载地图详情">
+                                        <Run x:Name="UserMapDataSnapshotCount_Run"
+                                             Text="未加载"/>
+                                    </Hyperlink>
+                                </TextBlock>
 
                                 <TextBlock Grid.Row="1"
                                            Text="最近成功读取时间"
