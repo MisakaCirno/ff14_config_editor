@@ -385,6 +385,19 @@ public partial class BackupRestoreControl : UserControl
             return;
         }
 
+        RestoreBackupAsTargetConfirmation targetConfirmation =
+            RestoreBackupAsTargetConfirmation.Evaluate(targetFilePath, File.Exists(targetFilePath));
+        if (targetConfirmation.RequiresConfirmation &&
+            AppMessageBox.Show(
+                ownerWindow,
+                targetConfirmation.Message,
+                "确认还原到指定位置",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
         try
         {
             appDataStore.RestoreBackup(backup, targetFilePath);
