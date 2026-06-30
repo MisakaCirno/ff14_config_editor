@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace UIMarkerEditor;
 
@@ -12,13 +12,18 @@ public sealed record MapDataLoadResult(
     bool Updated,
     string Version,
     bool UsedCache = false,
-    bool CacheAvailable = false);
+    bool CacheAvailable = false,
+    string FailureStage = "",
+    string FailureReason = "",
+    string SourcePath = "");
 
 public sealed record ServerListLoadResult(
     bool Success,
     bool Updated,
     bool UsedCache = false,
-    bool CacheAvailable = false);
+    bool CacheAvailable = false,
+    string FailureStage = "",
+    string FailureReason = "");
 
 public sealed class DataDirectoryMigrationResult
 {
@@ -47,9 +52,13 @@ public sealed class DataDirectoryMigrationProgress
 public sealed class MapDataCache
 {
     public string Version { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty;
+    public string SourcePath { get; set; } = string.Empty;
     public DateTime LastUpdated { get; set; } = DateTime.Now;
     public DateTime LastSuccessfulSyncAt { get; set; } = DateTime.MinValue;
-    public Dictionary<string, string> Instances { get; set; } = [];
+
+    [JsonIgnore]
+    public Dictionary<ushort, string> MapNames { get; set; } = [];
 }
 
 public sealed class WayMarkFavoritesData
@@ -70,7 +79,7 @@ public sealed class WayMarkFavorite
     public ushort RegionID => Marker.RegionID;
 
     [JsonIgnore]
-    public string RegionDisplayName => $"{MapData.GetName(RegionID)}({RegionID})";
+    public string RegionDisplayName => MapData.GetDisplayName(RegionID);
 
     [JsonIgnore]
     public string DisplayName => string.IsNullOrWhiteSpace(CommentName)
@@ -127,6 +136,36 @@ public enum WayMarkOpenDirectoryMode
     CustomDirectory = 2
 }
 
+public enum MapDataMode
+{
+    Manual = 0,
+    GameData = 1
+}
+
+public enum MapDataTableMode
+{
+    Automatic = 0,
+    Manual = 1
+}
+
+public enum MapDataSource
+{
+    OnlineReference = 0,
+    LocalGame = 1
+}
+
+public enum MapDataOnlineSourceKind
+{
+    ContentFinderConditionCsv = 0,
+    DiemoeMatcha = 1
+}
+
+public enum UnknownMapIdPolicy
+{
+    RejectUnknown = 0,
+    AllowUnknown = 1
+}
+
 public enum GameInstallDirectoryUpdateResult
 {
     NotFound = 0,
@@ -165,6 +204,16 @@ public sealed class AppSettings
     public bool UseWayMarkImageLabels { get; set; } = true;
     public StartupWayMarkAction StartupWayMarkAction { get; set; } = StartupWayMarkAction.None;
     public WayMarkFavoriteSaveMode WayMarkFavoriteSaveMode { get; set; } = WayMarkFavoriteSaveMode.Manual;
+    public MapDataTableMode MapDataTableMode { get; set; } = MapDataTableMode.Automatic;
+    public bool MapDataTableModeInitialized { get; set; }
+    public MapDataSource MapDataSource { get; set; } = MapDataSource.OnlineReference;
+    public bool MapDataSourceInitialized { get; set; }
+    public MapDataOnlineSourceKind MapDataOnlineSource { get; set; } = MapDataOnlineSourceKind.ContentFinderConditionCsv;
+    public UnknownMapIdPolicy UnknownMapIdPolicy { get; set; } = UnknownMapIdPolicy.RejectUnknown;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public MapDataMode? MapDataMode { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool MapDataModeInitialized { get; set; }
     public WayMarkOpenDirectoryMode WayMarkOpenDirectoryMode { get; set; } = WayMarkOpenDirectoryMode.Default;
     public bool WayMarkOpenDirectoryModeInitialized { get; set; }
     public string GameInstallDirectory { get; set; } = string.Empty;

@@ -41,7 +41,7 @@ public sealed partial class AppDataStore
         }
 
         return HasValidServerListCache()
-            ? new ServerListLoadResult(true, false, UsedCache: true, CacheAvailable: true)
+            ? syncResult with { Success = true, UsedCache = true, CacheAvailable = true }
             : syncResult;
     }
 
@@ -59,13 +59,16 @@ public sealed partial class AppDataStore
     private async Task<ServerListLoadResult> SyncServerListAsync()
     {
         DateTime successfulSyncTime = DateTime.Now;
+        string currentStage = "检查服务器列表";
         try
         {
             string apiJson = await GetServerStatusApiJsonAsync();
+            currentStage = "解析服务器列表";
             List<ServerGroup> groups = ParseServerGroups(apiJson);
 
             if (groups.Count == 0)
             {
+                currentStage = "下载服务器列表页面";
                 string html = await networkClient.GetStringAsync(ExternalLinks.ServerListPage, ServerListRequestTimeout);
                 string combinedPageText = html;
                 foreach (Uri resourceUri in ExtractServerPageResourceUris(html, new Uri(ExternalLinks.ServerListPage)))
@@ -82,12 +85,15 @@ public sealed partial class AppDataStore
                     }
                 }
 
+                currentStage = "解析服务器列表";
                 groups = ParseServerGroups(combinedPageText);
             }
 
             if (groups.Count == 0)
             {
-                return CreateServerListSyncFailureResult();
+                return CreateServerListSyncFailureResult(
+                    currentStage,
+                    "未能从服务器列表响应中解析到可用服务器。");
             }
 
             if (HasValidServerListCache() && AreServerGroupsEqual(ServerList.Groups, groups))
@@ -115,9 +121,9 @@ public sealed partial class AppDataStore
             ServerList = nextServerList;
             return new ServerListLoadResult(true, true, CacheAvailable: true);
         }
-        catch
+        catch (Exception ex)
         {
-            return CreateServerListSyncFailureResult();
+            return CreateServerListSyncFailureResult(currentStage, FormatDataSyncFailureReason(ex));
         }
     }
 
@@ -155,10 +161,15 @@ public sealed partial class AppDataStore
         WriteJson(ServersFilePath, serverList);
     }
 
-    private ServerListLoadResult CreateServerListSyncFailureResult()
+    private ServerListLoadResult CreateServerListSyncFailureResult(string failureStage, string failureReason)
     {
         bool cacheAvailable = HasValidServerListCache();
-        return new ServerListLoadResult(false, false, CacheAvailable: cacheAvailable);
+        return new ServerListLoadResult(
+            false,
+            false,
+            CacheAvailable: cacheAvailable,
+            FailureStage: string.IsNullOrWhiteSpace(failureStage) ? "检查服务器列表" : failureStage,
+            FailureReason: string.IsNullOrWhiteSpace(failureReason) ? "未知原因。" : failureReason);
     }
 
     private bool HasValidServerListCache()

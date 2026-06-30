@@ -192,7 +192,7 @@ public partial class WayMarkEditorControl
         }
 
         WayMarkSnapshot snapshot = WayMarkSnapshotConverter.CreateSnapshot(selectedMark);
-        string regionDisplayName = $"{MapData.GetName(snapshot.RegionID)}({snapshot.RegionID})";
+        string regionDisplayName = MapData.GetDisplayName(snapshot.RegionID);
         WayMarkFavoriteNameDialog dialog = new(regionDisplayName, MapData.GetName(snapshot.RegionID))
         {
             Owner = DialogOwnerHelper.Resolve(ownerWindow ?? Window.GetWindow(this))

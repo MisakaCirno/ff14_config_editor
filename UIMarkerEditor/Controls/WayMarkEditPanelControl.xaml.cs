@@ -33,12 +33,14 @@ public partial class WayMarkEditPanelControl : UserControl, INotifyPropertyChang
 
     private ICollectionView? regionOptionsView;
     private string regionFilterText = string.Empty;
+    private UnknownMapIdPolicy unknownMapIdPolicy = UnknownMapIdPolicy.RejectUnknown;
     private bool suppressRegionTextChanged;
     private bool isSelectingRegionFromPopup;
     private bool isClearingRegionText;
     private bool suppressWayMarkChanged;
     private bool showClipboardButtons = true;
     private WayMark? currentWayMark;
+    private HashSet<ushort> observedRegionIds = [];
     private ToolTip? activeCoordinateInputTip;
     private TextBox? activeCoordinateInputTipTarget;
     private System.Windows.Threading.DispatcherTimer? activeCoordinateInputTipTimer;
@@ -92,6 +94,7 @@ public partial class WayMarkEditPanelControl : UserControl, INotifyPropertyChang
 
     public void SetWayMark(WayMark? wayMark, IEnumerable<ushort>? extraRegionIds = null)
     {
+        observedRegionIds = extraRegionIds?.ToHashSet() ?? [];
         suppressWayMarkChanged = true;
         try
         {
@@ -116,6 +119,7 @@ public partial class WayMarkEditPanelControl : UserControl, INotifyPropertyChang
 
     public void RefreshMapDataDisplay(IEnumerable<ushort>? extraRegionIds = null)
     {
+        observedRegionIds = extraRegionIds?.ToHashSet() ?? observedRegionIds;
         RefreshRegionOptions(extraRegionIds);
         if (currentWayMark != null)
         {
@@ -191,6 +195,18 @@ public partial class WayMarkEditPanelControl : UserControl, INotifyPropertyChang
     private static IEnumerable<ushort> GetLoadedRegionIds()
     {
         return [];
+    }
+
+    private IReadOnlySet<ushort> GetObservedRegionIds()
+    {
+        if (currentWayMark == null || currentWayMark.RegionID == MapData.EmptyRegionId)
+        {
+            return observedRegionIds;
+        }
+
+        HashSet<ushort> result = [.. observedRegionIds];
+        result.Add(currentWayMark.RegionID);
+        return result;
     }
     private static T? FindVisualParent<T>(DependencyObject? source) where T : DependencyObject
     {

@@ -1,0 +1,158 @@
+﻿<Window x:Class="UIMarkerEditor.MapDataSourceStartupDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="选择地图数据来源"
+        Style="{StaticResource AppDialogWindowStyle}"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <SolidColorBrush x:Key="OnlineReferenceAccentBrush" Color="#FF2E7D32"/>
+        <SolidColorBrush x:Key="ManualCsvAccentBrush" Color="#FF2F7D66"/>
+        <SolidColorBrush x:Key="LocalGameAccentBrush" Color="#FFB26A00"/>
+
+        <Style x:Key="MapDataSourceOptionButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AppTextBrush}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="CardBorder"
+                                Background="{DynamicResource AppSurfaceBrush}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1.5"
+                                CornerRadius="8"
+                                MinHeight="196"
+                                Padding="16"
+                                SnapsToDevicePixels="True">
+                            <Grid>
+                                <Border x:Name="AccentFill"
+                                        Background="{TemplateBinding BorderBrush}"
+                                        CornerRadius="7"
+                                        Margin="-16"
+                                        Opacity="0"/>
+                                <ContentPresenter RecognizesAccessKey="True"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                            </Grid>
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="AccentFill" Property="Opacity" Value="0.06"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="CardBorder" Property="BorderThickness" Value="2"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="AccentFill" Property="Opacity" Value="0.12"/>
+                                <Setter TargetName="CardBorder" Property="BorderThickness" Value="2"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18" MinWidth="880" MaxWidth="980">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="选择地图数据来源"
+                       FontSize="18"
+                       FontWeight="SemiBold"/>
+            <TextBlock Text="这项选择决定地图名称和地图列表从哪里来。默认不允许输入列表中不存在的地图 ID；之后可以在设置中更改数据来源、手动文件和未知 ID 策略。"
+                       TextWrapping="Wrap"
+                       Margin="0,6,0,0"/>
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,18,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0"
+                    BorderBrush="{StaticResource OnlineReferenceAccentBrush}"
+                    Style="{StaticResource MapDataSourceOptionButtonStyle}"
+                    Click="OnlineReference_Button_Click">
+                <StackPanel>
+                    <TextBlock Text="以在线数据继续"
+                               Foreground="{StaticResource OnlineReferenceAccentBrush}"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"/>
+                    <TextBlock Text="不读取游戏文件"
+                               Foreground="{StaticResource OnlineReferenceAccentBrush}"
+                               FontWeight="SemiBold"
+                               Margin="0,8,0,0"/>
+                    <TextBlock Text="从在线数据获取地图名称和列表。数据可能滞后，但不会访问游戏安装目录。"
+                               TextWrapping="Wrap"
+                               Margin="0,6,0,0"/>
+                    <TextBlock Text="适合更在意避免读取游戏资源文件、同时希望工具自动维护地图列表的用户。"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource AppMutedTextBrush}"
+                               Margin="0,8,0,0"/>
+                </StackPanel>
+            </Button>
+
+            <Button Grid.Column="2"
+                    BorderBrush="{StaticResource LocalGameAccentBrush}"
+                    Style="{StaticResource MapDataSourceOptionButtonStyle}"
+                    Click="LocalGame_Button_Click">
+                <StackPanel>
+                    <TextBlock Text="以本地游戏数据继续"
+                               Foreground="{StaticResource LocalGameAccentBrush}"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"/>
+                    <TextBlock Text="会读取本地游戏资源文件"
+                               Foreground="{StaticResource LocalGameAccentBrush}"
+                               FontWeight="SemiBold"
+                               Margin="0,8,0,0"/>
+                    <TextBlock Text="从本地游戏 sqpack 解析地图名称和列表。数据与当前客户端更一致，不依赖网络。"
+                               TextWrapping="Wrap"
+                               Margin="0,6,0,0"/>
+                    <TextBlock Text="这是稍有敏感的操作：工具会访问游戏安装目录下的数据文件，但不会修改游戏文件。"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource AppMutedTextBrush}"
+                               Margin="0,8,0,0"/>
+                </StackPanel>
+            </Button>
+
+            <Button Grid.Column="4"
+                    BorderBrush="{StaticResource ManualCsvAccentBrush}"
+                    Style="{StaticResource MapDataSourceOptionButtonStyle}"
+                    Click="ManualCsv_Button_Click">
+                <StackPanel>
+                    <TextBlock Text="以用户填写数据继续"
+                               Foreground="{StaticResource ManualCsvAccentBrush}"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"/>
+                    <TextBlock Text="只读取用户维护的 CSV"
+                               Foreground="{StaticResource ManualCsvAccentBrush}"
+                               FontWeight="SemiBold"
+                               Margin="0,8,0,0"/>
+                    <TextBlock Text="使用 mapdata_user.csv 作为地图列表。工具不会联网获取，也不会读取游戏资源文件。"
+                               TextWrapping="Wrap"
+                               Margin="0,6,0,0"/>
+                    <TextBlock Text="适合想完全自行维护地图 ID 和名称来源的用户。文件缺失时会先创建空白模板。"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource AppMutedTextBrush}"
+                               Margin="0,8,0,0"/>
+                </StackPanel>
+            </Button>
+        </Grid>
+    </Grid>
+</Window>

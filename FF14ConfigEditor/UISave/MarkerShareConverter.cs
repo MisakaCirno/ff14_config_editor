@@ -16,6 +16,23 @@ namespace FF14ConfigEditor.UISave
             out ValidatedMarkerShare importedMarker,
             out string errorMessage)
         {
+            return TryCreateValidatedImport(
+                markerShare,
+                knownMapIds,
+                allowUnknownMapId: false,
+                preservedUnknownMapIds: null,
+                out importedMarker,
+                out errorMessage);
+        }
+
+        public static bool TryCreateValidatedImport(
+            MarkerShare? markerShare,
+            IReadOnlySet<ushort> knownMapIds,
+            bool allowUnknownMapId,
+            IReadOnlySet<ushort>? preservedUnknownMapIds,
+            out ValidatedMarkerShare importedMarker,
+            out string errorMessage)
+        {
             ArgumentNullException.ThrowIfNull(knownMapIds);
 
             importedMarker = default;
@@ -40,24 +57,57 @@ namespace FF14ConfigEditor.UISave
                 return false;
             }
 
-            if (mapID == 0)
+            if (mapID == 0 && !allowUnknownMapId)
             {
                 errorMessage = "地图 ID 不能为 0。";
                 return false;
             }
 
             ushort regionId = (ushort)mapID;
+            if (allowUnknownMapId)
+            {
+                return TryCreateValidatedImportPoints(
+                    markerShare,
+                    regionId,
+                    out importedMarker,
+                    out errorMessage);
+            }
+
+            if (preservedUnknownMapIds?.Contains(regionId) == true)
+            {
+                return TryCreateValidatedImportPoints(
+                    markerShare,
+                    regionId,
+                    out importedMarker,
+                    out errorMessage);
+            }
+
             if (knownMapIds.Count == 0)
             {
-                errorMessage = "当前地图数据未加载，无法校验地图 ID。";
+                errorMessage = "当前地图数据未加载，无法校验地图 ID。请先检查地图数据，或开启“允许未知地图 ID”后自行确认地图 ID。";
                 return false;
             }
 
             if (!knownMapIds.Contains(regionId))
             {
-                errorMessage = $"地图 ID 不存在于当前地图数据：{mapID}。";
+                errorMessage = $"地图 ID 不存在于当前地图数据：{mapID}。如确认该 ID 有效，可开启“允许未知地图 ID”后导入。";
                 return false;
             }
+
+            return TryCreateValidatedImportPoints(
+                markerShare,
+                regionId,
+                out importedMarker,
+                out errorMessage);
+        }
+
+        private static bool TryCreateValidatedImportPoints(
+            MarkerShare markerShare,
+            ushort regionId,
+            out ValidatedMarkerShare importedMarker,
+            out string errorMessage)
+        {
+            importedMarker = default;
 
             if (!TryCreateImportedPoint("A", markerShare.A, out ValidatedMarkerSharePoint a, out errorMessage) ||
                 !TryCreateImportedPoint("B", markerShare.B, out ValidatedMarkerSharePoint b, out errorMessage) ||

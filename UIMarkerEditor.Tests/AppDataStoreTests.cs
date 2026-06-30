@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -53,6 +53,12 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal(AppSettings.DefaultMaxBackupCountPerUser, store.Settings.MaxBackupCountPerUser);
         Assert.False(store.Settings.AutoBackupAfterLoad);
         Assert.True(store.Settings.AutoBackupBeforeRestore);
+        Assert.Equal(MapDataTableMode.Automatic, store.Settings.MapDataTableMode);
+        Assert.False(store.Settings.MapDataTableModeInitialized);
+        Assert.Equal(MapDataSource.OnlineReference, store.Settings.MapDataSource);
+        Assert.False(store.Settings.MapDataSourceInitialized);
+        Assert.Equal(MapDataOnlineSourceKind.ContentFinderConditionCsv, store.Settings.MapDataOnlineSource);
+        Assert.Equal(UnknownMapIdPolicy.RejectUnknown, store.Settings.UnknownMapIdPolicy);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
         Assert.False(store.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(string.Empty, store.Settings.GameInstallDirectory);
@@ -558,6 +564,12 @@ public sealed class AppDataStoreTests : IDisposable
             UseWayMarkImageLabels = false,
             StartupWayMarkAction = StartupWayMarkAction.LoadMostRecentFile,
             WayMarkFavoriteSaveMode = WayMarkFavoriteSaveMode.Auto,
+            MapDataTableMode = MapDataTableMode.Automatic,
+            MapDataTableModeInitialized = true,
+            MapDataSource = MapDataSource.LocalGame,
+            MapDataSourceInitialized = true,
+            MapDataOnlineSource = MapDataOnlineSourceKind.DiemoeMatcha,
+            UnknownMapIdPolicy = UnknownMapIdPolicy.AllowUnknown,
             WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.GameCharacterDirectory,
             GameInstallDirectory = gameInstallDirectory,
             WayMarkCustomDirectory = customDirectory,
@@ -586,6 +598,12 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(reloadedStore.Settings.UseWayMarkImageLabels);
         Assert.Equal(StartupWayMarkAction.LoadMostRecentFile, reloadedStore.Settings.StartupWayMarkAction);
         Assert.Equal(WayMarkFavoriteSaveMode.Auto, reloadedStore.Settings.WayMarkFavoriteSaveMode);
+        Assert.Equal(MapDataTableMode.Automatic, reloadedStore.Settings.MapDataTableMode);
+        Assert.True(reloadedStore.Settings.MapDataTableModeInitialized);
+        Assert.Equal(MapDataSource.LocalGame, reloadedStore.Settings.MapDataSource);
+        Assert.True(reloadedStore.Settings.MapDataSourceInitialized);
+        Assert.Equal(MapDataOnlineSourceKind.DiemoeMatcha, reloadedStore.Settings.MapDataOnlineSource);
+        Assert.Equal(UnknownMapIdPolicy.AllowUnknown, reloadedStore.Settings.UnknownMapIdPolicy);
         Assert.Equal(WayMarkOpenDirectoryMode.GameCharacterDirectory, reloadedStore.Settings.WayMarkOpenDirectoryMode);
         Assert.True(reloadedStore.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(Path.GetFullPath(gameInstallRootDirectory), reloadedStore.Settings.GameInstallDirectory);
@@ -667,15 +685,17 @@ public sealed class AppDataStoreTests : IDisposable
     public async Task ChangeDataDirectory_WhenBootstrapWriteFails_RestoresPreviousState()
     {
         DateTime mapSuccessfulSyncAt = new(2026, 6, 18, 10, 0, 0);
-        FakeAppDataNetworkClient networkClient = new();
-        networkClient.AddException(MapDataVersionUrl, new InvalidOperationException("模拟网络失败"));
-        AppDataStore store = CreateStore(networkClient);
+        string gameInstallDirectory = CreateGameInstallDirectory("Game");
+        FakeLocalGameMapDataProvider mapDataProvider = new();
+        mapDataProvider.AddException(new InvalidOperationException("模拟本地解析失败"));
+        AppDataStore store = CreateStore(mapDataProvider, () => gameInstallDirectory);
         store.Initialize();
         store.SaveSettings(new AppSettings
         {
             MaxBackupCount = 37,
             RecentFiles = [Path.Combine(testDirectory, "old.dat")]
         });
+        EnableMapDataLocalGameSource(store);
         CharacterProfile profile = store.GetOrCreateCharacter("abc");
         profile.CharacterName = "旧角色";
         store.SaveCharacters();
@@ -713,6 +733,7 @@ public sealed class AppDataStoreTests : IDisposable
         DateTime mapSuccessfulSyncAt = new(2026, 6, 18, 10, 20, 0);
         AppDataStore store = CreateStore();
         store.Initialize();
+        EnableMapDataLocalGameSource(store);
         WriteMapDataCache(901, "迁移地图", "migrated-map-version", mapSuccessfulSyncAt);
         string oldDataDirectory = store.DataDirectory;
         string targetDirectory = Path.Combine(testDirectory, "MigratedData");
@@ -721,7 +742,8 @@ public sealed class AppDataStoreTests : IDisposable
 
         Assert.True(result.CleanupCompleted, $"{result.ErrorMessage} | {string.Join(", ", result.PendingItems)}");
         Assert.Equal(NormalizeDirectoryPathForTest(targetDirectory), NormalizeDirectoryPathForTest(store.DataDirectory));
-        Assert.True(File.Exists(Path.Combine(targetDirectory, "cache", "mapdata.json")));
+        Assert.True(File.Exists(Path.Combine(targetDirectory, "cache", "mapdata.csv")));
+        Assert.True(File.Exists(Path.Combine(targetDirectory, "cache", "mapdata.meta.json")));
         Assert.Equal(Directory.EnumerateFiles(targetDirectory, "*", SearchOption.AllDirectories).Count(), result.MigratedFileCount);
         Assert.False(Directory.Exists(oldDataDirectory));
         Assert.False(File.Exists(store.MigrationStateFilePath));
@@ -1344,11 +1366,27 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task EnsureMapDataAvailableAsync_WhenNetworkSucceeds_WritesCacheAndAppliesMapData()
+    public void MapData_GetName_WhenNameMissing_ReturnsUnavailableName()
+    {
+        MapData.Clear();
+
+        Assert.Equal("暂无名称", MapData.GetName(123));
+    }
+
+    [Fact]
+    public void MapData_GetName_WhenNameDisplayDisabled_ReturnsMapIdName()
+    {
+        MapData.DisableNameDisplay();
+
+        Assert.Equal("地图 ID 123", MapData.GetName(123));
+        Assert.Equal("123", MapData.GetDisplayName(123));
+    }
+
+    [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenOnlineReferenceSucceeds_WritesCacheAndAppliesMapData()
     {
         FakeAppDataNetworkClient networkClient = new();
-        networkClient.AddResponse(MapDataVersionUrl, "build_version=20260614");
-        networkClient.AddResponse(MapDataInstanceUrl, CreateMapInstanceJson(123, "测试副本"));
+        networkClient.AddResponse(MapDataOnlineReferenceCsvUrl, CreateContentFinderConditionCsv(123, "在线副本"));
         AppDataStore store = CreateStore(networkClient);
         store.Initialize();
 
@@ -1358,12 +1396,232 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.True(result.Updated);
         Assert.False(result.UsedCache);
         Assert.True(result.CacheAvailable);
-        Assert.Equal("20260614", result.Version);
+        Assert.StartsWith("online-", result.Version);
+        Assert.Equal(MapDataOnlineReferenceCsvUrl, result.SourcePath);
+        Assert.Single(networkClient.Requests);
+        Assert.Equal(MapDataOnlineReferenceCsvUrl, networkClient.Requests[0].Url);
+        Assert.Equal("在线副本", MapData.GetName(123));
+        Assert.True(MapData.IsNameDisplayEnabled);
+        Assert.Contains((ushort)123, MapData.GetKnownMapIds());
+        Assert.True(store.MapDataLastSuccessfulSyncAt > DateTime.MinValue);
+
+        MapDataCache cache = ReadMapDataCacheMetadata(store);
+        Dictionary<ushort, string> cachedMapNames = ReadMapDataCacheCsv(store);
+        Assert.Equal("online-reference:github", cache.Source);
+        Assert.Equal(MapDataOnlineReferenceCsvUrl, cache.SourcePath);
+        Assert.Equal("在线副本", cachedMapNames[123]);
+    }
+
+    [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenContentFinderConditionRowsShareTerritoryType_UsesRowIdAsMapId()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddResponse(
+            MapDataOnlineReferenceCsvUrl,
+            CreateContentFinderConditionCsv(
+                (123, 900, "在线副本一"),
+                (124, 900, "在线副本二")));
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+
+        MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
+
+        Assert.True(result.Success);
+        Assert.Equal("在线副本一", MapData.GetName(123));
+        Assert.Equal("在线副本二", MapData.GetName(124));
+        Assert.Contains((ushort)123, MapData.GetKnownMapIds());
+        Assert.Contains((ushort)124, MapData.GetKnownMapIds());
+    }
+
+    [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenGitHubReferenceFails_DoesNotUseDiemoeFallback()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddException(MapDataOnlineReferenceCsvUrl, new InvalidOperationException("主来源不可用"));
+        networkClient.AddResponse(MapDataDiemoeVersionUrl, "build_version=diemoe-version");
+        networkClient.AddResponse(MapDataDiemoeInstanceUrl, CreateDiemoeMapInstanceJson(456, "备用副本"));
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+
+        MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
+
+        Assert.False(result.Success);
+        Assert.False(result.Updated);
+        Assert.False(result.CacheAvailable);
+        Assert.Contains("主来源不可用", result.FailureReason);
+        Assert.Single(networkClient.Requests);
+        Assert.Equal(MapDataOnlineReferenceCsvUrl, networkClient.Requests[0].Url);
+    }
+
+    [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenDiemoeSelected_UsesDiemoeOnly()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddResponse(MapDataDiemoeVersionUrl, "build_version=diemoe-first-version");
+        networkClient.AddResponse(MapDataDiemoeInstanceUrl, CreateDiemoeMapInstanceJson(654, "优先备用副本"));
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+        AppSettings settings = store.CreateSettingsSnapshot();
+        settings.MapDataOnlineSource = MapDataOnlineSourceKind.DiemoeMatcha;
+        store.SaveSettings(settings);
+
+        MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
+
+        Assert.True(result.Success);
+        Assert.True(result.Updated);
+        Assert.Equal("diemoe-first-version", result.Version);
+        Assert.Equal("优先备用副本", MapData.GetName(654));
+        Assert.Equal(2, networkClient.Requests.Count);
+        Assert.Equal(MapDataDiemoeVersionUrl, networkClient.Requests[0].Url);
+        Assert.Equal(MapDataDiemoeInstanceUrl, networkClient.Requests[1].Url);
+    }
+
+    [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenDiemoeSelectedAndGitHubCacheExists_DoesNotUseGitHubCache()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddException(MapDataDiemoeVersionUrl, new InvalidOperationException("diemoe 不可用"));
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+        WriteMapDataCache(999, "GitHub 缓存", "github-cache", source: MapDataSource.OnlineReference);
+        AppSettings settings = store.CreateSettingsSnapshot();
+        settings.MapDataOnlineSource = MapDataOnlineSourceKind.DiemoeMatcha;
+        store.SaveSettings(settings);
+
+        MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
+
+        Assert.False(result.Success);
+        Assert.False(result.CacheAvailable);
+        Assert.False(MapData.HasData);
+        Assert.Single(networkClient.Requests);
+        Assert.Equal(MapDataDiemoeVersionUrl, networkClient.Requests[0].Url);
+    }
+
+    [Fact]
+    public void SaveSettings_WhenMapDataOnlineSourceInvalid_NormalizesToGitHub()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        AppSettings settings = store.CreateSettingsSnapshot();
+        settings.MapDataOnlineSource = (MapDataOnlineSourceKind)999;
+
+        store.SaveSettings(settings);
+
+        Assert.Equal(MapDataOnlineSourceKind.ContentFinderConditionCsv, store.Settings.MapDataOnlineSource);
+    }
+
+    [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenGitHubReferenceHasUnsupportedStructure_DoesNotUseDiemoeFallback()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddResponse(MapDataOnlineReferenceCsvUrl, "id,title\n1,不是地图数据");
+        networkClient.AddResponse(MapDataDiemoeVersionUrl, "build_version=diemoe-structure-version");
+        networkClient.AddResponse(MapDataDiemoeInstanceUrl, CreateDiemoeMapInstanceJson(789, "结构兜底副本"));
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+
+        MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
+
+        Assert.False(result.Success);
+        Assert.False(result.Updated);
+        Assert.False(result.CacheAvailable);
+        Assert.Contains("格式不受支持", result.FailureReason);
+        Assert.Single(networkClient.Requests);
+        Assert.Equal(MapDataOnlineReferenceCsvUrl, networkClient.Requests[0].Url);
+    }
+
+    [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenManualCsvExists_LoadsUserMapDataWithoutNetwork()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+        EnableMapDataManualTable(store);
+        WriteUserMapDataCsv(store, 321, "手动副本");
+
+        MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
+
+        Assert.True(result.Success);
+        Assert.True(result.Updated);
+        Assert.False(result.UsedCache);
+        Assert.True(result.CacheAvailable);
+        Assert.StartsWith("user-", result.Version);
+        Assert.Equal(store.UserMapDataFilePath, result.SourcePath);
+        Assert.Empty(networkClient.Requests);
+        Assert.Equal("手动副本", MapData.GetName(321));
+        Assert.Equal(store.UserMapDataFilePath, store.MapDataContentSourceText);
+        Assert.True(store.MapDataLastUpdated > DateTime.MinValue);
+        Assert.True(store.MapDataLastSuccessfulSyncAt > DateTime.MinValue);
+        Assert.False(File.Exists(store.MapDataCacheFilePath));
+        Assert.False(File.Exists(store.MapDataCacheMetadataFilePath));
+    }
+
+    [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenManualCsvMissing_CreatesTemplateAndReturnsFailure()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+        EnableMapDataManualTable(store);
+
+        MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
+
+        Assert.False(result.Success);
+        Assert.False(result.Updated);
+        Assert.False(result.UsedCache);
+        Assert.False(result.CacheAvailable);
+        Assert.Equal("读取手动地图数据", result.FailureStage);
+        Assert.Contains("已创建空白模板", result.FailureReason);
+        Assert.True(File.Exists(store.UserMapDataFilePath));
+        Assert.Equal("ID,Name\r\n", File.ReadAllText(store.UserMapDataFilePath));
+        Assert.Empty(networkClient.Requests);
+        Assert.False(MapData.HasData);
+    }
+
+    [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenAutomaticSourceUpdates_DoesNotOverwriteUserCsv()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddResponse(MapDataOnlineReferenceCsvUrl, CreateContentFinderConditionCsv(123, "自动副本"));
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+        WriteUserMapDataCsv(store, 654, "用户副本");
+
+        MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
+
+        Assert.True(result.Success);
+        Assert.Equal("自动副本", MapData.GetName(123));
+        Dictionary<ushort, string> userMapNames = ReadUserMapDataCsv(store);
+        Assert.Equal("用户副本", userMapNames[654]);
+        Assert.False(userMapNames.ContainsKey(123));
+    }
+
+    [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenLocalGameSucceeds_WritesCacheAndAppliesMapData()
+    {
+        string gameInstallDirectory = CreateGameInstallDirectory("Game");
+        string sourcePath = Path.Combine(gameInstallDirectory, "game", "sqpack");
+        FakeLocalGameMapDataProvider mapDataProvider = new();
+        mapDataProvider.AddSnapshot("local-version", sourcePath, 123, "测试副本");
+        AppDataStore store = CreateStore(mapDataProvider, () => gameInstallDirectory);
+        store.Initialize();
+        EnableMapDataLocalGameSource(store);
+
+        MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
+
+        Assert.True(result.Success);
+        Assert.True(result.Updated);
+        Assert.False(result.UsedCache);
+        Assert.True(result.CacheAvailable);
+        Assert.Equal("local-version", result.Version);
+        Assert.Equal(sourcePath, result.SourcePath);
         Assert.Equal("测试副本", MapData.GetName(123));
-        string cacheText = File.ReadAllText(store.MapDataCacheFilePath);
-        MapDataCache cache = JsonSerializer.Deserialize<MapDataCache>(cacheText)!;
-        Assert.Equal("20260614", cache.Version);
-        Assert.Equal("测试副本", cache.Instances["123"]);
+        MapDataCache cache = ReadMapDataCacheMetadata(store);
+        Dictionary<ushort, string> cachedMapNames = ReadMapDataCacheCsv(store);
+        Assert.Equal("local-version", cache.Version);
+        Assert.Equal("local-sqpack", cache.Source);
+        Assert.Equal(sourcePath, cache.SourcePath);
+        Assert.Equal("测试副本", cachedMapNames[123]);
         Assert.True(cache.LastUpdated > DateTime.MinValue);
         Assert.True(cache.LastSuccessfulSyncAt > DateTime.MinValue);
         Assert.True(store.MapDataLastUpdated > DateTime.MinValue);
@@ -1373,14 +1631,16 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task EnsureMapDataAvailableAsync_WhenNetworkFailsAndCacheExists_UsesCache()
+    public async Task EnsureMapDataAvailableAsync_WhenLocalGameFailsAndCacheExists_UsesCache()
     {
         DateTime successfulSyncAt = new(2026, 6, 18, 9, 0, 0);
         WriteMapDataCache(456, "缓存副本", "cache-version", successfulSyncAt);
-        FakeAppDataNetworkClient networkClient = new();
-        networkClient.AddException(MapDataVersionUrl, new InvalidOperationException("模拟网络失败"));
-        AppDataStore store = CreateStore(networkClient);
+        string gameInstallDirectory = CreateGameInstallDirectory("Game");
+        FakeLocalGameMapDataProvider mapDataProvider = new();
+        mapDataProvider.AddException(new InvalidOperationException("模拟本地解析失败"));
+        AppDataStore store = CreateStore(mapDataProvider, () => gameInstallDirectory);
         store.Initialize();
+        EnableMapDataLocalGameSource(store);
 
         MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
 
@@ -1388,23 +1648,28 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(result.Updated);
         Assert.True(result.UsedCache);
         Assert.True(result.CacheAvailable);
+        Assert.Equal("解析本地游戏地图数据", result.FailureStage);
+        Assert.Equal("模拟本地解析失败", result.FailureReason);
         Assert.Equal("cache-version", result.Version);
         Assert.Equal("缓存副本", MapData.GetName(456));
         Assert.Equal(successfulSyncAt, store.MapDataLastSuccessfulSyncAt);
 
-        string savedCacheText = File.ReadAllText(store.MapDataCacheFilePath);
-        MapDataCache savedCache = JsonSerializer.Deserialize<MapDataCache>(savedCacheText)!;
+        MapDataCache savedCache = ReadMapDataCacheMetadata(store);
         Assert.Equal(successfulSyncAt, savedCache.LastSuccessfulSyncAt);
     }
 
     [Fact]
-    public async Task EnsureMapDataAvailableAsync_WhenRemoteVersionMatchesCache_UsesCacheWithoutDownloadingInstances()
+    public async Task EnsureMapDataAvailableAsync_WhenLocalSnapshotMatchesCache_UsesCacheWithoutRewritingCsv()
     {
-        WriteMapDataCache(567, "同版本缓存副本", "same-version");
-        FakeAppDataNetworkClient networkClient = new();
-        networkClient.AddResponse(MapDataVersionUrl, "build_version=same-version");
-        AppDataStore store = CreateStore(networkClient);
+        DateTime originalSuccessfulSyncAt = new(2026, 6, 18, 9, 15, 0);
+        string gameInstallDirectory = CreateGameInstallDirectory("Game");
+        string sourcePath = Path.Combine(gameInstallDirectory, "game", "sqpack");
+        WriteMapDataCache(567, "同版本缓存副本", "same-version", originalSuccessfulSyncAt, sourcePath);
+        FakeLocalGameMapDataProvider mapDataProvider = new();
+        mapDataProvider.AddSnapshot("same-version", sourcePath, 567, "同版本缓存副本");
+        AppDataStore store = CreateStore(mapDataProvider, () => gameInstallDirectory);
         store.Initialize();
+        EnableMapDataLocalGameSource(store);
 
         MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
 
@@ -1414,22 +1679,23 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.True(result.CacheAvailable);
         Assert.Equal("same-version", result.Version);
         Assert.Equal("同版本缓存副本", MapData.GetName(567));
-        Assert.DoesNotContain(networkClient.Requests, request => request.Url == MapDataInstanceUrl);
-        string savedCacheText = File.ReadAllText(store.MapDataCacheFilePath);
-        MapDataCache savedCache = JsonSerializer.Deserialize<MapDataCache>(savedCacheText)!;
-        Assert.True(savedCache.LastSuccessfulSyncAt > DateTime.MinValue);
-        Assert.True(store.MapDataLastSuccessfulSyncAt > DateTime.MinValue);
+        MapDataCache savedCache = ReadMapDataCacheMetadata(store);
+        Assert.True(savedCache.LastSuccessfulSyncAt > originalSuccessfulSyncAt);
+        Assert.True(store.MapDataLastSuccessfulSyncAt > originalSuccessfulSyncAt);
     }
 
     [Fact]
-    public async Task ForceRefreshMapDataAsync_WhenRemoteVersionMatchesCache_ReturnsLatestWithoutDownloadingInstances()
+    public async Task ForceRefreshMapDataAsync_WhenLocalSnapshotMatchesCache_ReturnsLatestWithoutRewritingCsv()
     {
         DateTime originalSuccessfulSyncAt = new(2026, 6, 18, 9, 30, 0);
-        WriteMapDataCache(568, "同版本手动缓存副本", "same-version", originalSuccessfulSyncAt);
-        FakeAppDataNetworkClient networkClient = new();
-        networkClient.AddResponse(MapDataVersionUrl, "build_version=same-version");
-        AppDataStore store = CreateStore(networkClient);
+        string gameInstallDirectory = CreateGameInstallDirectory("Game");
+        string sourcePath = Path.Combine(gameInstallDirectory, "game", "sqpack");
+        WriteMapDataCache(568, "同版本手动缓存副本", "same-version", originalSuccessfulSyncAt, sourcePath);
+        FakeLocalGameMapDataProvider mapDataProvider = new();
+        mapDataProvider.AddSnapshot("same-version", sourcePath, 568, "同版本手动缓存副本");
+        AppDataStore store = CreateStore(mapDataProvider, () => gameInstallDirectory);
         store.Initialize();
+        EnableMapDataLocalGameSource(store);
 
         MapDataLoadResult result = await store.ForceRefreshMapDataAsync();
 
@@ -1439,21 +1705,21 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.True(result.CacheAvailable);
         Assert.Equal("same-version", result.Version);
         Assert.Equal("同版本手动缓存副本", MapData.GetName(568));
-        Assert.DoesNotContain(networkClient.Requests, request => request.Url == MapDataInstanceUrl);
         Assert.True(store.MapDataLastSuccessfulSyncAt > originalSuccessfulSyncAt);
 
-        string savedCacheText = File.ReadAllText(store.MapDataCacheFilePath);
-        MapDataCache savedCache = JsonSerializer.Deserialize<MapDataCache>(savedCacheText)!;
+        MapDataCache savedCache = ReadMapDataCacheMetadata(store);
         Assert.True(savedCache.LastSuccessfulSyncAt > originalSuccessfulSyncAt);
     }
 
     [Fact]
-    public async Task EnsureMapDataAvailableAsync_WhenNetworkFailsAndNoCache_ReturnsFailure()
+    public async Task EnsureMapDataAvailableAsync_WhenLocalGameFailsAndNoCache_ReturnsFailure()
     {
-        FakeAppDataNetworkClient networkClient = new();
-        networkClient.AddException(MapDataVersionUrl, new InvalidOperationException("模拟网络失败"));
-        AppDataStore store = CreateStore(networkClient);
+        string gameInstallDirectory = CreateGameInstallDirectory("Game");
+        FakeLocalGameMapDataProvider mapDataProvider = new();
+        mapDataProvider.AddException(new InvalidOperationException("模拟本地解析失败"));
+        AppDataStore store = CreateStore(mapDataProvider, () => gameInstallDirectory);
         store.Initialize();
+        EnableMapDataLocalGameSource(store);
 
         MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
 
@@ -1461,18 +1727,22 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(result.Updated);
         Assert.False(result.UsedCache);
         Assert.False(result.CacheAvailable);
+        Assert.Equal("解析本地游戏地图数据", result.FailureStage);
+        Assert.Equal("模拟本地解析失败", result.FailureReason);
         Assert.False(MapData.HasData);
+        Assert.Equal("暂无名称", MapData.GetName(123));
         Assert.Equal(DateTime.MinValue, store.MapDataLastSuccessfulSyncAt);
     }
 
     [Fact]
-    public async Task ForceRefreshMapDataAsync_WhenInstanceJsonHasNoMaps_DoesNotRecordSuccessfulSyncTime()
+    public async Task ForceRefreshMapDataAsync_WhenLocalGameHasNoMaps_DoesNotRecordSuccessfulSyncTime()
     {
-        FakeAppDataNetworkClient networkClient = new();
-        networkClient.AddResponse(MapDataVersionUrl, "build_version=empty-instance");
-        networkClient.AddResponse(MapDataInstanceUrl, "{}");
-        AppDataStore store = CreateStore(networkClient);
+        string gameInstallDirectory = CreateGameInstallDirectory("Game");
+        FakeLocalGameMapDataProvider mapDataProvider = new();
+        mapDataProvider.AddSnapshot("empty-local", Path.Combine(gameInstallDirectory, "game", "sqpack"), new Dictionary<ushort, string>());
+        AppDataStore store = CreateStore(mapDataProvider, () => gameInstallDirectory);
         store.Initialize();
+        EnableMapDataLocalGameSource(store);
 
         MapDataLoadResult result = await store.ForceRefreshMapDataAsync();
 
@@ -1480,26 +1750,31 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(result.Updated);
         Assert.False(result.UsedCache);
         Assert.False(result.CacheAvailable);
+        Assert.Equal("解析本地游戏地图数据", result.FailureStage);
+        Assert.Equal("本地游戏地图数据为空或格式不受支持。", result.FailureReason);
         Assert.Equal(DateTime.MinValue, store.MapDataLastSuccessfulSyncAt);
     }
 
     [Fact]
-    public async Task ForceRefreshMapDataAsync_WhenNetworkFails_DoesNotUseCache()
+    public async Task ForceRefreshMapDataAsync_WhenLocalGameFailsAndCacheExists_UsesCache()
     {
         WriteMapDataCache(789, "缓存副本", "cache-version");
-        FakeAppDataNetworkClient networkClient = new();
-        networkClient.AddException(MapDataVersionUrl, new InvalidOperationException("模拟网络失败"));
-        AppDataStore store = CreateStore(networkClient);
+        string gameInstallDirectory = CreateGameInstallDirectory("Game");
+        FakeLocalGameMapDataProvider mapDataProvider = new();
+        mapDataProvider.AddException(new InvalidOperationException("模拟本地解析失败"));
+        AppDataStore store = CreateStore(mapDataProvider, () => gameInstallDirectory);
         store.Initialize();
+        EnableMapDataLocalGameSource(store);
 
         MapDataLoadResult result = await store.ForceRefreshMapDataAsync();
 
-        Assert.False(result.Success);
+        Assert.True(result.Success);
         Assert.False(result.Updated);
-        Assert.False(result.UsedCache);
-        Assert.False(result.CacheAvailable);
-        Assert.False(MapData.HasData);
-        Assert.Equal(DateTime.MinValue, store.MapDataLastSuccessfulSyncAt);
+        Assert.True(result.UsedCache);
+        Assert.True(result.CacheAvailable);
+        Assert.Equal("解析本地游戏地图数据", result.FailureStage);
+        Assert.Equal("模拟本地解析失败", result.FailureReason);
+        Assert.Equal("缓存副本", MapData.GetName(789));
     }
 
     [Fact]
@@ -1641,6 +1916,8 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(result.Updated);
         Assert.True(result.UsedCache);
         Assert.True(result.CacheAvailable);
+        Assert.Equal("检查服务器列表", result.FailureStage);
+        Assert.Equal("模拟网络失败", result.FailureReason);
         Assert.Equal(originalAttempt, store.ServerList.LastSuccessfulSyncAt);
         Assert.Equal("缓存大区", store.ServerList.Groups[0].DataCenter);
 
@@ -1664,6 +1941,8 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(result.Updated);
         Assert.False(result.UsedCache);
         Assert.False(result.CacheAvailable);
+        Assert.Equal("检查服务器列表", result.FailureStage);
+        Assert.Equal("模拟网络失败", result.FailureReason);
     }
 
     [Fact]
@@ -1937,9 +2216,38 @@ public sealed class AppDataStoreTests : IDisposable
         return new AppDataStore(testDirectory, gameInstallDirectoryDetector);
     }
 
+    private AppDataStore CreateStore(
+        ILocalGameMapDataProvider localGameMapDataProvider,
+        Func<string?> gameInstallDirectoryDetector)
+    {
+        return new AppDataStore(
+            testDirectory,
+            new FakeAppDataNetworkClient(),
+            gameInstallDirectoryDetector,
+            localGameMapDataProvider);
+    }
+
     private AppDataStore CreateStore(IAppDataNetworkClient networkClient)
     {
         return new AppDataStore(testDirectory, networkClient, () => null);
+    }
+
+    private static void EnableMapDataLocalGameSource(AppDataStore store)
+    {
+        AppSettings settings = store.CreateSettingsSnapshot();
+        settings.MapDataTableMode = MapDataTableMode.Automatic;
+        settings.MapDataTableModeInitialized = true;
+        settings.MapDataSource = MapDataSource.LocalGame;
+        settings.MapDataSourceInitialized = true;
+        store.SaveSettings(settings);
+    }
+
+    private static void EnableMapDataManualTable(AppDataStore store)
+    {
+        AppSettings settings = store.CreateSettingsSnapshot();
+        settings.MapDataTableMode = MapDataTableMode.Manual;
+        settings.MapDataTableModeInitialized = true;
+        store.SaveSettings(settings);
     }
 
     private static void WriteReadyToCommitMigrationState(string stateFilePath, string sourceDirectory, string targetDirectory)
@@ -2107,21 +2415,57 @@ public sealed class AppDataStoreTests : IDisposable
         ushort mapId,
         string mapName,
         string version,
-        DateTime? lastSuccessfulSyncAt = null)
+        DateTime? lastSuccessfulSyncAt = null,
+        string sourcePath = "",
+        MapDataSource source = MapDataSource.LocalGame)
     {
         string dataDirectory = Path.Combine(testDirectory, "Data");
         Directory.CreateDirectory(Path.Combine(dataDirectory, "cache"));
-        MapDataCache cache = new()
+        bool isLocalGameSource = source == MapDataSource.LocalGame;
+        MapDataCache metadata = new()
         {
             Version = version,
+            Source = isLocalGameSource ? "local-sqpack" : "online-reference:github",
+            SourcePath = string.IsNullOrWhiteSpace(sourcePath)
+                ? isLocalGameSource ? string.Empty : MapDataOnlineReferenceCsvUrl
+                : sourcePath,
             LastUpdated = DateTime.Now,
-            LastSuccessfulSyncAt = lastSuccessfulSyncAt ?? DateTime.MinValue,
-            Instances = new Dictionary<string, string>
-            {
-                [mapId.ToString()] = mapName
-            }
+            LastSuccessfulSyncAt = lastSuccessfulSyncAt ?? DateTime.MinValue
         };
-        File.WriteAllText(Path.Combine(dataDirectory, "cache", "mapdata.json"), JsonSerializer.Serialize(cache));
+        string csv = MapDataTableCsv.Serialize(new Dictionary<ushort, string>
+        {
+            [mapId] = mapName
+        });
+        File.WriteAllText(Path.Combine(dataDirectory, "cache", "mapdata.csv"), csv);
+        File.WriteAllText(Path.Combine(dataDirectory, "cache", "mapdata.meta.json"), JsonSerializer.Serialize(metadata));
+    }
+
+    private static MapDataCache ReadMapDataCacheMetadata(AppDataStore store)
+    {
+        string metadataText = File.ReadAllText(store.MapDataCacheMetadataFilePath);
+        return JsonSerializer.Deserialize<MapDataCache>(metadataText)!;
+    }
+
+    private static Dictionary<ushort, string> ReadMapDataCacheCsv(AppDataStore store)
+    {
+        string csv = File.ReadAllText(store.MapDataCacheFilePath);
+        return MapDataTableCsv.ParseSimpleMapDataCsv(csv);
+    }
+
+    private static void WriteUserMapDataCsv(AppDataStore store, ushort mapId, string mapName)
+    {
+        Directory.CreateDirectory(store.CacheDirectory);
+        string csv = MapDataTableCsv.Serialize(new Dictionary<ushort, string>
+        {
+            [mapId] = mapName
+        });
+        File.WriteAllText(store.UserMapDataFilePath, csv);
+    }
+
+    private static Dictionary<ushort, string> ReadUserMapDataCsv(AppDataStore store)
+    {
+        string csv = File.ReadAllText(store.UserMapDataFilePath);
+        return MapDataTableCsv.ParseSimpleMapDataCsv(csv);
     }
 
     private void WriteServerCache(ServerListCache cache)
@@ -2130,20 +2474,6 @@ public sealed class AppDataStoreTests : IDisposable
         Directory.CreateDirectory(Path.Combine(dataDirectory, "cache"));
         File.WriteAllText(Path.Combine(dataDirectory, "cache", "servers.json"), JsonSerializer.Serialize(cache));
     }
-
-    private static string CreateMapInstanceJson(ushort mapId, string mapName)
-    {
-        return $$"""
-            {
-              "{{mapId}}": {
-                "name": {
-                  "chs": "{{mapName}}"
-                }
-              }
-            }
-            """;
-    }
-
 
     private static WayMark CreateSampleWayMark(ushort regionId)
     {
@@ -2233,10 +2563,81 @@ public sealed class AppDataStoreTests : IDisposable
         return Encoding.GetEncoding(936).GetString(Encoding.UTF8.GetBytes(value));
     }
 
-    private const string MapDataVersionUrl = "https://cdn.diemoe.net/files/ACT.DieMoe/Resources/MatchaData/data.version";
-    private const string MapDataInstanceUrl = "https://cdn.diemoe.net/files/ACT.DieMoe/Resources/MatchaData/instance.json";
+    private static string CreateContentFinderConditionCsv(ushort rowId, string name)
+    {
+        return CreateContentFinderConditionCsv((rowId, rowId, name));
+    }
+
+    private static string CreateContentFinderConditionCsv(params (ushort RowId, ushort TerritoryType, string Name)[] rows)
+    {
+        List<string> lines =
+        [
+            "key,0,1,2,3,4,5",
+            "#,ShortCode,TerritoryType,ContentLinkType,Content,Name,NameShort",
+            "int32,str,TerritoryType,byte,Row,str,str"
+        ];
+
+        lines.AddRange(rows.Select(row => $"{row.RowId},\"test\",{row.TerritoryType},1,1,\"{row.Name}\",\"\""));
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string CreateDiemoeMapInstanceJson(ushort mapId, string name)
+    {
+        Dictionary<string, Dictionary<string, Dictionary<string, string>>> instances = new()
+        {
+            [mapId.ToString()] = new Dictionary<string, Dictionary<string, string>>
+            {
+                ["name"] = new Dictionary<string, string>
+                {
+                    ["chs"] = name
+                }
+            }
+        };
+
+        return JsonSerializer.Serialize(instances);
+    }
+
     private const string ServerStatusApiUrl = "https://ff14act.web.sdo.com/api/serverStatus/getServerStatus";
     private const string ServerListSourceUrl = "https://ff.web.sdo.com/web8/index.html#/servers";
+    private const string MapDataOnlineReferenceCsvUrl = "https://raw.githubusercontent.com/thewakingsands/ffxiv-datamining-cn/master/ContentFinderCondition.csv";
+    private const string MapDataDiemoeVersionUrl = "https://cdn.diemoe.net/files/ACT.DieMoe/Resources/MatchaData/data.version";
+    private const string MapDataDiemoeInstanceUrl = "https://cdn.diemoe.net/files/ACT.DieMoe/Resources/MatchaData/instance.json";
+
+    private sealed class FakeLocalGameMapDataProvider : ILocalGameMapDataProvider
+    {
+        private readonly Queue<Func<string, MapDataSnapshot>> responses = [];
+
+        public List<string> Requests { get; } = [];
+
+        public void AddSnapshot(string version, string sourcePath, ushort mapId, string mapName)
+        {
+            AddSnapshot(version, sourcePath, new Dictionary<ushort, string>
+            {
+                [mapId] = mapName
+            });
+        }
+
+        public void AddSnapshot(string version, string sourcePath, IReadOnlyDictionary<ushort, string> mapNames)
+        {
+            responses.Enqueue(_ => new MapDataSnapshot(version, sourcePath, mapNames));
+        }
+
+        public void AddException(Exception exception)
+        {
+            responses.Enqueue(_ => throw exception);
+        }
+
+        public MapDataSnapshot LoadFromGameInstallDirectory(string gameInstallDirectory)
+        {
+            Requests.Add(gameInstallDirectory);
+            if (responses.Count == 0)
+            {
+                throw new InvalidOperationException("没有配置本地地图数据响应。");
+            }
+
+            return responses.Dequeue().Invoke(gameInstallDirectory);
+        }
+    }
 
     private sealed class FakeAppDataNetworkClient : IAppDataNetworkClient
     {

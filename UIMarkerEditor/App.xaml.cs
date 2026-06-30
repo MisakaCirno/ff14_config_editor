@@ -64,27 +64,24 @@ public partial class App : Application
         AppDataStore appDataStore = new();
         appDataStore.Initialize();
 
-        MapDataLoadResult mapDataLoadResult = await appDataStore.EnsureMapDataAvailableAsync();
-        if (!mapDataLoadResult.Success)
+        if (!EnsureMapDataTableSelected(appDataStore))
         {
-            AppMessageBox.Show(
-                BuildRequiredMapDataFailureMessage(),
-                "在线数据加载失败",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
             Shutdown();
             return;
         }
 
-        if (mapDataLoadResult.UsedCache &&
-            AppMessageBox.Show(
-                BuildMapDataCacheModeConfirmMessage(),
-                "使用本地缓存启动",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        MapDataLoadResult mapDataLoadResult = await appDataStore.EnsureMapDataAvailableAsync();
+        if (!mapDataLoadResult.Success)
         {
-            Shutdown();
-            return;
+            appDataStore.AddDataLoadWarning(
+                "map-data-unavailable",
+                BuildMapDataUnavailableWarningMessage(mapDataLoadResult));
+        }
+        else if (mapDataLoadResult.UsedCache)
+        {
+            appDataStore.AddDataLoadWarning(
+                "map-data-cache-fallback",
+                BuildMapDataCacheFallbackWarningMessage(mapDataLoadResult));
         }
 
         if (mapDataLoadResult.Updated)
@@ -109,6 +106,34 @@ public partial class App : Application
             activateMainWindowWhenReady = false;
             ActivateWindow(mainWindow);
         }
+    }
+
+    private static bool EnsureMapDataTableSelected(AppDataStore appDataStore)
+    {
+        if (appDataStore.Settings.MapDataTableModeInitialized)
+        {
+            return true;
+        }
+
+        MapDataSourceStartupDialog dialog = new();
+        bool? dialogResult = dialog.ShowDialog();
+        if (dialogResult != true)
+        {
+            return false;
+        }
+
+        AppSettings settings = appDataStore.CreateSettingsSnapshot();
+        settings.MapDataTableMode = dialog.SelectedTableMode;
+        settings.MapDataTableModeInitialized = true;
+        if (dialog.SelectedTableMode == MapDataTableMode.Automatic)
+        {
+            settings.MapDataSource = dialog.SelectedSource;
+            settings.MapDataSourceInitialized = true;
+        }
+
+        settings.UnknownMapIdPolicy = UnknownMapIdPolicy.RejectUnknown;
+        appDataStore.SaveSettings(settings);
+        return true;
     }
 
     private void RequestMainWindowActivation()
@@ -153,17 +178,29 @@ public partial class App : Application
         return $"工具启动失败，无法继续运行。{Environment.NewLine}{Environment.NewLine}原因：{exception.Message}";
     }
 
-    private static string BuildRequiredMapDataFailureMessage()
+    private static string BuildMapDataUnavailableWarningMessage(MapDataLoadResult result)
     {
         return
-            "无法获取必要的在线数据：地图数据。\n\n" +
-            "本地也没有可用缓存，工具无法启动。请检查网络连接后重新打开工具。";
+            "无法加载地图数据，工具已继续启动。\n\n" +
+            $"原因：{BuildMapDataFailureReasonText(result)}\n\n" +
+            "当前没有可用地图区域快照，区域选择和剪贴板导入校验会受限。可在设置中重新读取地图数据，或开启“允许未知地图 ID”后自行确认地图 ID。";
     }
 
-    private static string BuildMapDataCacheModeConfirmMessage()
+    private static string BuildMapDataCacheFallbackWarningMessage(MapDataLoadResult result)
     {
         return
-            "在线检查失败，但已找到本地地图数据缓存。\n\n" +
-            "是否使用本地缓存启动？";
+            "无法读取当前来源的地图数据，工具已使用缓存快照继续启动。\n\n" +
+            $"原因：{BuildMapDataFailureReasonText(result)}\n\n" +
+            $"区域列表可能不是最新，未覆盖的地图名称可能显示为“{MapData.UnavailableRegionName}”。";
+    }
+
+    private static string BuildMapDataFailureReasonText(MapDataLoadResult result)
+    {
+        string reason = string.IsNullOrWhiteSpace(result.FailureReason)
+            ? "未知原因。"
+            : result.FailureReason;
+        return string.IsNullOrWhiteSpace(result.FailureStage)
+            ? reason
+            : $"{result.FailureStage}失败：{reason}";
     }
 }

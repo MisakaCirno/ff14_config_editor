@@ -98,6 +98,61 @@ public class MarkerShareConverterTests
         string errorMessage = ValidateError(share, new HashSet<ushort>());
 
         Assert.Contains("地图数据未加载", errorMessage);
+        Assert.Contains("允许未知地图 ID", errorMessage);
+    }
+
+    [Fact]
+    public void TryCreateValidatedImport_AllowUnknownMapId_AllowsUnknownMapId()
+    {
+        MarkerShare share = CreateValidShare(456);
+
+        bool result = MarkerShareConverter.TryCreateValidatedImport(
+            share,
+            new HashSet<ushort>(),
+            allowUnknownMapId: true,
+            preservedUnknownMapIds: null,
+            out ValidatedMarkerShare importedMarker,
+            out string errorMessage);
+
+        Assert.True(result);
+        Assert.Equal(string.Empty, errorMessage);
+        Assert.Equal((ushort)456, importedMarker.RegionID);
+    }
+
+    [Fact]
+    public void TryCreateValidatedImport_AllowUnknownMapId_AllowsZeroMapId()
+    {
+        MarkerShare share = CreateValidShare(0);
+
+        bool result = MarkerShareConverter.TryCreateValidatedImport(
+            share,
+            new HashSet<ushort>(),
+            allowUnknownMapId: true,
+            preservedUnknownMapIds: null,
+            out ValidatedMarkerShare importedMarker,
+            out string errorMessage);
+
+        Assert.True(result);
+        Assert.Equal(string.Empty, errorMessage);
+        Assert.Equal((ushort)0, importedMarker.RegionID);
+    }
+
+    [Fact]
+    public void TryCreateValidatedImport_RejectUnknownMapId_AllowsPreservedUnknownMapId()
+    {
+        MarkerShare share = CreateValidShare(456);
+
+        bool result = MarkerShareConverter.TryCreateValidatedImport(
+            share,
+            new HashSet<ushort> { 123 },
+            allowUnknownMapId: false,
+            preservedUnknownMapIds: new HashSet<ushort> { 456 },
+            out ValidatedMarkerShare importedMarker,
+            out string errorMessage);
+
+        Assert.True(result);
+        Assert.Equal(string.Empty, errorMessage);
+        Assert.Equal((ushort)456, importedMarker.RegionID);
     }
 
     [Fact]

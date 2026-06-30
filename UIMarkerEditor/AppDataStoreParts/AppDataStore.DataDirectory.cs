@@ -62,7 +62,7 @@ public sealed partial class AppDataStore
             LoadCharacters();
             LoadWayMarkFavorites();
             LoadServerList();
-            LoadMapDataCache();
+            LoadMapDataCacheForCurrentSource();
             MarkMigrationState(migrationState, MigrationStageCommitted, "工具数据目录已切换到新目录，准备清理旧目录。");
             SaveBootstrap(allowOverwriteInvalid: true);
         }
@@ -145,7 +145,7 @@ public sealed partial class AppDataStore
             LoadCharacters();
             LoadWayMarkFavorites();
             LoadServerList();
-            LoadMapDataCache();
+            LoadMapDataCacheForCurrentSource();
             MarkMigrationState(migrationState, MigrationStageCommitted, "工具数据目录已切换到新目录，准备清理旧目录。");
             SaveBootstrap(allowOverwriteInvalid: true);
         }
@@ -1438,6 +1438,7 @@ public sealed partial class AppDataStore
             CloneWayMarkFavorites(WayMarkFavorites),
             CloneServerList(ServerList),
             MapDataVersion,
+            MapDataSourcePath,
             MapDataLastUpdated,
             MapDataLastSuccessfulSyncAt,
             CreateMapNamesSnapshot(),
@@ -1467,6 +1468,7 @@ public sealed partial class AppDataStore
 
         ServerList = CloneServerList(snapshot.ServerList);
         MapDataVersion = snapshot.MapDataVersion;
+        MapDataSourcePath = snapshot.MapDataSourcePath;
         MapDataLastUpdated = snapshot.MapDataLastUpdated;
         MapDataLastSuccessfulSyncAt = snapshot.MapDataLastSuccessfulSyncAt;
         if (snapshot.MapNames.Count > 0)
@@ -1580,6 +1582,7 @@ public sealed partial class AppDataStore
         List<WayMarkFavorite> WayMarkFavorites,
         ServerListCache ServerList,
         string MapDataVersion,
+        string MapDataSourcePath,
         DateTime MapDataLastUpdated,
         DateTime MapDataLastSuccessfulSyncAt,
         Dictionary<ushort, string> MapNames,

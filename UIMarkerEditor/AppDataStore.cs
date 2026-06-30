@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -18,7 +18,9 @@ public sealed partial class AppDataStore
     private const string SettingsFileName = "config.json";
     private const string CharactersFileName = "characters.json";
     private const string ServersFileName = "servers.json";
-    private const string MapDataCacheFileName = "mapdata.json";
+    private const string MapDataCacheFileName = "mapdata.csv";
+    private const string MapDataCacheMetadataFileName = "mapdata.meta.json";
+    private const string UserMapDataFileName = "mapdata_user.csv";
     private const string WayMarkFavoritesFileName = "waymark-favorites.json";
     private const string MetadataFileName = "metadata.json";
     private const string BackupDataFileName = "UISAVE.DAT";
@@ -36,6 +38,7 @@ public sealed partial class AppDataStore
     };
     private readonly IAppDataNetworkClient networkClient;
     private readonly Func<string?> gameInstallDirectoryDetector;
+    private readonly ILocalGameMapDataProvider localGameMapDataProvider;
     private readonly List<string> dataLoadWarnings = [];
     private readonly HashSet<string> dataLoadWarningKeys = [];
     private readonly List<DataDirectoryMigrationResult> migrationReports = [];
@@ -57,6 +60,8 @@ public sealed partial class AppDataStore
     public string CharactersFilePath => Path.Combine(ConfigsDirectory, CharactersFileName);
     public string ServersFilePath => Path.Combine(CacheDirectory, ServersFileName);
     public string MapDataCacheFilePath => Path.Combine(CacheDirectory, MapDataCacheFileName);
+    public string MapDataCacheMetadataFilePath => Path.Combine(CacheDirectory, MapDataCacheMetadataFileName);
+    public string UserMapDataFilePath => Path.Combine(CacheDirectory, UserMapDataFileName);
     public string WayMarkFavoritesFilePath => Path.Combine(ConfigsDirectory, WayMarkFavoritesFileName);
     public string LogDirectory => Path.Combine(DataDirectory, LogsFolderName);
     public string LogFilePath => Path.Combine(LogDirectory, LogFileName);
@@ -66,10 +71,12 @@ public sealed partial class AppDataStore
     public ObservableCollection<WayMarkFavorite> WayMarkFavorites { get; } = [];
     public ServerListCache ServerList { get; private set; } = new();
     public string MapDataVersion { get; private set; } = string.Empty;
+    public string MapDataSourcePath { get; private set; } = string.Empty;
     public DateTime MapDataLastUpdated { get; private set; } = DateTime.MinValue;
     public DateTime MapDataLastSuccessfulSyncAt { get; private set; } = DateTime.MinValue;
-    public string MapDataVersionSourceUrl => ExternalLinks.MapDataVersion;
-    public string MapDataContentSourceUrl => ExternalLinks.MapDataInstance;
+    public string MapDataContentSourceText => string.IsNullOrWhiteSpace(MapDataSourcePath)
+        ? GetDefaultMapDataContentSourceText()
+        : MapDataSourcePath;
 
     public AppDataStore()
         : this(Path.Combine(
@@ -91,7 +98,8 @@ public sealed partial class AppDataStore
     internal AppDataStore(
         string bootstrapDirectory,
         IAppDataNetworkClient networkClient,
-        Func<string?>? gameInstallDirectoryDetector = null)
+        Func<string?>? gameInstallDirectoryDetector = null,
+        ILocalGameMapDataProvider? localGameMapDataProvider = null)
     {
         if (string.IsNullOrWhiteSpace(bootstrapDirectory))
         {
@@ -100,6 +108,7 @@ public sealed partial class AppDataStore
 
         this.networkClient = networkClient ?? throw new ArgumentNullException(nameof(networkClient));
         this.gameInstallDirectoryDetector = gameInstallDirectoryDetector ?? WayMarkOpenDirectoryResolver.AutoDetectGameInstallDirectory;
+        this.localGameMapDataProvider = localGameMapDataProvider ?? new LocalGameMapDataProvider();
         BootstrapDirectory = Path.GetFullPath(bootstrapDirectory);
         DataDirectory = DefaultDataDirectory;
     }
@@ -178,5 +187,22 @@ public sealed partial class AppDataStore
         List<DataDirectoryMigrationResult> reports = [.. migrationReports];
         migrationReports.Clear();
         return reports;
+    }
+
+    private string GetDefaultMapDataContentSourceText()
+    {
+        if (Settings.MapDataTableMode == MapDataTableMode.Manual)
+        {
+            return UserMapDataFilePath;
+        }
+
+        return Settings.MapDataSource == MapDataSource.LocalGame
+            ? "未定位到本地 sqpack"
+            : FormatMapDataOnlineSourceSummary();
+    }
+
+    private string FormatMapDataOnlineSourceSummary()
+    {
+        return CreateMapDataOnlineSourceDefinition(Settings.MapDataOnlineSource).DisplayName;
     }
 }

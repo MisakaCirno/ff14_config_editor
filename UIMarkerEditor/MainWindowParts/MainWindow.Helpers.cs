@@ -23,7 +23,10 @@ namespace UIMarkerEditor
     {
         private void UpdateDataVersionText()
         {
-            WayMarkEditor_Control.UpdateDataVersionText(appDataStore.MapDataVersion);
+            string mapDataVersion = string.IsNullOrWhiteSpace(appDataStore.MapDataVersion)
+                ? "地图数据未加载"
+                : appDataStore.MapDataVersion;
+            WayMarkEditor_Control.UpdateDataVersionText(mapDataVersion);
         }
 
         private static string DisplayOptionalText(string text)

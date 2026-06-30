@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
@@ -16,6 +16,7 @@ public partial class HelpAboutControl
     private const string QqGroup = "http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=_Y7Glbc9stUFXNyiTKKYuBGBiusMrtY8&authKey=WfD6QlORkZPLuCqHxb0G7HWIxi3jZSJ10Ss4%2FWYvQb3hdp9IyJi8CuZ7R1BU4H%2BV&noverify=0&group_code=1075777023";
     private const string DieMoe = "https://act.diemoe.net";
     private const string Souma = "https://souma.diemoe.net";
+    private const string Lumina = "https://github.com/NotAdam/Lumina";
     private const string LucideLicense = "https://lucide.dev/license";
     private const string FfxivMaterialUsageLicense = "https://support.na.square-enix.com/rule.php?id=5382&tag=authc";
     private const string UisaveReader = "https://github.com/PunishedPineapple/UISAVE_Reader";
@@ -49,8 +50,8 @@ public partial class HelpAboutControl
         AddSectionTitle("第三方使用");
         AddInfoRow("服务器列表页面", ExternalLinks.ServerListPage, ExternalLinks.ServerListPage);
         AddInfoRow("服务器状态 API", ExternalLinks.ServerStatusApi, ExternalLinks.ServerStatusApi);
-        AddInfoRow("地图数据版本", ExternalLinks.MapDataVersion, ExternalLinks.MapDataVersion);
-        AddInfoRow("地图数据内容", ExternalLinks.MapDataInstance, ExternalLinks.MapDataInstance);
+        AddInfoRow("地图数据读取", "本地 FFXIV 客户端 sqpack");
+        AddInfoRow("游戏数据读取库", "Lumina", Lumina);
         AddInfoRow("界面图标", "Lucide Icons（ISC License，部分源自 Feather / MIT License）", LucideLicense);
         AddInfoRow("图片素材", "FINAL FANTASY XIV 游戏内素材，© SQUARE ENIX CO., LTD. All Rights Reserved.", FfxivMaterialUsageLicense);
         AddTextLine("FINAL FANTASY XIV 及相关素材版权、商标归 Square Enix Holdings Co., Ltd. / Square Enix Co., Ltd. 所有。本工具为非官方工具，与 Square Enix 无从属或授权关系。");

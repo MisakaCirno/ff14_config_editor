@@ -117,7 +117,7 @@ namespace UIMarkerEditor.Controls
             if (isSelectingRegionFromPopup) return;
             if (IsFocusInRegionOptions(e.NewFocus as DependencyObject)) return;
 
-            RestoreRegionSearchText();
+            CommitFreeRegionTextOrRestore();
             SetRegionClearButtonVisible(false);
         }
 
@@ -125,7 +125,7 @@ namespace UIMarkerEditor.Controls
         {
             if (e.Key == Key.Enter)
             {
-                RestoreRegionSearchText();
+                CommitFreeRegionTextOrRestore();
                 RegionSearch_Popup.IsOpen = false;
                 e.Handled = true;
                 return;
@@ -323,6 +323,28 @@ namespace UIMarkerEditor.Controls
             SetRegionSearchText(currentWayMark.RegionID);
         }
 
+        private void CommitFreeRegionTextOrRestore()
+        {
+            if (unknownMapIdPolicy != UnknownMapIdPolicy.AllowUnknown || currentWayMark == null)
+            {
+                RestoreRegionSearchText();
+                return;
+            }
+
+            string text = RegionSearch_TextBox.Text.Trim();
+            if (!ushort.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out ushort regionId))
+            {
+                RestoreRegionSearchText();
+                return;
+            }
+
+            currentWayMark.RegionID = regionId;
+            EnsureRegionOption(regionId);
+            SetRegionSearchText(regionId);
+            regionFilterText = string.Empty;
+            regionOptionsView?.Refresh();
+        }
+
         private void EnsureRegionOption(ushort regionId)
         {
             if (regionOptions.Any(option => option.Index == regionId)) return;
@@ -353,7 +375,7 @@ namespace UIMarkerEditor.Controls
             try
             {
                 suppressRegionTextChanged = true;
-                RegionSearch_TextBox.Text = selectedMap?.DisplayName ?? $"{MapData.GetName(regionId)}({regionId})";
+                RegionSearch_TextBox.Text = selectedMap?.DisplayName ?? MapData.GetDisplayName(regionId);
                 RegionSearch_TextBox.CaretIndex = RegionSearch_TextBox.Text.Length;
             }
             finally

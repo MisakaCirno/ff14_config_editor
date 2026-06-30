@@ -310,7 +310,7 @@ namespace UIMarkerEditor.Controls
 
         private void ShowDragPreview(WayMark wayMark, Point position)
         {
-            DragPreview_TextBlock.Text = $"{MapData.GetName(wayMark.RegionID)}({wayMark.RegionID})";
+            DragPreview_TextBlock.Text = MapData.GetDisplayName(wayMark.RegionID);
             DragPreview_Border.Width = Math.Max(0, WayMark_ListBox.ActualWidth - 8);
             DragPreview_Border.Visibility = Visibility.Visible;
 

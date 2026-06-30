@@ -1,10 +1,11 @@
-using FF14ConfigEditor;
+﻿using FF14ConfigEditor;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace UIMarkerEditor.Controls;
@@ -25,6 +26,9 @@ public partial class ToolSettingsControl : UserControl
     private Action refreshMapDataConsumers = () => { };
     private Action refreshAppearance = () => { };
     private Action scanLocalCharacters = () => { };
+    private Func<MapDataTableMode, MapDataSource, Task> changeMapDataSelection = (_, _) => Task.CompletedTask;
+    private Func<MapDataOnlineSourceKind, Task> changeMapDataOnlineSource = _ => Task.CompletedTask;
+    private Func<Task> openUserMapDataEditor = () => Task.CompletedTask;
 
     public ToolSettingsControl()
     {
@@ -40,7 +44,10 @@ public partial class ToolSettingsControl : UserControl
         Action refreshServerListConsumers,
         Action refreshMapDataConsumers,
         Action refreshAppearance,
-        Action scanLocalCharacters)
+        Action scanLocalCharacters,
+        Func<MapDataTableMode, MapDataSource, Task> changeMapDataSelection,
+        Func<MapDataOnlineSourceKind, Task> changeMapDataOnlineSource,
+        Func<Task> openUserMapDataEditor)
     {
         this.appDataStore = appDataStore;
         this.ownerWindow = ownerWindow;
@@ -50,6 +57,9 @@ public partial class ToolSettingsControl : UserControl
         this.refreshMapDataConsumers = refreshMapDataConsumers;
         this.refreshAppearance = refreshAppearance;
         this.scanLocalCharacters = scanLocalCharacters;
+        this.changeMapDataSelection = changeMapDataSelection;
+        this.changeMapDataOnlineSource = changeMapDataOnlineSource;
+        this.openUserMapDataEditor = openUserMapDataEditor;
     }
 
     public void LoadSettingsIntoUi()
@@ -77,6 +87,19 @@ public partial class ToolSettingsControl : UserControl
             AutoBackupBeforeRestore_CheckBox.IsChecked = appDataStore.Settings.AutoBackupBeforeRestore;
             WayMarkLabelDisplayMode_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.UseWayMarkImageLabels;
             WayMarkFavoriteSaveMode_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.WayMarkFavoriteSaveMode == WayMarkFavoriteSaveMode.Manual;
+            OnlineReferenceMapDataSource_RadioButton.IsChecked =
+                appDataStore.Settings.MapDataTableMode == MapDataTableMode.Automatic &&
+                appDataStore.Settings.MapDataSource == MapDataSource.OnlineReference;
+            LocalGameMapDataSource_RadioButton.IsChecked =
+                appDataStore.Settings.MapDataTableMode == MapDataTableMode.Automatic &&
+                appDataStore.Settings.MapDataSource == MapDataSource.LocalGame;
+            ManualMapDataTableMode_RadioButton.IsChecked = appDataStore.Settings.MapDataTableMode == MapDataTableMode.Manual;
+            GitHubMapDataOnlineSource_RadioButton.IsChecked =
+                appDataStore.Settings.MapDataOnlineSource == MapDataOnlineSourceKind.ContentFinderConditionCsv;
+            DiemoeMapDataOnlineSource_RadioButton.IsChecked =
+                appDataStore.Settings.MapDataOnlineSource == MapDataOnlineSourceKind.DiemoeMatcha;
+            UnknownMapIdPolicy_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.UnknownMapIdPolicy == UnknownMapIdPolicy.RejectUnknown;
+            UpdateUnknownMapIdPolicyHint();
             LimitBackupCount_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCount;
             LimitBackupCountPerUser_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCountPerUser;
             LimitBackupDays_CheckBox.IsChecked = appDataStore.Settings.LimitBackupDays;
@@ -87,12 +110,14 @@ public partial class ToolSettingsControl : UserControl
             UpdateGameCharacterDirectoryState();
             UpdateBackupLimitInputState();
             RefreshStatusFields();
+            SetManualRefreshButtonsEnabled(true);
         });
     }
 
     public void RefreshOnlineDataStatus()
     {
         RefreshStatusFields();
+        SetManualRefreshButtonsEnabled(true);
     }
 
     public void RefreshGameInstallDirectoryFromSettings()
@@ -417,6 +442,64 @@ public partial class ToolSettingsControl : UserControl
             },
             "保存标点收藏设置",
             refreshAppearance);
+    }
+
+    private async void MapDataSelection_RadioButton_Checked(object sender, RoutedEventArgs e)
+    {
+        if (isLoadingSettingsIntoUi) return;
+
+        if (appDataStore == null) return;
+
+        MapDataTableMode nextMode = ReadMapDataTableModeFromUi();
+        MapDataSource selectedSource = ReadMapDataSourceFromUi();
+        if (appDataStore.Settings.MapDataTableMode == nextMode &&
+            (nextMode == MapDataTableMode.Manual || appDataStore.Settings.MapDataSource == selectedSource))
+        {
+            return;
+        }
+
+        await changeMapDataSelection(nextMode, selectedSource);
+        LoadSettingsIntoUi();
+    }
+
+    private async void EditUserMapData_Button_Click(object sender, RoutedEventArgs e)
+    {
+        await openUserMapDataEditor();
+        RefreshStatusFields();
+    }
+
+    private async void OnlineMapDataSource_RadioButton_Checked(object sender, RoutedEventArgs e)
+    {
+        if (isLoadingSettingsIntoUi) return;
+        if (appDataStore == null) return;
+
+        MapDataOnlineSourceKind nextSource = ReadMapDataOnlineSourceFromUi();
+        if (appDataStore.Settings.MapDataOnlineSource == nextSource)
+        {
+            return;
+        }
+
+        await changeMapDataOnlineSource(nextSource);
+        LoadSettingsIntoUi();
+    }
+
+    private void UnknownMapIdPolicy_SegmentedSwitch_SelectionChanged(object sender, RoutedEventArgs e)
+    {
+        UpdateUnknownMapIdPolicyHint();
+        if (isLoadingSettingsIntoUi) return;
+
+        UnknownMapIdPolicy nextPolicy = ReadUnknownMapIdPolicyFromUi();
+        bool saved = SaveSettingsMutation(
+            settings =>
+            {
+                settings.UnknownMapIdPolicy = nextPolicy;
+            },
+            "保存未知地图 ID 策略",
+            refreshAppearance);
+        if (!saved) return;
+
+        refreshMapDataConsumers();
+        ToastService.ShowSuccess($"已切换到{FormatUnknownMapIdPolicy(nextPolicy)}。");
     }
 
     private void StartupWayMarkAction_RadioButton_Checked(object sender, RoutedEventArgs e)
@@ -788,10 +871,30 @@ public partial class ToolSettingsControl : UserControl
     private async void RefreshMapData_Button_Click(object sender, RoutedEventArgs e)
     {
         if (appDataStore == null) return;
-        if (!CanStartManualRefresh(appDataStore.Settings.LastMapDataManualRefreshAttempt, out TimeSpan waitTime))
+
+        if (appDataStore.Settings.MapDataTableMode == MapDataTableMode.Automatic &&
+            appDataStore.Settings.MapDataSource == MapDataSource.OnlineReference &&
+            !CanStartManualRefresh(appDataStore.Settings.LastMapDataManualRefreshAttempt, out TimeSpan waitTime))
         {
             ShowRefreshCooldownMessage("地图数据", waitTime);
             return;
+        }
+
+        await RefreshMapDataAsync(recordManualAttempt: true);
+    }
+
+    private async Task RefreshMapDataAsync(bool recordManualAttempt)
+    {
+        if (appDataStore == null) return;
+
+        if (recordManualAttempt &&
+            appDataStore.Settings.MapDataTableMode == MapDataTableMode.Automatic &&
+            appDataStore.Settings.MapDataSource == MapDataSource.OnlineReference)
+        {
+            SaveSettingsPreservingEditableValues(settings =>
+            {
+                settings.LastMapDataManualRefreshAttempt = DateTime.Now;
+            });
         }
 
         SetManualRefreshButtonsEnabled(false);
@@ -801,24 +904,38 @@ public partial class ToolSettingsControl : UserControl
             RefreshStatusFields();
             if (!result.Success)
             {
-                AppMessageBox.Show(ownerWindow, "地图数据检查更新失败，请稍后再试。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Warning);
+                refreshMapDataConsumers();
+                AppMessageBox.Show(
+                    ownerWindow,
+                    BuildMapDataRefreshFailureMessage(result),
+                    "地图数据",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 return;
             }
 
-            SaveSettingsPreservingEditableValues(settings =>
-            {
-                settings.LastMapDataManualRefreshAttempt = DateTime.Now;
-            });
-
             string versionText = string.IsNullOrWhiteSpace(result.Version) ? "未知版本" : result.Version;
+            if (result.UsedCache)
+            {
+                refreshMapDataConsumers();
+                AppMessageBox.Show(
+                    ownerWindow,
+                    BuildMapDataCacheFallbackMessage(result),
+                    "地图数据",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             if (result.Updated)
             {
                 refreshMapDataConsumers();
-                ToastService.ShowSuccess($"地图数据已更新到：{versionText}");
+                ToastService.ShowSuccess($"地图快照已更新到：{versionText}");
                 return;
             }
 
-            ToastService.ShowSuccess($"地图数据目前已是最新。当前版本：{versionText}");
+            refreshMapDataConsumers();
+            ToastService.ShowSuccess($"地图快照目前已是最新。当前快照标识：{versionText}");
         }
         finally
         {
@@ -836,6 +953,11 @@ public partial class ToolSettingsControl : UserControl
             return;
         }
 
+        SaveSettingsPreservingEditableValues(settings =>
+        {
+            settings.LastServerListManualRefreshAttempt = DateTime.Now;
+        });
+
         SetManualRefreshButtonsEnabled(false);
         try
         {
@@ -843,14 +965,14 @@ public partial class ToolSettingsControl : UserControl
             RefreshStatusFields();
             if (!result.Success)
             {
-                AppMessageBox.Show(ownerWindow, "服务器列表检查更新失败，已继续使用本地缓存。", "数据同步", MessageBoxButton.OK, MessageBoxImage.Warning);
+                AppMessageBox.Show(
+                    ownerWindow,
+                    BuildServerListRefreshFailureMessage(result),
+                    "服务器数据",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 return;
             }
-
-            SaveSettingsPreservingEditableValues(settings =>
-            {
-                settings.LastServerListManualRefreshAttempt = DateTime.Now;
-            });
 
             if (result.Updated)
             {
@@ -872,17 +994,34 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null) return;
 
-        MapDataVersion_TextBox.Text = string.IsNullOrWhiteSpace(appDataStore.MapDataVersion)
+        int mapCount = MapData.GetKnownMapIds().Count;
+        string mapCountText = mapCount > 0
+            ? $"{mapCount} 条地图 ID"
+            : "未加载";
+        string snapshotIdText = string.IsNullOrWhiteSpace(appDataStore.MapDataVersion)
             ? "未加载"
             : appDataStore.MapDataVersion;
-        int mapCount = MapData.GetKnownMapIds().Count;
-        MapDataSummary_TextBox.Text = mapCount > 0
-            ? $"{mapCount} 张地图"
-            : "未加载";
-        MapDataUpdatedAt_TextBox.Text = FormatOptionalTime(appDataStore.MapDataLastUpdated, "尚未更新");
-        MapDataCheckedAt_TextBox.Text = FormatOptionalTime(appDataStore.MapDataLastSuccessfulSyncAt, "尚未成功检查");
-        MapDataVersionSource_TextBox.Text = appDataStore.MapDataVersionSourceUrl;
-        MapDataContentSource_TextBox.Text = appDataStore.MapDataContentSourceUrl;
+        string updatedAtText = FormatOptionalTime(appDataStore.MapDataLastUpdated, "尚未生成");
+        string readAtText = FormatOptionalTime(appDataStore.MapDataLastSuccessfulSyncAt, "尚未成功读取");
+        string checkedAtText = FormatOptionalTime(appDataStore.MapDataLastSuccessfulSyncAt, "尚未成功检查");
+        string contentSourceText = appDataStore.MapDataContentSourceText;
+
+        ApplyMapDataSnapshotGridVisibility(appDataStore.Settings.MapDataTableMode, appDataStore.Settings.MapDataSource);
+        OnlineMapDataSnapshotId_TextBox.Text = snapshotIdText;
+        OnlineMapDataSnapshotCount_TextBox.Text = mapCountText;
+        OnlineMapDataSnapshotCheckedAt_TextBox.Text = checkedAtText;
+        OnlineMapDataSnapshotUpdatedAt_TextBox.Text = updatedAtText;
+        OnlineMapDataSnapshotContentSource_TextBox.Text = contentSourceText;
+        LocalGameMapDataSnapshotId_TextBox.Text = snapshotIdText;
+        LocalGameMapDataSnapshotCount_TextBox.Text = mapCountText;
+        LocalGameMapDataSnapshotReadAt_TextBox.Text = readAtText;
+        LocalGameMapDataSnapshotUpdatedAt_TextBox.Text = updatedAtText;
+        LocalGameMapDataSnapshotContentSource_TextBox.Text = contentSourceText;
+        UserMapDataSnapshotId_TextBox.Text = snapshotIdText;
+        UserMapDataSnapshotCount_TextBox.Text = mapCountText;
+        UserMapDataSnapshotReadAt_TextBox.Text = readAtText;
+        UserMapDataSnapshotUpdatedAt_TextBox.Text = FormatOptionalTime(appDataStore.MapDataLastUpdated, "尚未读取文件");
+        UserMapDataSnapshotContentSource_TextBox.Text = contentSourceText;
 
         int dataCenterCount = appDataStore.ServerList.Groups.Count;
         int worldCount = appDataStore.ServerList.Groups.Sum(group => group.Worlds.Count);
@@ -892,6 +1031,56 @@ public partial class ToolSettingsControl : UserControl
         ServerListSource_TextBox.Text = string.IsNullOrWhiteSpace(appDataStore.ServerList.SourceUrl)
             ? "未知"
             : appDataStore.ServerList.SourceUrl;
+    }
+
+    private void ApplyMapDataSnapshotGridVisibility(MapDataTableMode tableMode, MapDataSource source)
+    {
+        bool isUserMapData = tableMode == MapDataTableMode.Manual;
+        bool isLocalGameMapData = tableMode == MapDataTableMode.Automatic && source == MapDataSource.LocalGame;
+        OnlineMapDataSnapshot_Grid.Visibility = !isUserMapData && !isLocalGameMapData
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        LocalGameMapDataSnapshot_Grid.Visibility = isLocalGameMapData
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        UserMapDataSnapshot_Grid.Visibility = isUserMapData
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private static string BuildMapDataRefreshFailureMessage(MapDataLoadResult result)
+    {
+        return
+            $"地图数据读取失败：{FormatDataSyncFailure(result.FailureStage, result.FailureReason)}{Environment.NewLine}{Environment.NewLine}" +
+            $"当前没有可用地图数据快照，区域选择和导入校验会受限。可开启“允许未知地图 ID”后自行确认地图 ID。";
+    }
+
+    private static string BuildMapDataCacheFallbackMessage(MapDataLoadResult result)
+    {
+        return
+            $"当前来源的地图数据读取失败，已继续使用同来源的缓存快照。{Environment.NewLine}{Environment.NewLine}" +
+            $"原因：{FormatDataSyncFailure(result.FailureStage, result.FailureReason)}{Environment.NewLine}{Environment.NewLine}" +
+            $"区域列表可能不是最新，未覆盖的地图名称会显示为“{MapData.UnavailableRegionName}”。";
+    }
+
+    private static string BuildServerListRefreshFailureMessage(ServerListLoadResult result)
+    {
+        string cacheMessage = result.CacheAvailable
+            ? "已继续使用本地缓存。"
+            : "当前没有可用缓存。";
+        return
+            $"服务器列表检查更新失败：{FormatDataSyncFailure(result.FailureStage, result.FailureReason)}{Environment.NewLine}{Environment.NewLine}" +
+            cacheMessage;
+    }
+
+    private static string FormatDataSyncFailure(string failureStage, string failureReason)
+    {
+        string reason = string.IsNullOrWhiteSpace(failureReason)
+            ? "未知原因。"
+            : failureReason;
+        return string.IsNullOrWhiteSpace(failureStage)
+            ? reason
+            : $"{failureStage}失败：{reason}";
     }
 
     private void UpdateBackupLimitInputState()
@@ -933,7 +1122,9 @@ public partial class ToolSettingsControl : UserControl
 
     private void SetManualRefreshButtonsEnabled(bool isEnabled)
     {
-        RefreshMapData_Button.IsEnabled = isEnabled;
+        RefreshOnlineMapData_Button.IsEnabled = isEnabled;
+        RefreshLocalGameMapData_Button.IsEnabled = isEnabled;
+        RefreshUserMapData_Button.IsEnabled = isEnabled;
         RefreshServerList_Button.IsEnabled = isEnabled;
     }
 
@@ -1108,6 +1299,64 @@ public partial class ToolSettingsControl : UserControl
             : WayMarkFavoriteSaveMode.Auto;
     }
 
+    private MapDataTableMode ReadMapDataTableModeFromUi()
+    {
+        return ManualMapDataTableMode_RadioButton.IsChecked == true
+            ? MapDataTableMode.Manual
+            : MapDataTableMode.Automatic;
+    }
+
+    private MapDataSource ReadMapDataSourceFromUi()
+    {
+        return LocalGameMapDataSource_RadioButton.IsChecked == true
+            ? MapDataSource.LocalGame
+            : MapDataSource.OnlineReference;
+    }
+
+    private MapDataOnlineSourceKind ReadMapDataOnlineSourceFromUi()
+    {
+        return DiemoeMapDataOnlineSource_RadioButton.IsChecked == true
+            ? MapDataOnlineSourceKind.DiemoeMatcha
+            : MapDataOnlineSourceKind.ContentFinderConditionCsv;
+    }
+
+    private UnknownMapIdPolicy ReadUnknownMapIdPolicyFromUi()
+    {
+        return UnknownMapIdPolicy_SegmentedSwitch.IsLeftSelected
+            ? UnknownMapIdPolicy.RejectUnknown
+            : UnknownMapIdPolicy.AllowUnknown;
+    }
+
+    private void UpdateUnknownMapIdPolicyHint()
+    {
+        if (ReadUnknownMapIdPolicyFromUi() == UnknownMapIdPolicy.AllowUnknown)
+        {
+            UnknownMapIdPolicyHint_TextBlock.Text = "允许输入或导入列表中不存在的地图 ID，只校验 DAT 可保存范围；请自行确认 ID 有效，错误 ID 可能导致游戏内不可用或异常表现。";
+            UnknownMapIdPolicyHint_TextBlock.Foreground = (Brush)FindResource("AppDangerButtonBrush");
+            return;
+        }
+
+        UnknownMapIdPolicyHint_TextBlock.Text = "只允许选择或导入当前地图列表中的 ID；更安全，但依赖当前地图数据是否完整。";
+        UnknownMapIdPolicyHint_TextBlock.Foreground = SystemColors.ControlTextBrush;
+    }
+
+    private static string FormatMapDataSource(MapDataSource source)
+    {
+        return source == MapDataSource.LocalGame ? "本地游戏数据" : "在线数据";
+    }
+
+    private static string FormatMapDataSelection(AppSettings settings)
+    {
+        return settings.MapDataTableMode == MapDataTableMode.Manual
+            ? "用户填写数据"
+            : FormatMapDataSource(settings.MapDataSource);
+    }
+
+    private static string FormatUnknownMapIdPolicy(UnknownMapIdPolicy policy)
+    {
+        return policy == UnknownMapIdPolicy.AllowUnknown ? "允许未知地图 ID" : "不允许未知地图 ID";
+    }
+
     private void ApplyWayMarkOpenDirectoryModeToUi(WayMarkOpenDirectoryMode mode)
     {
         ApplyWayMarkOpenDirectoryModeSelectionToUi(mode);
@@ -1258,4 +1507,5 @@ public partial class ToolSettingsControl : UserControl
             UseShellExecute = true
         });
     }
+
 }

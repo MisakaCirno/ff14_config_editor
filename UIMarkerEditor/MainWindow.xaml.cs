@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -75,6 +75,7 @@ namespace UIMarkerEditor
             ApplySavedLayoutSettings();
             UpdateMaximizeRestoreButton();
             RefreshRecentFileMenu();
+            RefreshMapDataSourceMenu();
         }
 
         protected override void OnClosed(EventArgs e)
@@ -135,7 +136,10 @@ namespace UIMarkerEditor
                 RefreshServerListConsumers,
                 RefreshMapDataConsumers,
                 RefreshAppearanceSettings,
-                StartLocalCharacterScan);
+                StartLocalCharacterScan,
+                ChangeMapDataSelectionAsync,
+                ChangeMapDataOnlineSourceAsync,
+                OpenUserMapDataEditorAsync);
             LoadSettingsIntoUi();
             RefreshBackupList();
             RefreshCharacterList();

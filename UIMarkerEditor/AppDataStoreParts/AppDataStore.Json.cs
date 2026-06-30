@@ -69,10 +69,18 @@ public sealed partial class AppDataStore
             $"{message}{Environment.NewLine}文件：{path}{detail}");
     }
 
-    private void AddDataLoadWarning(string warningKey, string message)
+    internal void AddDataLoadWarning(string warningKey, string message)
     {
         if (!dataLoadWarningKeys.Add(warningKey)) return;
 
         dataLoadWarnings.Add(message);
+    }
+
+    private static string FormatDataSyncFailureReason(Exception exception)
+    {
+        string message = exception.Message.Trim();
+        return string.IsNullOrWhiteSpace(message)
+            ? exception.GetType().Name
+            : message;
     }
 }

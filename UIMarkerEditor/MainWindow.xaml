@@ -249,6 +249,98 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="TitleBarCheckableSubMenuItemStyle" TargetType="{x:Type MenuItem}">
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="MinWidth" Value="190"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="Foreground" Value="{StaticResource AppTextBrush}"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type MenuItem}">
+                        <Grid>
+                            <Border x:Name="MenuItemBorder"
+                                    Background="Transparent"
+                                    BorderBrush="Transparent"
+                                    BorderThickness="1"
+                                    CornerRadius="5"
+                                    Margin="1">
+                                <Grid Margin="{TemplateBinding Padding}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="22"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="CheckMark_TextBlock"
+                                               Text="✓"
+                                               Foreground="{StaticResource AppAccentPressedBrush}"
+                                               FontWeight="SemiBold"
+                                               Visibility="Collapsed"
+                                               HorizontalAlignment="Left"
+                                               VerticalAlignment="Center"/>
+                                    <ContentPresenter Grid.Column="1"
+                                                      ContentSource="Header"
+                                                      TextElement.Foreground="{TemplateBinding Foreground}"
+                                                      VerticalAlignment="Center"
+                                                      RecognizesAccessKey="True"/>
+                                    <TextBlock Grid.Column="2"
+                                               Text="{TemplateBinding InputGestureText}"
+                                               Foreground="{StaticResource AppMutedTextBrush}"
+                                               Margin="24,0,0,0"
+                                               VerticalAlignment="Center"/>
+                                    <Path x:Name="SubmenuArrow"
+                                          Grid.Column="3"
+                                          Data="M 0 0 L 4 4 L 0 8 Z"
+                                          Fill="{StaticResource AppMutedTextBrush}"
+                                          Margin="12,0,0,0"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          Visibility="Collapsed"/>
+                                </Grid>
+                            </Border>
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                   Placement="Right"
+                                   PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                                   PopupAnimation="Fade">
+                                <Border Background="{StaticResource AppSurfaceBrush}"
+                                        BorderBrush="{StaticResource AppBorderStrongBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        MinWidth="180"
+                                        Padding="3"
+                                        SnapsToDevicePixels="True">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="HasItems" Value="True">
+                                <Setter TargetName="SubmenuArrow" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckMark_TextBlock" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="MenuItemBorder" Property="Background" Value="{StaticResource MainTabItem.MouseOver.Background}"/>
+                                <Setter TargetName="MenuItemBorder" Property="BorderBrush" Value="{StaticResource MainTabItem.Selected.Border}"/>
+                            </Trigger>
+                            <Trigger Property="IsSubmenuOpen" Value="True">
+                                <Setter TargetName="MenuItemBorder" Property="Background" Value="{StaticResource MainTabItem.MouseOver.Background}"/>
+                                <Setter TargetName="MenuItemBorder" Property="BorderBrush" Value="{StaticResource MainTabItem.Selected.Border}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid Background="{StaticResource AppBackgroundBrush}">
         <Grid.RowDefinitions>
@@ -328,6 +420,48 @@
                                           Style="{StaticResource TitleBarSubMenuItemStyle}"
                                           InputGestureText="Alt+F4"
                                           Click="ExitMenuItem_Click"/>
+                        </MenuItem>
+                        <MenuItem x:Name="QuickSettings_MenuItem"
+                                  Header="快捷设置"
+                                  SubmenuOpened="QuickSettings_MenuItem_SubmenuOpened">
+                            <MenuItem x:Name="MapDataSource_MenuItem"
+                                      Header="数据来源"
+                                      Style="{StaticResource TitleBarSubMenuItemStyle}">
+                                <MenuItem x:Name="OnlineReferenceMapDataSource_MenuItem"
+                                          Header="在线数据（不读取游戏文件）"
+                                          IsCheckable="True"
+                                          Style="{StaticResource TitleBarCheckableSubMenuItemStyle}"
+                                          Click="OnlineReferenceMapDataSource_MenuItem_Click"/>
+                                <MenuItem x:Name="LocalGameMapDataSource_MenuItem"
+                                          Header="本地游戏数据（读取本地游戏文件）"
+                                          IsCheckable="True"
+                                          Style="{StaticResource TitleBarCheckableSubMenuItemStyle}"
+                                          Click="LocalGameMapDataSource_MenuItem_Click"/>
+                                <MenuItem x:Name="ManualMapDataTableMode_MenuItem"
+                                          Header="用户填写数据（mapdata_user.csv）"
+                                          IsCheckable="True"
+                                          Style="{StaticResource TitleBarCheckableSubMenuItemStyle}"
+                                          Click="ManualMapDataTableMode_MenuItem_Click"/>
+                                <Separator/>
+                                <MenuItem x:Name="EditUserMapData_MenuItem"
+                                          Header="编辑用户填写数据..."
+                                          Style="{StaticResource TitleBarSubMenuItemStyle}"
+                                          Click="EditUserMapData_MenuItem_Click"/>
+                            </MenuItem>
+                            <MenuItem x:Name="UnknownMapIdPolicy_MenuItem"
+                                      Header="地图ID限制"
+                                      Style="{StaticResource TitleBarSubMenuItemStyle}">
+                                <MenuItem x:Name="RejectUnknownMapId_MenuItem"
+                                          Header="不允许未知地图 ID"
+                                          IsCheckable="True"
+                                          Style="{StaticResource TitleBarCheckableSubMenuItemStyle}"
+                                          Click="RejectUnknownMapId_MenuItem_Click"/>
+                                <MenuItem x:Name="AllowUnknownMapId_MenuItem"
+                                          Header="允许未知地图 ID"
+                                          IsCheckable="True"
+                                          Style="{StaticResource TitleBarCheckableSubMenuItemStyle}"
+                                          Click="AllowUnknownMapId_MenuItem_Click"/>
+                            </MenuItem>
                         </MenuItem>
                     </Menu>
                 </StackPanel>
@@ -478,5 +612,43 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
+
+        <Grid x:Name="MapDataSourceSwitchOverlay_Grid"
+              Grid.RowSpan="3"
+              Background="#99000000"
+              Panel.ZIndex="200"
+              Focusable="True"
+              Visibility="Collapsed">
+            <Border Width="360"
+                    Background="#F8FFFFFF"
+                    BorderBrush="{StaticResource AppBorderStrongBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="20"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="18"
+                                      ShadowDepth="3"
+                                      Opacity="0.22"/>
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock x:Name="MapDataSourceSwitchOverlayTitle_TextBlock"
+                               Text="正在切换地图数据来源..."
+                               Foreground="{StaticResource AppTextBrush}"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               TextAlignment="Center"/>
+                    <TextBlock x:Name="MapDataSourceSwitchOverlayMessage_TextBlock"
+                               Text="请稍候。"
+                               Foreground="{StaticResource AppMutedTextBrush}"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               Margin="0,8,0,14"/>
+                    <ProgressBar Height="6"
+                                 IsIndeterminate="True"/>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

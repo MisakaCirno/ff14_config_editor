@@ -48,6 +48,8 @@ namespace UIMarkerEditor.Controls
                 if (!MarkerShareConverter.TryCreateValidatedImport(
                     markerShare,
                     MapData.GetKnownMapIds(),
+                    unknownMapIdPolicy == UnknownMapIdPolicy.AllowUnknown,
+                    GetObservedRegionIds(),
                     out ValidatedMarkerShare importedMarker,
                     out string validationError))
                 {

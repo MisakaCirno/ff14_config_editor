@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 
 namespace UIMarkerEditor;
@@ -74,12 +74,36 @@ public sealed partial class AppDataStore
             settings.WayMarkFavoriteSaveMode = WayMarkFavoriteSaveMode.Manual;
         }
 
+        MigrateLegacyMapDataMode(settings);
+
+        if (!Enum.IsDefined(settings.MapDataTableMode))
+        {
+            settings.MapDataTableMode = MapDataTableMode.Automatic;
+        }
+
+        if (!Enum.IsDefined(settings.MapDataSource))
+        {
+            settings.MapDataSource = MapDataSource.OnlineReference;
+        }
+
+        if (!Enum.IsDefined(settings.MapDataOnlineSource))
+        {
+            settings.MapDataOnlineSource = MapDataOnlineSourceKind.ContentFinderConditionCsv;
+        }
+
+        if (!Enum.IsDefined(settings.UnknownMapIdPolicy))
+        {
+            settings.UnknownMapIdPolicy = UnknownMapIdPolicy.RejectUnknown;
+        }
+
         if (!Enum.IsDefined(settings.WayMarkOpenDirectoryMode))
         {
             settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.Default;
         }
 
         NormalizeWayMarkOpenDirectoryModeInitialized(settings);
+        NormalizeMapDataSourceInitialized(settings);
+        NormalizeMapDataTableModeInitialized(settings);
 
         settings.MaxBackupCount = NormalizeIntRange(
             settings.MaxBackupCount,
@@ -119,6 +143,7 @@ public sealed partial class AppDataStore
     private static void NormalizeSettingsForSave(AppSettings settings)
     {
         NormalizeSettingsReferences(settings);
+        MigrateLegacyMapDataMode(settings);
         settings.GameInstallDirectory = NormalizeOptionalPath(settings.GameInstallDirectory);
         if (WayMarkOpenDirectoryResolver.TryNormalizeGameInstallDirectory(
             settings.GameInstallDirectory,
@@ -128,7 +153,82 @@ public sealed partial class AppDataStore
         }
 
         settings.WayMarkCustomDirectory = NormalizeOptionalPath(settings.WayMarkCustomDirectory);
+        if (!Enum.IsDefined(settings.MapDataTableMode))
+        {
+            settings.MapDataTableMode = MapDataTableMode.Automatic;
+        }
+
+        if (!Enum.IsDefined(settings.MapDataSource))
+        {
+            settings.MapDataSource = MapDataSource.OnlineReference;
+        }
+
+        if (!Enum.IsDefined(settings.MapDataOnlineSource))
+        {
+            settings.MapDataOnlineSource = MapDataOnlineSourceKind.ContentFinderConditionCsv;
+        }
+
         NormalizeWayMarkOpenDirectoryModeInitialized(settings);
+        NormalizeMapDataSourceInitialized(settings);
+        NormalizeMapDataTableModeInitialized(settings);
+    }
+
+    private static void MigrateLegacyMapDataMode(AppSettings settings)
+    {
+        if (settings.MapDataMode is not MapDataMode legacyMode || !Enum.IsDefined(legacyMode))
+        {
+            return;
+        }
+
+        if (legacyMode == MapDataMode.GameData)
+        {
+            settings.MapDataTableMode = MapDataTableMode.Automatic;
+            settings.MapDataSource = MapDataSource.LocalGame;
+            settings.UnknownMapIdPolicy = UnknownMapIdPolicy.RejectUnknown;
+            settings.MapDataTableModeInitialized = true;
+            settings.MapDataSourceInitialized = true;
+        }
+        else
+        {
+            settings.MapDataTableMode = MapDataTableMode.Manual;
+            settings.UnknownMapIdPolicy = UnknownMapIdPolicy.AllowUnknown;
+            settings.MapDataTableModeInitialized = settings.MapDataModeInitialized;
+        }
+
+        settings.MapDataMode = null;
+        settings.MapDataModeInitialized = false;
+    }
+
+    private static void NormalizeMapDataTableModeInitialized(AppSettings settings)
+    {
+        if (!Enum.IsDefined(settings.MapDataTableMode))
+        {
+            return;
+        }
+
+        if (settings.MapDataTableMode == MapDataTableMode.Manual)
+        {
+            settings.MapDataTableModeInitialized = true;
+            return;
+        }
+
+        if (settings.MapDataSourceInitialized)
+        {
+            settings.MapDataTableModeInitialized = true;
+        }
+    }
+
+    private static void NormalizeMapDataSourceInitialized(AppSettings settings)
+    {
+        if (!Enum.IsDefined(settings.MapDataSource))
+        {
+            return;
+        }
+
+        if (settings.MapDataSource == MapDataSource.LocalGame)
+        {
+            settings.MapDataSourceInitialized = true;
+        }
     }
 
     private static void NormalizeWayMarkOpenDirectoryModeInitialized(AppSettings settings)
@@ -336,6 +436,26 @@ public sealed partial class AppDataStore
             throw new InvalidOperationException("标点收藏保存方式不是有效选项。");
         }
 
+        if (!Enum.IsDefined(settings.MapDataSource))
+        {
+            throw new InvalidOperationException("地图数据来源不是有效选项。");
+        }
+
+        if (!Enum.IsDefined(settings.MapDataOnlineSource))
+        {
+            throw new InvalidOperationException("在线地图数据来源不是有效选项。");
+        }
+
+        if (!Enum.IsDefined(settings.MapDataTableMode))
+        {
+            throw new InvalidOperationException("地图数据读取方式不是有效选项。");
+        }
+
+        if (!Enum.IsDefined(settings.UnknownMapIdPolicy))
+        {
+            throw new InvalidOperationException("未知地图 ID 策略不是有效选项。");
+        }
+
         if (!Enum.IsDefined(settings.WayMarkOpenDirectoryMode))
         {
             throw new InvalidOperationException("标点文件打开目录设置不是有效选项。");
@@ -374,6 +494,14 @@ public sealed partial class AppDataStore
             UseWayMarkImageLabels = settings.UseWayMarkImageLabels,
             StartupWayMarkAction = settings.StartupWayMarkAction,
             WayMarkFavoriteSaveMode = settings.WayMarkFavoriteSaveMode,
+            MapDataTableMode = settings.MapDataTableMode,
+            MapDataTableModeInitialized = settings.MapDataTableModeInitialized,
+            MapDataSource = settings.MapDataSource,
+            MapDataSourceInitialized = settings.MapDataSourceInitialized,
+            MapDataOnlineSource = settings.MapDataOnlineSource,
+            UnknownMapIdPolicy = settings.UnknownMapIdPolicy,
+            MapDataMode = settings.MapDataMode,
+            MapDataModeInitialized = settings.MapDataModeInitialized,
             WayMarkOpenDirectoryMode = settings.WayMarkOpenDirectoryMode,
             WayMarkOpenDirectoryModeInitialized = settings.WayMarkOpenDirectoryModeInitialized,
             GameInstallDirectory = settings.GameInstallDirectory,

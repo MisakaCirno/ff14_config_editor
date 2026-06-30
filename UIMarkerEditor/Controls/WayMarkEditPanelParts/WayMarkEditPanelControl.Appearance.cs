@@ -10,6 +10,8 @@ namespace UIMarkerEditor.Controls
     {
         public void ApplyAppearanceSettings(AppSettings settings)
         {
+            unknownMapIdPolicy = settings.UnknownMapIdPolicy;
+
             bool useImageLabels = settings.UseWayMarkImageLabels;
             SetWayMarkCheckBoxContent(A_CheckBox, "A点", "Assets/Image/s_a.png", useImageLabels);
             SetWayMarkCheckBoxContent(B_CheckBox, "B点", "Assets/Image/s_b.png", useImageLabels);
