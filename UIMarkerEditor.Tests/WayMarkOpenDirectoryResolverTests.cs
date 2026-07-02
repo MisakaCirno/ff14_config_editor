@@ -148,6 +148,38 @@ public sealed class WayMarkOpenDirectoryResolverTests : IDisposable
     }
 
     [Fact]
+    public void TryNormalizeExistingDirectory_WhenDirectoryExists_ReturnsFullPath()
+    {
+        string directory = Path.Combine(testDirectory, "Custom", ".");
+        Directory.CreateDirectory(Path.Combine(testDirectory, "Custom"));
+
+        bool normalized = WayMarkOpenDirectoryResolver.TryNormalizeExistingDirectory(
+            directory,
+            out string? normalizedDirectory);
+
+        Assert.True(normalized);
+        Assert.Equal(Path.GetFullPath(Path.Combine(testDirectory, "Custom")), normalizedDirectory);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("  ")]
+    [InlineData("missing")]
+    public void TryNormalizeExistingDirectory_WhenDirectoryIsUnavailable_ReturnsFalse(string directory)
+    {
+        string candidateDirectory = string.IsNullOrWhiteSpace(directory)
+            ? directory
+            : Path.Combine(testDirectory, directory);
+
+        bool normalized = WayMarkOpenDirectoryResolver.TryNormalizeExistingDirectory(
+            candidateDirectory,
+            out string? normalizedDirectory);
+
+        Assert.False(normalized);
+        Assert.Null(normalizedDirectory);
+    }
+
+    [Fact]
     public void Resolve_DefaultMode_ReturnsNullSoDialogUsesPersistedState()
     {
         string gameConfigRoot = Path.Combine(testDirectory, "game", "My Games", "FINAL FANTASY XIV - A Realm Reborn");

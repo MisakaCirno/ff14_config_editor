@@ -606,8 +606,8 @@ internal static class WayMarkOpenDirectoryResolver
         }
     }
 
-    private static bool TryNormalizeExistingDirectory(
-        string directory,
+    internal static bool TryNormalizeExistingDirectory(
+        string? directory,
         [NotNullWhen(true)] out string? normalizedDirectory)
     {
         normalizedDirectory = null;
@@ -618,15 +618,17 @@ internal static class WayMarkOpenDirectoryResolver
 
         try
         {
-            if (!Directory.Exists(directory))
+            string repairedDirectory = PathTextRepair.RepairCommonUtf8Mojibake(directory.Trim());
+            string fullDirectory = Path.GetFullPath(repairedDirectory);
+            if (!Directory.Exists(fullDirectory))
             {
                 return false;
             }
 
-            normalizedDirectory = Path.GetFullPath(directory);
+            normalizedDirectory = fullDirectory;
             return true;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or PathTooLongException)
         {
             return false;
         }

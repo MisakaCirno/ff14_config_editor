@@ -327,13 +327,29 @@ public partial class ToolSettingsControl : UserControl
         UpdateWayMarkCustomDirectoryInputState();
         if (isLoadingSettingsIntoUi) return;
 
-        SaveSettingsMutation(
+        WayMarkOpenDirectoryMode nextMode = ReadWayMarkOpenDirectoryModeFromUi();
+        string? normalizedCustomDirectory = null;
+        if (nextMode == WayMarkOpenDirectoryMode.CustomDirectory &&
+            !TryReadWayMarkCustomDirectory(showMessage: false, out normalizedCustomDirectory))
+        {
+            return;
+        }
+
+        bool saved = SaveSettingsMutation(
             settings =>
             {
-                settings.WayMarkOpenDirectoryMode = ReadWayMarkOpenDirectoryModeFromUi();
+                settings.WayMarkOpenDirectoryMode = nextMode;
                 settings.WayMarkOpenDirectoryModeInitialized = true;
+                if (nextMode == WayMarkOpenDirectoryMode.CustomDirectory)
+                {
+                    settings.WayMarkCustomDirectory = normalizedCustomDirectory!;
+                }
             },
             "保存文件打开设置");
+        if (saved)
+        {
+            RestoreWayMarkOpenDirectorySettingsUi();
+        }
     }
 
     private void ScanRunningGameInstallDirectory_Button_Click(object sender, RoutedEventArgs e)
@@ -415,9 +431,17 @@ public partial class ToolSettingsControl : UserControl
 
         if (DialogOwnerHelper.ShowCommonDialog(dialog, ownerWindow ?? Window.GetWindow(this)) == true)
         {
+            if (!WayMarkOpenDirectoryResolver.TryNormalizeExistingDirectory(
+                dialog.FolderName,
+                out string? normalizedDirectory))
+            {
+                ShowInvalidWayMarkCustomDirectoryMessage(dialog.FolderName);
+                return;
+            }
+
             SetSettingsUiSilently(() =>
             {
-                WayMarkCustomDirectory_TextBox.Text = dialog.FolderName;
+                WayMarkCustomDirectory_TextBox.Text = normalizedDirectory;
                 OpenDirectoryCustom_RadioButton.IsChecked = true;
                 UpdateWayMarkCustomDirectoryInputState();
             });
@@ -426,7 +450,7 @@ public partial class ToolSettingsControl : UserControl
                 {
                     settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.CustomDirectory;
                     settings.WayMarkOpenDirectoryModeInitialized = true;
-                    settings.WayMarkCustomDirectory = dialog.FolderName.Trim();
+                    settings.WayMarkCustomDirectory = normalizedDirectory;
                 },
                 "保存自定义目录");
         }
@@ -729,6 +753,12 @@ public partial class ToolSettingsControl : UserControl
 
     private void WayMarkCustomDirectory_TextBox_LostFocus(object sender, RoutedEventArgs e)
     {
+        if (BrowseWayMarkCustomDirectory_Button.IsKeyboardFocusWithin ||
+            BrowseWayMarkCustomDirectory_Button.IsMouseOver)
+        {
+            return;
+        }
+
         CommitWayMarkCustomDirectory();
     }
 
@@ -1392,19 +1422,66 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null || isLoadingSettingsIntoUi) return false;
 
-        string directory = WayMarkCustomDirectory_TextBox.Text.Trim();
-        if (string.Equals(directory, appDataStore.Settings.WayMarkCustomDirectory, StringComparison.OrdinalIgnoreCase))
+        if (!TryReadWayMarkCustomDirectory(showMessage: true, out string? normalizedDirectory))
+        {
+            RestoreWayMarkOpenDirectorySettingsUi();
+            return false;
+        }
+
+        if (appDataStore.Settings.WayMarkOpenDirectoryMode == WayMarkOpenDirectoryMode.CustomDirectory &&
+            string.Equals(normalizedDirectory, appDataStore.Settings.WayMarkCustomDirectory, StringComparison.OrdinalIgnoreCase))
         {
             WayMarkCustomDirectory_TextBox.Text = appDataStore.Settings.WayMarkCustomDirectory;
             return true;
         }
 
-        return SaveSettingsMutation(
+        bool saved = SaveSettingsMutation(
             settings =>
             {
-                settings.WayMarkCustomDirectory = directory;
+                settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.CustomDirectory;
+                settings.WayMarkOpenDirectoryModeInitialized = true;
+                settings.WayMarkCustomDirectory = normalizedDirectory;
             },
             "保存自定义目录");
+        RestoreWayMarkOpenDirectorySettingsUi();
+        return saved;
+    }
+
+    private bool TryReadWayMarkCustomDirectory(
+        bool showMessage,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? normalizedDirectory)
+    {
+        string directory = WayMarkCustomDirectory_TextBox.Text.Trim();
+        if (WayMarkOpenDirectoryResolver.TryNormalizeExistingDirectory(directory, out normalizedDirectory))
+        {
+            return true;
+        }
+
+        if (showMessage)
+        {
+            ShowInvalidWayMarkCustomDirectoryMessage(directory);
+        }
+
+        return false;
+    }
+
+    private void ShowInvalidWayMarkCustomDirectoryMessage(string directory)
+    {
+        string message = string.IsNullOrWhiteSpace(directory)
+            ? "自定义目录不能为空。请选择或输入一个已存在的目录。"
+            : "自定义目录不存在或无法访问。请选择或输入一个已存在的目录。";
+        AppMessageBox.Show(ownerWindow, message, "自定义目录不可用", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
+    private void RestoreWayMarkOpenDirectorySettingsUi()
+    {
+        if (appDataStore == null) return;
+
+        SetSettingsUiSilently(() =>
+        {
+            WayMarkCustomDirectory_TextBox.Text = appDataStore.Settings.WayMarkCustomDirectory;
+            ApplyWayMarkOpenDirectoryModeSelectionToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
+        });
     }
 
     private void CleanupBackupsIfEnabled()
