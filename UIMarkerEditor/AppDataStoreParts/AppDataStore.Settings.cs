@@ -500,6 +500,7 @@ public sealed partial class AppDataStore
             MapDataSourceInitialized = settings.MapDataSourceInitialized,
             MapDataOnlineSource = settings.MapDataOnlineSource,
             UnknownMapIdPolicy = settings.UnknownMapIdPolicy,
+            ShowAllowUnknownMapIdPolicyWarning = settings.ShowAllowUnknownMapIdPolicyWarning,
             MapDataMode = settings.MapDataMode,
             MapDataModeInitialized = settings.MapDataModeInitialized,
             WayMarkOpenDirectoryMode = settings.WayMarkOpenDirectoryMode,

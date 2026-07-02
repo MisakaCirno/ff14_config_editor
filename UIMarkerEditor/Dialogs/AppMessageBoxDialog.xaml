@@ -10,6 +10,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <Grid>
@@ -37,8 +38,13 @@
                        VerticalAlignment="Center"/>
         </Grid>
 
+        <CheckBox x:Name="Option_CheckBox"
+                  Grid.Row="1"
+                  Margin="46,14,0,0"
+                  Visibility="Collapsed"/>
+
         <StackPanel x:Name="Buttons_Panel"
-                    Grid.Row="1"
+                    Grid.Row="2"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="0,18,0,0"/>

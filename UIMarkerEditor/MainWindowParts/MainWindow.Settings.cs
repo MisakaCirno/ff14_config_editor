@@ -253,8 +253,19 @@ namespace UIMarkerEditor
                 return;
             }
 
+            if (!ConfirmUnknownMapIdPolicyChange(nextPolicy, out bool disableFutureConfirmation))
+            {
+                RefreshMapDataSourceMenu();
+                return;
+            }
+
             AppSettings settings = appDataStore.CreateSettingsSnapshot();
             settings.UnknownMapIdPolicy = nextPolicy;
+            if (disableFutureConfirmation)
+            {
+                settings.ShowAllowUnknownMapIdPolicyWarning = false;
+            }
+
             try
             {
                 appDataStore.SaveSettings(settings);
@@ -394,6 +405,34 @@ namespace UIMarkerEditor
                 "确认读取游戏文件",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning) == MessageBoxResult.Yes;
+        }
+
+        private bool ConfirmUnknownMapIdPolicyChange(
+            UnknownMapIdPolicy nextPolicy,
+            out bool disableFutureConfirmation)
+        {
+            disableFutureConfirmation = false;
+            UnknownMapIdPolicyChangeConfirmation confirmation =
+                UnknownMapIdPolicyChangeConfirmation.Evaluate(
+                    appDataStore.Settings.UnknownMapIdPolicy,
+                    nextPolicy,
+                    appDataStore.Settings.ShowAllowUnknownMapIdPolicyWarning);
+            if (!confirmation.RequiresConfirmation)
+            {
+                return true;
+            }
+
+            AppMessageBoxCheckBoxResult result = AppMessageBox.ShowWithCheckBox(
+                this,
+                UnknownMapIdPolicyChangeConfirmation.Message,
+                UnknownMapIdPolicyChangeConfirmation.Title,
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                UnknownMapIdPolicyChangeConfirmation.DoNotShowAgainText);
+            bool confirmed = result.Result == MessageBoxResult.Yes;
+            disableFutureConfirmation =
+                UnknownMapIdPolicyChangeConfirmation.ShouldDisableFutureConfirmation(confirmed, result.IsChecked);
+            return confirmed;
         }
 
         private void ShowMapDataSourceSwitchOverlay(MapDataTableMode nextTableMode, MapDataSource nextSource)

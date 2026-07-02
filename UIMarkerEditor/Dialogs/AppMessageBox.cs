@@ -2,6 +2,8 @@
 
 namespace UIMarkerEditor;
 
+public sealed record AppMessageBoxCheckBoxResult(MessageBoxResult Result, bool IsChecked);
+
 public static class AppMessageBox
 {
     public static MessageBoxResult Show(
@@ -15,6 +17,21 @@ public static class AppMessageBox
         DialogOwnerHelper.ConfigureOwnedDialog(dialog, owner);
         dialog.ShowDialog();
         return dialog.Result;
+    }
+
+    public static AppMessageBoxCheckBoxResult ShowWithCheckBox(
+        Window? owner,
+        string messageBoxText,
+        string caption,
+        MessageBoxButton button,
+        MessageBoxImage icon,
+        string checkBoxText,
+        bool isChecked = false)
+    {
+        AppMessageBoxDialog dialog = new(messageBoxText, caption, button, icon, checkBoxText, isChecked);
+        DialogOwnerHelper.ConfigureOwnedDialog(dialog, owner);
+        dialog.ShowDialog();
+        return new AppMessageBoxCheckBoxResult(dialog.Result, dialog.IsOptionChecked);
     }
 
     public static MessageBoxResult Show(

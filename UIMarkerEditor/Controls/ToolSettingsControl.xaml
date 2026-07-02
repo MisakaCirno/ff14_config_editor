@@ -529,6 +529,11 @@
                                                Style="{StaticResource SettingsMutedTextStyle}"
                                                TextWrapping="Wrap"
                                                Margin="0,4,0,0"/>
+                                    <CheckBox x:Name="ShowAllowUnknownMapIdPolicyWarning_CheckBox"
+                                              Content="切换到“允许未知地图 ID”时弹出确认"
+                                              Margin="0,8,0,0"
+                                              Checked="ShowAllowUnknownMapIdPolicyWarning_CheckBox_CheckedChanged"
+                                              Unchecked="ShowAllowUnknownMapIdPolicyWarning_CheckBox_CheckedChanged"/>
                                 </StackPanel>
                             </Grid>
 

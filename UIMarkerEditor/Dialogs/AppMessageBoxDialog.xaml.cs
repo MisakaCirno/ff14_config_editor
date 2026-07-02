@@ -10,14 +10,36 @@ public partial class AppMessageBoxDialog : Window
 
     public MessageBoxResult Result => result;
 
-    public AppMessageBoxDialog(string messageBoxText, string caption, MessageBoxButton button, MessageBoxImage icon)
+    public AppMessageBoxDialog(
+        string messageBoxText,
+        string caption,
+        MessageBoxButton button,
+        MessageBoxImage icon,
+        string? optionText = null,
+        bool isOptionChecked = false)
     {
         InitializeComponent();
         Title = caption;
         Message_TextBlock.Text = messageBoxText;
+        ConfigureOption(optionText, isOptionChecked);
         result = GetDefaultResult(button);
         ConfigureIcon(icon);
         ConfigureButtons(button);
+    }
+
+    public bool IsOptionChecked => Option_CheckBox.IsChecked == true;
+
+    private void ConfigureOption(string? optionText, bool isOptionChecked)
+    {
+        if (string.IsNullOrWhiteSpace(optionText))
+        {
+            Option_CheckBox.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        Option_CheckBox.Content = optionText;
+        Option_CheckBox.IsChecked = isOptionChecked;
+        Option_CheckBox.Visibility = Visibility.Visible;
     }
 
     private void ConfigureIcon(MessageBoxImage icon)

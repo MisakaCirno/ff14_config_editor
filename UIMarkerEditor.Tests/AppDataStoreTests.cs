@@ -59,6 +59,7 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(store.Settings.MapDataSourceInitialized);
         Assert.Equal(MapDataOnlineSourceKind.ContentFinderConditionCsv, store.Settings.MapDataOnlineSource);
         Assert.Equal(UnknownMapIdPolicy.RejectUnknown, store.Settings.UnknownMapIdPolicy);
+        Assert.True(store.Settings.ShowAllowUnknownMapIdPolicyWarning);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
         Assert.False(store.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(string.Empty, store.Settings.GameInstallDirectory);
@@ -570,6 +571,7 @@ public sealed class AppDataStoreTests : IDisposable
             MapDataSourceInitialized = true,
             MapDataOnlineSource = MapDataOnlineSourceKind.DiemoeMatcha,
             UnknownMapIdPolicy = UnknownMapIdPolicy.AllowUnknown,
+            ShowAllowUnknownMapIdPolicyWarning = false,
             WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.GameCharacterDirectory,
             GameInstallDirectory = gameInstallDirectory,
             WayMarkCustomDirectory = customDirectory,
@@ -604,6 +606,7 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.True(reloadedStore.Settings.MapDataSourceInitialized);
         Assert.Equal(MapDataOnlineSourceKind.DiemoeMatcha, reloadedStore.Settings.MapDataOnlineSource);
         Assert.Equal(UnknownMapIdPolicy.AllowUnknown, reloadedStore.Settings.UnknownMapIdPolicy);
+        Assert.False(reloadedStore.Settings.ShowAllowUnknownMapIdPolicyWarning);
         Assert.Equal(WayMarkOpenDirectoryMode.GameCharacterDirectory, reloadedStore.Settings.WayMarkOpenDirectoryMode);
         Assert.True(reloadedStore.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(Path.GetFullPath(gameInstallRootDirectory), reloadedStore.Settings.GameInstallDirectory);

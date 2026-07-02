@@ -210,6 +210,7 @@ public sealed class AppSettings
     public bool MapDataSourceInitialized { get; set; }
     public MapDataOnlineSourceKind MapDataOnlineSource { get; set; } = MapDataOnlineSourceKind.ContentFinderConditionCsv;
     public UnknownMapIdPolicy UnknownMapIdPolicy { get; set; } = UnknownMapIdPolicy.RejectUnknown;
+    public bool ShowAllowUnknownMapIdPolicyWarning { get; set; } = true;
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public MapDataMode? MapDataMode { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]

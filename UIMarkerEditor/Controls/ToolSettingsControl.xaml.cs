@@ -100,6 +100,7 @@ public partial class ToolSettingsControl : UserControl
             DiemoeMapDataOnlineSource_RadioButton.IsChecked =
                 appDataStore.Settings.MapDataOnlineSource == MapDataOnlineSourceKind.DiemoeMatcha;
             UnknownMapIdPolicy_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.UnknownMapIdPolicy == UnknownMapIdPolicy.RejectUnknown;
+            ShowAllowUnknownMapIdPolicyWarning_CheckBox.IsChecked = appDataStore.Settings.ShowAllowUnknownMapIdPolicyWarning;
             UpdateUnknownMapIdPolicyHint();
             LimitBackupCount_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCount;
             LimitBackupCountPerUser_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCountPerUser;
@@ -309,6 +310,18 @@ public partial class ToolSettingsControl : UserControl
             CleanupBackupsIfEnabled);
     }
 
+    private void ShowAllowUnknownMapIdPolicyWarning_CheckBox_CheckedChanged(object sender, RoutedEventArgs e)
+    {
+        if (isLoadingSettingsIntoUi) return;
+
+        SaveSettingsMutation(
+            settings =>
+            {
+                settings.ShowAllowUnknownMapIdPolicyWarning = ShowAllowUnknownMapIdPolicyWarning_CheckBox.IsChecked == true;
+            },
+            "保存未知地图 ID 提示设置");
+    }
+
     private void OpenDirectoryMode_RadioButton_Checked(object sender, RoutedEventArgs e)
     {
         UpdateWayMarkCustomDirectoryInputState();
@@ -488,19 +501,77 @@ public partial class ToolSettingsControl : UserControl
     {
         UpdateUnknownMapIdPolicyHint();
         if (isLoadingSettingsIntoUi) return;
+        if (appDataStore == null) return;
 
         UnknownMapIdPolicy nextPolicy = ReadUnknownMapIdPolicyFromUi();
+        if (appDataStore.Settings.UnknownMapIdPolicy == nextPolicy)
+        {
+            return;
+        }
+
+        if (!ConfirmUnknownMapIdPolicyChange(nextPolicy, out bool disableFutureConfirmation))
+        {
+            LoadSettingsIntoUi();
+            return;
+        }
+
         bool saved = SaveSettingsMutation(
             settings =>
             {
                 settings.UnknownMapIdPolicy = nextPolicy;
+                if (disableFutureConfirmation)
+                {
+                    settings.ShowAllowUnknownMapIdPolicyWarning = false;
+                }
             },
             "保存未知地图 ID 策略",
             refreshAppearance);
         if (!saved) return;
 
+        if (disableFutureConfirmation)
+        {
+            SetSettingsUiSilently(() =>
+            {
+                ShowAllowUnknownMapIdPolicyWarning_CheckBox.IsChecked =
+                    appDataStore.Settings.ShowAllowUnknownMapIdPolicyWarning;
+            });
+        }
+
         refreshMapDataConsumers();
         ToastService.ShowSuccess($"已切换到{FormatUnknownMapIdPolicy(nextPolicy)}。");
+    }
+
+    private bool ConfirmUnknownMapIdPolicyChange(
+        UnknownMapIdPolicy nextPolicy,
+        out bool disableFutureConfirmation)
+    {
+        disableFutureConfirmation = false;
+        if (appDataStore == null)
+        {
+            return false;
+        }
+
+        UnknownMapIdPolicyChangeConfirmation confirmation =
+            UnknownMapIdPolicyChangeConfirmation.Evaluate(
+                appDataStore.Settings.UnknownMapIdPolicy,
+                nextPolicy,
+                appDataStore.Settings.ShowAllowUnknownMapIdPolicyWarning);
+        if (!confirmation.RequiresConfirmation)
+        {
+            return true;
+        }
+
+        AppMessageBoxCheckBoxResult result = AppMessageBox.ShowWithCheckBox(
+            ownerWindow,
+            UnknownMapIdPolicyChangeConfirmation.Message,
+            UnknownMapIdPolicyChangeConfirmation.Title,
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            UnknownMapIdPolicyChangeConfirmation.DoNotShowAgainText);
+        bool confirmed = result.Result == MessageBoxResult.Yes;
+        disableFutureConfirmation =
+            UnknownMapIdPolicyChangeConfirmation.ShouldDisableFutureConfirmation(confirmed, result.IsChecked);
+        return confirmed;
     }
 
     private void StartupWayMarkAction_RadioButton_Checked(object sender, RoutedEventArgs e)
