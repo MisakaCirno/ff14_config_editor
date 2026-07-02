@@ -1,4 +1,4 @@
-<Window x:Class="UIMarkerEditor.LocalGameCharacterPickerDialog"
+﻿<Window x:Class="UIMarkerEditor.LocalGameCharacterPickerDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="选择游戏角色"

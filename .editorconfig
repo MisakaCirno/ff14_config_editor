@@ -7,6 +7,18 @@ insert_final_newline = true
 [*.{cs,xaml,csproj,sln}]
 charset = utf-8-bom
 
+[*.{md,json}]
+charset = utf-8
+
+[.editorconfig]
+charset = utf-8
+
+[.gitattributes]
+charset = utf-8
+
+[.gitignore]
+charset = utf-8
+
 [*.cs]
 indent_style = space
 indent_size = 4

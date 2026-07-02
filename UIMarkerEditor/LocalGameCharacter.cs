@@ -1,4 +1,4 @@
-namespace UIMarkerEditor;
+﻿namespace UIMarkerEditor;
 
 internal sealed class LocalGameCharacter
 {
