@@ -11,6 +11,7 @@ namespace FF14ConfigEditor.UISave
         public const int Unknown1ByteLength = 6;
         public const int Unknown2ByteLength = 4;
         public const int EndFlagByteLength = 4;
+        private const int MaxDebugHexPreviewBytes = 256;
 
         public short index = -1;
         public byte[] unknown1 = [];
@@ -139,11 +140,26 @@ namespace FF14ConfigEditor.UISave
         public void DebugPrintInfo()
         {
             AppLogger.Debug(AppLogCategory.General, $"Section Index: {index}");
-            AppLogger.Debug(AppLogCategory.General, $"Section Unknown1: {BitConverter.ToString(unknown1)}");
+            AppLogger.Debug(AppLogCategory.General, $"Section Unknown1: {FormatHexPreview(unknown1)}");
             AppLogger.Debug(AppLogCategory.General, $"Section Length: {length}");
-            AppLogger.Debug(AppLogCategory.General, $"Section Unknown2: {BitConverter.ToString(unknown2)}");
-            AppLogger.Debug(AppLogCategory.General, $"Section Data: {BitConverter.ToString(data)}");
-            AppLogger.Debug(AppLogCategory.General, $"Section End Flag: {BitConverter.ToString(endFlag)}");
+            AppLogger.Debug(AppLogCategory.General, $"Section Unknown2: {FormatHexPreview(unknown2)}");
+            AppLogger.Debug(AppLogCategory.General, $"Section Data: {FormatHexPreview(data)}");
+            AppLogger.Debug(AppLogCategory.General, $"Section End Flag: {FormatHexPreview(endFlag)}");
+        }
+
+        private static string FormatHexPreview(byte[]? value)
+        {
+            if (value is null)
+            {
+                return "<null>";
+            }
+
+            if (value.Length <= MaxDebugHexPreviewBytes)
+            {
+                return BitConverter.ToString(value);
+            }
+
+            return $"{BitConverter.ToString(value, 0, MaxDebugHexPreviewBytes)}... (共 {value.Length} 字节，仅显示前 {MaxDebugHexPreviewBytes} 字节)";
         }
 
         internal sealed class PreparedSave

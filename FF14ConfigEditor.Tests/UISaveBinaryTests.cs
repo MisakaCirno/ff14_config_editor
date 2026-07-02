@@ -82,6 +82,23 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
     }
 
     [Fact]
+    public void Load_EncryptedPayloadLengthExceedsLimit_ThrowsFormatExceptionBeforeReadingPayload()
+    {
+        int maxEncryptedPayloadLength = GetConfigUISaveLimit("MaxEncryptedPayloadLength");
+        int declaredLength = maxEncryptedPayloadLength + 1;
+        string path = WriteFile(UISaveTestData.BuildFileWithDeclaredEncryptedLength(declaredLength));
+        SetSparseFileLength(path, new FileInfo(path).Length + declaredLength);
+
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(() => new ConfigUISave(path));
+
+        Assert.Equal(8, ex.Offset);
+        Assert.Equal(maxEncryptedPayloadLength, ex.ExpectedLength);
+        Assert.Equal(declaredLength, ex.RemainingLength);
+        Assert.Contains("加密数据长度过大", ex.Message);
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "加密数据长度", "文件");
+    }
+
+    [Fact]
     public void Load_NegativeSectionLength_ThrowsFormatException()
     {
         byte[] section = UISaveTestData.BuildSectionPrefixWithLength(1, -1);
@@ -91,6 +108,25 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
 
         Assert.Equal(1, ex.SectionIndex);
         Assert.Equal(0, ex.ExpectedLength);
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "段长度", "解密数据");
+    }
+
+    [Fact]
+    public void ParseEncryptedPart_SectionDataLengthExceedsLimit_ThrowsFormatExceptionBeforeReadingSectionData()
+    {
+        int maxSectionDataLength = GetConfigUISaveLimit("MaxSectionDataLength");
+        byte[] section = UISaveTestData.BuildSectionWithDeclaredLength(1, maxSectionDataLength + 1, []);
+        string path = WritePayloadFile(UISaveTestData.BuildPayload(UISaveTestData.BuildSection(1, [0xAA])));
+        ConfigUISave config = new(path);
+
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(
+            () => config.ParseEncryptedPart(UISaveTestData.BuildPayload(section)));
+
+        Assert.Equal(24, ex.Offset);
+        Assert.Equal(1, ex.SectionIndex);
+        Assert.Equal(maxSectionDataLength, ex.ExpectedLength);
+        Assert.Equal(maxSectionDataLength + 1L, ex.RemainingLength);
+        Assert.Contains("段数据长度过大", ex.Message);
         UISaveFormatExceptionAssert.HasDiagnostic(ex, "段长度", "解密数据");
     }
 
@@ -492,6 +528,24 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
     }
 
     [Fact]
+    public void Load_FileTailExceedsLimit_ThrowsFormatExceptionBeforeReadingTail()
+    {
+        int maxTailLength = GetConfigUISaveLimit("MaxTailLength");
+        byte[] fileBytes = UISaveTestData.BuildFile(
+            UISaveTestData.BuildPayload(UISaveTestData.BuildSection(1, [0xAA, 0xBB])));
+        string path = WriteFile(fileBytes);
+        SetSparseFileLength(path, fileBytes.Length + maxTailLength + 1L);
+
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(() => new ConfigUISave(path));
+
+        Assert.Equal(fileBytes.Length, ex.Offset);
+        Assert.Equal(maxTailLength, ex.ExpectedLength);
+        Assert.Equal(maxTailLength + 1L, ex.RemainingLength);
+        Assert.Contains("文件尾部填充过大", ex.Message);
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "文件尾部填充", "文件");
+    }
+
+    [Fact]
     public void Save_FileWithoutTail_DoesNotAppendTailBytes()
     {
         string path = WritePayloadFile(UISaveTestData.BuildPayload(
@@ -502,6 +556,49 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         config.Save();
 
         Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void DebugPrintInfo_LargeSectionData_WritesPreviewOnly()
+    {
+        bool originalLogToConsole = AppLogger.LogToConsole;
+        bool originalLogToDebug = AppLogger.LogToDebug;
+        AppLogLevel originalMinimumLevel = AppLogger.MinimumLevel;
+        string? originalLogFilePath = AppLogger.LogFilePath;
+        long originalMaxLogFileBytes = AppLogger.MaxLogFileBytes;
+        int originalMaxLogFileCount = AppLogger.MaxLogFileCount;
+        string logPath = Path.Combine(testDirectory, "logs", "app.log");
+
+        try
+        {
+            AppLogger.LogToConsole = false;
+            AppLogger.LogToDebug = false;
+            AppLogger.MinimumLevel = AppLogLevel.Debug;
+            AppLogger.ConfigureFileLogging(logPath, 1024 * 1024, 3);
+            byte[] data = Enumerable.Repeat((byte)0x00, 300).ToArray();
+            Array.Fill(data, (byte)0xFF, 256, 44);
+            UISaveSection section = new(
+                99,
+                UISaveTestData.SectionUnknown1(),
+                data.Length,
+                UISaveTestData.SectionUnknown2(),
+                data,
+                UISaveTestData.SectionEndFlag());
+
+            section.DebugPrintInfo();
+
+            string logText = File.ReadAllText(logPath);
+            Assert.Contains("Section Data:", logText);
+            Assert.Contains("共 300 字节，仅显示前 256 字节", logText);
+            Assert.DoesNotContain("FF-FF-FF", logText);
+        }
+        finally
+        {
+            AppLogger.LogToConsole = originalLogToConsole;
+            AppLogger.LogToDebug = originalLogToDebug;
+            AppLogger.MinimumLevel = originalMinimumLevel;
+            AppLogger.ConfigureFileLogging(originalLogFilePath, originalMaxLogFileBytes, originalMaxLogFileCount);
+        }
     }
 
     private string WritePayloadFile(byte[] decryptedPayload)
@@ -515,5 +612,20 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         string path = Path.Combine(testDirectory, "UISAVE.DAT");
         File.WriteAllBytes(path, contents);
         return path;
+    }
+
+    private static int GetConfigUISaveLimit(string fieldName)
+    {
+        System.Reflection.FieldInfo? field = typeof(ConfigUISave).GetField(
+            fieldName,
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        Assert.NotNull(field);
+        return Assert.IsType<int>(field.GetRawConstantValue());
+    }
+
+    private static void SetSparseFileLength(string path, long length)
+    {
+        using FileStream stream = new(path, FileMode.Open, FileAccess.Write, FileShare.None);
+        stream.SetLength(length);
     }
 }

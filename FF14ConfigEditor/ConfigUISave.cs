@@ -24,6 +24,10 @@ namespace FF14ConfigEditor
         private const int PayloadUnknownByteLength = 8;
         private const int UserIdByteLength = 8;
         private const int SectionIndexByteLength = 2;
+        private const int BytesPerMiB = 1024 * 1024;
+        private const int MaxEncryptedPayloadLength = 32 * BytesPerMiB;
+        private const int MaxSectionDataLength = 8 * BytesPerMiB;
+        private const int MaxTailLength = 1 * BytesPerMiB;
 
         // 写回文件的时候需要用到
         // 没加密的部分
@@ -179,6 +183,13 @@ namespace FF14ConfigEditor
                     fieldName: "加密数据长度",
                     offsetOrigin: UISaveOffsetOrigin.File);
             }
+            EnsureLengthAtMost(
+                encryptLength,
+                MaxEncryptedPayloadLength,
+                "加密数据长度过大。",
+                encryptedLengthOffset,
+                fieldName: "加密数据长度",
+                offsetOrigin: UISaveOffsetOrigin.File);
 
             byte[] fileUnknownRaw = UISaveBinaryReader.ReadExact(
                 reader,
@@ -241,6 +252,13 @@ namespace FF14ConfigEditor
                 long remaining = ms.Length - ms.Position;
                 if (remaining < SectionIndexByteLength)
                 {
+                    EnsureLengthAtMost(
+                        remaining,
+                        MaxTailLength,
+                        "加密部分尾部填充过大。",
+                        sectionStartOffset,
+                        fieldName: "加密部分尾部填充",
+                        offsetOrigin: UISaveOffsetOrigin.DecryptedPayload);
                     payloadTailRaw = UISaveBinaryReader.ReadExact(
                         reader,
                         checked((int)remaining),
@@ -277,6 +295,14 @@ namespace FF14ConfigEditor
                         fieldName: "段长度",
                         offsetOrigin: UISaveOffsetOrigin.DecryptedPayload);
                 }
+                EnsureLengthAtMost(
+                    sectionLength,
+                    MaxSectionDataLength,
+                    "段数据长度过大。",
+                    sectionLengthOffset,
+                    index,
+                    "段长度",
+                    UISaveOffsetOrigin.DecryptedPayload);
 
                 byte[] sectionUnknown2 = UISaveBinaryReader.ReadExact(
                     reader,
@@ -414,6 +440,14 @@ namespace FF14ConfigEditor
                 return [];
             }
 
+            EnsureLengthAtMost(
+                remaining.Value,
+                MaxTailLength,
+                "文件尾部填充过大。",
+                UISaveBinaryReader.GetOffset(reader),
+                fieldName: "文件尾部填充",
+                offsetOrigin: UISaveOffsetOrigin.File);
+
             if (remaining.Value > int.MaxValue)
             {
                 throw new UISaveFormatException(
@@ -432,6 +466,30 @@ namespace FF14ConfigEditor
                 offsetOrigin: UISaveOffsetOrigin.File);
             AppLogger.Info(AppLogCategory.UISaveUnknownPreserved, $"加密数据之后存在 {fileTail.Length} 字节文件尾部填充，已原样保留。");
             return fileTail;
+        }
+
+        private static void EnsureLengthAtMost(
+            long actualLength,
+            long maxLength,
+            string message,
+            long? offset,
+            int? sectionIndex = null,
+            string? fieldName = null,
+            string? offsetOrigin = null)
+        {
+            if (actualLength <= maxLength)
+            {
+                return;
+            }
+
+            throw new UISaveFormatException(
+                message,
+                offset: offset,
+                sectionIndex: sectionIndex,
+                expectedLength: maxLength,
+                remainingLength: actualLength,
+                fieldName: fieldName,
+                offsetOrigin: offsetOrigin);
         }
 
         private static void ValidateRawLength(byte[]? value, int expectedLength, string fieldName)
