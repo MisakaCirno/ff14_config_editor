@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using FF14ConfigEditor;
 
 namespace UIMarkerEditor.Controls;
 
@@ -446,8 +447,26 @@ public partial class BackupRestoreControl : UserControl
             return;
         }
 
-        appDataStore.DeleteBackup(backup);
-        RefreshBackupList();
+        try
+        {
+            appDataStore.DeleteBackup(backup);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning(AppLogCategory.IO, $"删除备份失败：{backup.BackupDirectory}", ex);
+            AppMessageBox.Show(ownerWindow, $"删除备份失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        try
+        {
+            RefreshBackupList();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning(AppLogCategory.IO, "备份已删除，但刷新备份列表失败", ex);
+            AppMessageBox.Show(ownerWindow, $"备份已删除，但刷新备份列表失败：{ex.Message}", "删除已完成", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void OpenBackupDirectory_Button_Click(object sender, RoutedEventArgs e)
