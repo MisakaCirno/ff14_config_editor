@@ -5,6 +5,7 @@ namespace FF14LogParser.Tests;
 
 public sealed class FF14LogFileStreamingTests
 {
+    private const int EntryLengthLimit = 4 * 1024 * 1024;
     private static readonly UTF8Encoding Utf8 = new(false, true);
 
     [Fact]
@@ -119,6 +120,29 @@ public sealed class FF14LogFileStreamingTests
         Assert.Equal("count", exception.ParamName);
     }
 
+    [Fact]
+    public void ReadLast_RejectsOversizedEntryBeforeReadingBody()
+    {
+        const int bodyBase = 12;
+        const int oversizedEntryLength = EntryLengthLimit + 1;
+        var path = CreateSparseLogFileWithSingleEntryLength(oversizedEntryLength);
+        try
+        {
+            var exception = Assert.Throws<FF14LogParseException>(() => FF14LogFileParser.ReadLast(path, 1));
+
+            Assert.Equal(0, exception.EntryIndex);
+            Assert.Equal(bodyBase, exception.Offset);
+            Assert.Equal(EntryLengthLimit, exception.ExpectedLength);
+            Assert.Equal(oversizedEntryLength, exception.RemainingLength);
+            Assert.Contains("长度过大", exception.Message);
+            Assert.Contains("4 MiB", exception.Message);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static LogSource Entry(string body)
         => new(1_700_000_000, 0x2Au, Utf8.GetBytes($"\u001FTester\u001F{body}"));
 
@@ -128,6 +152,23 @@ public sealed class FF14LogFileStreamingTests
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, $"{Guid.NewGuid():N}.log");
         File.WriteAllBytes(path, BuildLogFile(entries));
+        return path;
+    }
+
+    private static string CreateSparseLogFileWithSingleEntryLength(int entryLength)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "FF14LogParserTests");
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, $"{Guid.NewGuid():N}.log");
+
+        using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.Read);
+        Span<byte> headerAndOffset = stackalloc byte[12];
+        BinaryPrimitives.WriteUInt32LittleEndian(headerAndOffset[..4], 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(headerAndOffset.Slice(4, 4), 101);
+        BinaryPrimitives.WriteUInt32LittleEndian(headerAndOffset.Slice(8, 4), checked((uint)entryLength));
+        stream.Write(headerAndOffset);
+        stream.SetLength(12L + entryLength);
+
         return path;
     }
 

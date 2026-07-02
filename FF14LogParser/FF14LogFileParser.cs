@@ -6,6 +6,7 @@ public static class FF14LogFileParser
 {
     private const int HeaderLength = 8;
     private const int EntryHeaderLength = 8;
+    private const int MaxEntryLength = 4 * 1024 * 1024;
     private const int FileBufferSize = 4096;
 
     public static IReadOnlyList<FF14LogEntry> ParseFile(string path)
@@ -68,8 +69,9 @@ public static class FF14LogFileParser
         for (var i = 0; i < index.EntryCount; i++)
         {
             var (start, stop) = GetEntryRange(index, i);
-            var entryLength = checked((int)(stop - start));
-            ValidateEntryLength(entryLength, start, i, index.FilePath);
+            var entryLengthLong = stop - start;
+            ValidateEntryLength(entryLengthLong, start, i, index.FilePath);
+            var entryLength = checked((int)entryLengthLong);
             entries.Add(ParseEntry(bytes.Slice(checked((int)start), entryLength), start, i, index.FilePath));
         }
 
@@ -223,19 +225,8 @@ public static class FF14LogFileParser
     {
         var (start, stop) = GetEntryRange(index, entryIndex);
         var entryLengthLong = stop - start;
-        if (entryLengthLong > int.MaxValue)
-        {
-            throw new FF14LogParseException(
-                $"第 {entryIndex} 条日志长度过大：{entryLengthLong} 字节。",
-                offset: start,
-                expectedLength: null,
-                remainingLength: checked((int)Math.Min(Math.Max(0, index.FileLength - start), int.MaxValue)),
-                entryIndex: entryIndex,
-                filePath: index.FilePath);
-        }
-
+        ValidateEntryLength(entryLengthLong, start, entryIndex, index.FilePath);
         var entryLength = checked((int)entryLengthLong);
-        ValidateEntryLength(entryLength, start, entryIndex, index.FilePath);
         var entry = ReadExactly(stream, entryLength, start, index.FilePath!, entryIndex);
         return new FF14LogRecord(
             index.FilePath!,
@@ -248,7 +239,7 @@ public static class FF14LogFileParser
             index.BodyBase + index.Offsets[entryIndex],
             index.BodyBase + index.Offsets[entryIndex + 1]);
 
-    private static void ValidateEntryLength(int entryLength, long offset, int entryIndex, string? filePath)
+    private static void ValidateEntryLength(long entryLength, long offset, int entryIndex, string? filePath)
     {
         if (entryLength < EntryHeaderLength)
         {
@@ -256,7 +247,18 @@ public static class FF14LogFileParser
                 $"第 {entryIndex} 条日志长度不足 8 字节。",
                 offset: offset,
                 expectedLength: EntryHeaderLength,
-                remainingLength: Math.Max(0, entryLength),
+                remainingLength: checked((int)Math.Max(0, entryLength)),
+                entryIndex: entryIndex,
+                filePath: filePath);
+        }
+
+        if (entryLength > MaxEntryLength)
+        {
+            throw new FF14LogParseException(
+                $"第 {entryIndex} 条日志长度过大：{entryLength} 字节，超过单条日志 entry 上限 {MaxEntryLength} 字节（4 MiB）。",
+                offset: offset,
+                expectedLength: MaxEntryLength,
+                remainingLength: checked((int)Math.Min(entryLength, int.MaxValue)),
                 entryIndex: entryIndex,
                 filePath: filePath);
         }
