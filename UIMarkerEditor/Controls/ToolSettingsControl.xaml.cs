@@ -888,21 +888,12 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null) return;
 
-        if (recordManualAttempt &&
-            appDataStore.Settings.MapDataTableMode == MapDataTableMode.Automatic &&
-            appDataStore.Settings.MapDataSource == MapDataSource.OnlineReference)
-        {
-            SaveSettingsPreservingEditableValues(settings =>
-            {
-                settings.LastMapDataManualRefreshAttempt = DateTime.Now;
-            });
-        }
-
         SetManualRefreshButtonsEnabled(false);
         try
         {
             MapDataLoadResult result = await appDataStore.ForceRefreshMapDataAsync();
             RefreshStatusFields();
+            RecordMapDataManualRefreshAttemptIfNeeded(recordManualAttempt, result);
             if (!result.Success)
             {
                 refreshMapDataConsumers();
@@ -954,16 +945,12 @@ public partial class ToolSettingsControl : UserControl
             return;
         }
 
-        SaveSettingsPreservingEditableValues(settings =>
-        {
-            settings.LastServerListManualRefreshAttempt = DateTime.Now;
-        });
-
         SetManualRefreshButtonsEnabled(false);
         try
         {
             ServerListLoadResult result = await appDataStore.RefreshServerListAsync();
             RefreshStatusFields();
+            RecordServerListManualRefreshAttemptIfNeeded(result);
             if (!result.Success)
             {
                 AppMessageBox.Show(
@@ -1140,6 +1127,49 @@ public partial class ToolSettingsControl : UserControl
 
         waitTime = ManualRefreshCooldown - elapsed;
         return false;
+    }
+
+    internal static bool ShouldRecordMapDataManualRefreshAttempt(
+        AppSettings settings,
+        MapDataLoadResult result)
+    {
+        return settings.MapDataTableMode == MapDataTableMode.Automatic &&
+            settings.MapDataSource == MapDataSource.OnlineReference &&
+            result.Success &&
+            !result.UsedCache;
+    }
+
+    internal static bool ShouldRecordServerListManualRefreshAttempt(ServerListLoadResult result)
+    {
+        return result.Success;
+    }
+
+    private void RecordMapDataManualRefreshAttemptIfNeeded(bool recordManualAttempt, MapDataLoadResult result)
+    {
+        if (!recordManualAttempt ||
+            appDataStore == null ||
+            !ShouldRecordMapDataManualRefreshAttempt(appDataStore.Settings, result))
+        {
+            return;
+        }
+
+        SaveSettingsPreservingEditableValues(settings =>
+        {
+            settings.LastMapDataManualRefreshAttempt = DateTime.Now;
+        });
+    }
+
+    private void RecordServerListManualRefreshAttemptIfNeeded(ServerListLoadResult result)
+    {
+        if (!ShouldRecordServerListManualRefreshAttempt(result))
+        {
+            return;
+        }
+
+        SaveSettingsPreservingEditableValues(settings =>
+        {
+            settings.LastServerListManualRefreshAttempt = DateTime.Now;
+        });
     }
 
     private void ShowRefreshCooldownMessage(string dataName, TimeSpan waitTime)
