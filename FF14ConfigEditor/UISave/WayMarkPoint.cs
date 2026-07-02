@@ -58,44 +58,30 @@ namespace FF14ConfigEditor.UISave
         public float FloatX
         {
             get { return rawX / 1000f; }
-            set
-            {
-                int newVal = (int)(value * 1000);
-                if (rawX != newVal)
-                {
-                    rawX = newVal;
-                    OnPropertyChanged(nameof(X));
-                    OnPropertyChanged(nameof(FloatX));
-                }
-            }
+            set { X = ConvertFloatCoordinate(value); }
         }
         public float FloatY
         {
             get { return rawY / 1000f; }
-            set
-            {
-                int newVal = (int)(value * 1000);
-                if (rawY != newVal)
-                {
-                    rawY = newVal;
-                    OnPropertyChanged(nameof(Y));
-                    OnPropertyChanged(nameof(FloatY));
-                }
-            }
+            set { Y = ConvertFloatCoordinate(value); }
         }
         public float FloatZ
         {
             get { return rawZ / 1000f; }
-            set
+            set { Z = ConvertFloatCoordinate(value); }
+        }
+
+        private static int ConvertFloatCoordinate(float value)
+        {
+            if (!WayMarkCoordinateConverter.TryRoundToRawCoordinate(value, out int rawCoordinate))
             {
-                int newVal = (int)(value * 1000);
-                if (rawZ != newVal)
-                {
-                    rawZ = newVal;
-                    OnPropertyChanged(nameof(Z));
-                    OnPropertyChanged(nameof(FloatZ));
-                }
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value,
+                    "坐标必须是有限数，且转换后的 raw 坐标必须在 Int32 范围内。");
             }
+
+            return rawCoordinate;
         }
     }
 }
