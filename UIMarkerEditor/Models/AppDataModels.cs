@@ -54,6 +54,7 @@ public sealed class MapDataCache
     public string Version { get; set; } = string.Empty;
     public string Source { get; set; } = string.Empty;
     public string SourcePath { get; set; } = string.Empty;
+    public string SourceFingerprint { get; set; } = string.Empty;
     public DateTime LastUpdated { get; set; } = DateTime.Now;
     public DateTime LastSuccessfulSyncAt { get; set; } = DateTime.MinValue;
 

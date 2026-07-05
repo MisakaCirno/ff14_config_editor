@@ -7,8 +7,15 @@ namespace UIMarkerEditor;
 public sealed partial class AppDataStore
 {
     private const string LocalSqpackMapDataSource = "local-sqpack";
+    private const string UserCsvMapDataSource = "user-csv";
     private static readonly Encoding MapDataCsvEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
     private static readonly TimeSpan MapDataRequestTimeout = TimeSpan.FromSeconds(20);
+    private static readonly IReadOnlyDictionary<string, string> GitHubApiHeaders = new Dictionary<string, string>
+    {
+        ["Accept"] = "application/vnd.github+json",
+        ["User-Agent"] = "FFXIVConfigEditor",
+        ["X-GitHub-Api-Version"] = "2022-11-28"
+    };
 
     private sealed record MapDataOnlineSourceDefinition(
         MapDataOnlineSourceKind Kind,
@@ -19,30 +26,30 @@ public sealed partial class AppDataStore
 
     public async Task<MapDataLoadResult> EnsureMapDataAvailableAsync()
     {
-        return await LoadMapDataAsync();
+        return await LoadMapDataAsync(forceRefresh: false);
     }
 
     public async Task<MapDataLoadResult> ForceRefreshMapDataAsync()
     {
-        return await LoadMapDataAsync();
+        return await LoadMapDataAsync(forceRefresh: true);
     }
 
-    private async Task<MapDataLoadResult> LoadMapDataAsync()
+    private async Task<MapDataLoadResult> LoadMapDataAsync(bool forceRefresh)
     {
         if (Settings.MapDataTableMode == MapDataTableMode.Manual)
         {
-            return await Task.Run(LoadMapDataFromUserCsv);
+            return await Task.Run(() => LoadMapDataFromUserCsv(forceRefresh));
         }
 
         if (Settings.MapDataSource == MapDataSource.LocalGame)
         {
-            return await Task.Run(LoadMapDataFromLocalGame);
+            return await Task.Run(() => LoadMapDataFromLocalGame(forceRefresh));
         }
 
-        return await LoadMapDataFromOnlineReferenceAsync();
+        return await LoadMapDataFromOnlineReferenceAsync(forceRefresh);
     }
 
-    private MapDataLoadResult LoadMapDataFromUserCsv()
+    private MapDataLoadResult LoadMapDataFromUserCsv(bool forceRefresh)
     {
         const string currentStage = "读取手动地图数据";
         try
@@ -54,33 +61,86 @@ public sealed partial class AppDataStore
                     UserMapDataFilePath,
                     MapDataTableCsv.Serialize(new Dictionary<ushort, string>()),
                     MapDataCsvEncoding);
-                ClearMapDataCacheState();
-                return CreateMapDataFailureResult(
-                    "user-csv",
+                return LoadMapDataCacheFallback(
+                    UserCsvMapDataSource,
+                    string.Empty,
                     currentStage,
                     $"手动地图数据文件不存在，已创建空白模板。请填写后重新读取：{UserMapDataFilePath}");
+            }
+
+            FileInfo userMapDataFileInfo = new(UserMapDataFilePath);
+            DateTime userMapDataLastWriteTime = userMapDataFileInfo.LastWriteTime;
+            string userMapDataFingerprint = CreateFileMetadataFingerprint(UserCsvMapDataSource, userMapDataFileInfo);
+            string userMapDataVersionPrefix = $"{MapDataSourceParsers.FormatSnapshotTimestamp(userMapDataLastWriteTime)}-";
+            if (!forceRefresh && TryUseCachedMapDataSnapshot(
+                UserCsvMapDataSource,
+                cache =>
+                    cache.Version.StartsWith(userMapDataVersionPrefix, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(cache.SourceFingerprint, userMapDataFingerprint, StringComparison.OrdinalIgnoreCase),
+                UserMapDataFilePath,
+                DateTime.Now,
+                currentStage,
+                "手动地图数据缓存为空或格式不受支持。",
+                out MapDataLoadResult? cachedUserResult))
+            {
+                return cachedUserResult!;
             }
 
             string csv = File.ReadAllText(UserMapDataFilePath, MapDataCsvEncoding);
             Dictionary<ushort, string> mapNames = MapDataTableCsv.ParseSimpleMapDataCsv(csv);
             if (mapNames.Count == 0)
             {
-                ClearMapDataCacheState();
-                return CreateMapDataFailureResult(
-                    "user-csv",
+                return LoadMapDataCacheFallback(
+                    UserCsvMapDataSource,
+                    string.Empty,
                     currentStage,
                     $"手动地图数据文件为空或格式不受支持。请填写至少一行 ID 和名称后重新读取：{UserMapDataFilePath}");
             }
 
-            string version = MapDataSourceParsers.CreateContentHashVersion("user", csv);
+            string version = MapDataSourceParsers.CreateTimestampedContentHashVersion(userMapDataLastWriteTime, csv);
             MapDataCache userTable = CreateMapDataCache(
                 version,
                 mapNames,
                 UserMapDataFilePath,
-                "user-csv");
-            userTable.LastUpdated = File.GetLastWriteTime(UserMapDataFilePath);
+                UserCsvMapDataSource,
+                userMapDataFingerprint);
+            userTable.LastUpdated = userMapDataLastWriteTime;
             userTable.LastSuccessfulSyncAt = DateTime.Now;
+            if (TryReadMapDataCache(UserCsvMapDataSource, out MapDataCache cachedUserTable) &&
+                IsSameMapDataSnapshot(cachedUserTable, userTable))
+            {
+                cachedUserTable.SourcePath = UserMapDataFilePath;
+                TryUpdateMapDataSuccessfulSyncTime(cachedUserTable, userTable.LastSuccessfulSyncAt);
+                if (!ApplyMapDataCache(cachedUserTable))
+                {
+                    return CreateMapDataFailureResult(
+                        version,
+                        currentStage,
+                        "手动地图数据缓存为空或格式不受支持。");
+                }
+
+                return new MapDataLoadResult(
+                    true,
+                    false,
+                    cachedUserTable.Version,
+                    CacheAvailable: true,
+                    SourcePath: MapDataSourcePath);
+            }
+
+            if (IsSameMapDataContent(cachedUserTable, userTable))
+            {
+                WriteMapDataCache(userTable);
+                ApplyMapDataTable(userTable);
+                return new MapDataLoadResult(
+                    true,
+                    false,
+                    userTable.Version,
+                    CacheAvailable: true,
+                    SourcePath: userTable.SourcePath);
+            }
+
             bool updated = !IsCurrentMapDataTableSameAs(userTable);
+            WriteMapDataCache(userTable);
             ApplyMapDataTable(userTable);
             return new MapDataLoadResult(
                 true,
@@ -91,12 +151,15 @@ public sealed partial class AppDataStore
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException or AppDataStoreException)
         {
-            ClearMapDataCacheState();
-            return CreateMapDataFailureResult("user-csv", currentStage, FormatDataSyncFailureReason(ex));
+            return LoadMapDataCacheFallback(
+                UserCsvMapDataSource,
+                string.Empty,
+                currentStage,
+                FormatDataSyncFailureReason(ex));
         }
     }
 
-    private async Task<MapDataLoadResult> LoadMapDataFromOnlineReferenceAsync()
+    private async Task<MapDataLoadResult> LoadMapDataFromOnlineReferenceAsync(bool forceRefresh)
     {
         DateTime successfulSyncTime = DateTime.Now;
         List<string> sourceFailures = [];
@@ -105,8 +168,8 @@ public sealed partial class AppDataStore
 
         MapDataLoadResult? result = source.Kind switch
         {
-            MapDataOnlineSourceKind.DiemoeMatcha => await TryLoadDiemoeMapDataAsync(source, successfulSyncTime, sourceFailures),
-            _ => await TryLoadContentFinderConditionMapDataAsync(source, successfulSyncTime, sourceFailures)
+            MapDataOnlineSourceKind.DiemoeMatcha => await TryLoadDiemoeMapDataAsync(source, forceRefresh, successfulSyncTime, sourceFailures),
+            _ => await TryLoadContentFinderConditionMapDataAsync(source, forceRefresh, successfulSyncTime, sourceFailures)
         };
         if (result != null)
         {
@@ -122,10 +185,95 @@ public sealed partial class AppDataStore
 
     private async Task<MapDataLoadResult?> TryLoadContentFinderConditionMapDataAsync(
         MapDataOnlineSourceDefinition source,
+        bool forceRefresh,
         DateTime successfulSyncTime,
         List<string> sourceFailures)
     {
-        string sourceUrl = source.ContentUrl;
+        GitHubFileCommitInfo? commitInfo = await TryLoadContentFinderConditionCommitInfoAsync(source, sourceFailures);
+        if (commitInfo != null)
+        {
+            string pinnedSourceUrl = ExternalLinks.CreateMapDataOnlineReferenceCsvUrl(commitInfo.Sha);
+            string sourceFingerprint = CreateSourceFingerprint("github", commitInfo.Sha.ToLowerInvariant());
+            if (!forceRefresh && TryUseCachedMapDataSnapshot(
+                CreateOnlineReferenceMapDataSource(source.Kind),
+                commitInfo.Version,
+                pinnedSourceUrl,
+                sourceFingerprint,
+                successfulSyncTime,
+                "读取在线地图数据缓存",
+                "在线地图数据缓存为空或格式不受支持。",
+                out MapDataLoadResult? cachedResult))
+            {
+                return cachedResult!;
+            }
+
+            MapDataLoadResult? pinnedResult = await TryLoadContentFinderConditionCsvSnapshotAsync(
+                source,
+                pinnedSourceUrl,
+                commitInfo.Version,
+                sourceFingerprint,
+                successfulSyncTime,
+                sourceFailures);
+            if (pinnedResult != null)
+            {
+                return pinnedResult;
+            }
+        }
+
+        return await TryLoadContentFinderConditionCsvSnapshotAsync(
+            source,
+            source.ContentUrl,
+            string.Empty,
+            string.Empty,
+            successfulSyncTime,
+            sourceFailures);
+    }
+
+    private async Task<GitHubFileCommitInfo?> TryLoadContentFinderConditionCommitInfoAsync(
+        MapDataOnlineSourceDefinition source,
+        List<string> sourceFailures)
+    {
+        if (string.IsNullOrWhiteSpace(source.VersionUrl))
+        {
+            return null;
+        }
+
+        string commitJson;
+        try
+        {
+            commitJson = await networkClient.GetStringAsync(source.VersionUrl, MapDataRequestTimeout, GitHubApiHeaders);
+        }
+        catch (Exception ex)
+        {
+            sourceFailures.Add($"{FormatMapDataOnlineSourceName(source)}（{source.VersionUrl}）：版本查询失败，{FormatDataSyncFailureReason(ex)}");
+            return null;
+        }
+
+        try
+        {
+            GitHubFileCommitInfo? commitInfo = MapDataSourceParsers.ParseGitHubLatestFileCommitInfo(commitJson);
+            if (commitInfo == null)
+            {
+                sourceFailures.Add($"{FormatMapDataOnlineSourceName(source)}（{source.VersionUrl}）：版本解析失败，GitHub 响应中没有可用的文件提交信息。");
+            }
+
+            return commitInfo;
+        }
+        catch (Exception ex)
+        {
+            sourceFailures.Add($"{FormatMapDataOnlineSourceName(source)}（{source.VersionUrl}）：版本解析失败，{FormatDataSyncFailureReason(ex)}");
+            return null;
+        }
+    }
+
+    private async Task<MapDataLoadResult?> TryLoadContentFinderConditionCsvSnapshotAsync(
+        MapDataOnlineSourceDefinition source,
+        string sourceUrl,
+        string version,
+        string sourceFingerprint,
+        DateTime successfulSyncTime,
+        List<string> sourceFailures)
+    {
         string csv;
         try
         {
@@ -154,12 +302,20 @@ public sealed partial class AppDataStore
             return null;
         }
 
-        string version = MapDataSourceParsers.CreateContentHashVersion("online", csv);
-        return ApplyOnlineMapDataSnapshot(version, mapNames, sourceUrl, successfulSyncTime);
+        string snapshotVersion = string.IsNullOrWhiteSpace(version)
+            ? MapDataSourceParsers.CreateContentHashVersion(csv)
+            : version;
+        return ApplyOnlineMapDataSnapshot(
+            snapshotVersion,
+            string.IsNullOrWhiteSpace(sourceFingerprint) ? snapshotVersion : sourceFingerprint,
+            mapNames,
+            sourceUrl,
+            successfulSyncTime);
     }
 
     private async Task<MapDataLoadResult?> TryLoadDiemoeMapDataAsync(
         MapDataOnlineSourceDefinition source,
+        bool forceRefresh,
         DateTime successfulSyncTime,
         List<string> sourceFailures)
     {
@@ -172,6 +328,25 @@ public sealed partial class AppDataStore
         {
             sourceFailures.Add($"{FormatMapDataOnlineSourceName(source)}（{source.VersionUrl}）：版本下载失败，{FormatDataSyncFailureReason(ex)}");
             return null;
+        }
+
+        string version = MapDataSourceParsers.ParseDiemoeVersion(versionContent);
+        string sourceFingerprint = string.IsNullOrWhiteSpace(version)
+            ? string.Empty
+            : CreateSourceFingerprint("diemoe", version);
+        if (!forceRefresh &&
+            !string.IsNullOrWhiteSpace(version) &&
+            TryUseCachedMapDataSnapshot(
+                CreateOnlineReferenceMapDataSource(source.Kind),
+                version,
+                source.ContentUrl,
+                sourceFingerprint,
+                successfulSyncTime,
+                "读取在线地图数据缓存",
+                "在线地图数据缓存为空或格式不受支持。",
+                out MapDataLoadResult? cachedResult))
+        {
+            return cachedResult!;
         }
 
         string instanceJson;
@@ -202,17 +377,18 @@ public sealed partial class AppDataStore
             return null;
         }
 
-        string version = MapDataSourceParsers.ParseDiemoeVersion(versionContent);
         if (string.IsNullOrWhiteSpace(version))
         {
-            version = MapDataSourceParsers.CreateContentHashVersion("diemoe", instanceJson);
+            version = MapDataSourceParsers.CreateContentHashVersion(instanceJson);
+            sourceFingerprint = version;
         }
 
-        return ApplyOnlineMapDataSnapshot(version, mapNames, source.ContentUrl, successfulSyncTime);
+        return ApplyOnlineMapDataSnapshot(version, sourceFingerprint, mapNames, source.ContentUrl, successfulSyncTime);
     }
 
     private MapDataLoadResult ApplyOnlineMapDataSnapshot(
         string version,
+        string sourceFingerprint,
         IReadOnlyDictionary<ushort, string> mapNames,
         string sourcePath,
         DateTime successfulSyncTime)
@@ -222,7 +398,8 @@ public sealed partial class AppDataStore
             version,
             mapNames,
             sourcePath,
-            cacheSource);
+            cacheSource,
+            sourceFingerprint);
         nextCache.LastSuccessfulSyncAt = successfulSyncTime;
         if (TryReadMapDataCache(cacheSource, out MapDataCache cachedMapData) &&
             IsSameMapDataSnapshot(cachedMapData, nextCache))
@@ -245,6 +422,18 @@ public sealed partial class AppDataStore
                 SourcePath: MapDataSourcePath);
         }
 
+        if (IsSameMapDataContent(cachedMapData, nextCache))
+        {
+            WriteMapDataCache(nextCache);
+            ApplyMapDataCache(nextCache);
+            return new MapDataLoadResult(
+                true,
+                false,
+                nextCache.Version,
+                CacheAvailable: true,
+                SourcePath: nextCache.SourcePath);
+        }
+
         WriteMapDataCache(nextCache);
         ApplyMapDataCache(nextCache);
         return new MapDataLoadResult(
@@ -255,13 +444,30 @@ public sealed partial class AppDataStore
             SourcePath: nextCache.SourcePath);
     }
 
-    private MapDataLoadResult LoadMapDataFromLocalGame()
+    private MapDataLoadResult LoadMapDataFromLocalGame(bool forceRefresh)
     {
         DateTime successfulSyncTime = DateTime.Now;
         string currentStage = "定位本地游戏数据";
         try
         {
             string gameInstallDirectory = ResolveMapDataGameInstallDirectory();
+            currentStage = "检查本地游戏地图数据";
+            MapDataSnapshotIdentity snapshotIdentity = localGameMapDataProvider.GetSnapshotIdentity(gameInstallDirectory);
+            if (!forceRefresh &&
+                !string.Equals(snapshotIdentity.Version, "unknown", StringComparison.OrdinalIgnoreCase) &&
+                TryUseCachedMapDataSnapshot(
+                    LocalSqpackMapDataSource,
+                    snapshotIdentity.Version,
+                    snapshotIdentity.SourcePath,
+                    snapshotIdentity.SourceFingerprint,
+                    successfulSyncTime,
+                    "读取本地地图数据缓存",
+                    "本地地图数据缓存为空或格式不受支持。",
+                    out MapDataLoadResult? cachedResult))
+            {
+                return cachedResult!;
+            }
+
             currentStage = "解析本地游戏地图数据";
             MapDataSnapshot snapshot = localGameMapDataProvider.LoadFromGameInstallDirectory(gameInstallDirectory);
             if (snapshot.MapNames.Count == 0)
@@ -278,7 +484,8 @@ public sealed partial class AppDataStore
                 snapshot.Version,
                 snapshot.MapNames,
                 snapshot.SourcePath,
-                LocalSqpackMapDataSource);
+                LocalSqpackMapDataSource,
+                snapshot.SourceFingerprint);
             nextCache.LastSuccessfulSyncAt = successfulSyncTime;
             if (TryReadMapDataCache(LocalSqpackMapDataSource, out MapDataCache cachedMapData) &&
                 IsSameMapDataSnapshot(cachedMapData, nextCache))
@@ -298,6 +505,18 @@ public sealed partial class AppDataStore
                     cachedMapData.Version,
                     CacheAvailable: true,
                     SourcePath: MapDataSourcePath);
+            }
+
+            if (IsSameMapDataContent(cachedMapData, nextCache))
+            {
+                WriteMapDataCache(nextCache);
+                ApplyMapDataCache(nextCache);
+                return new MapDataLoadResult(
+                    true,
+                    false,
+                    nextCache.Version,
+                    CacheAvailable: true,
+                    SourcePath: nextCache.SourcePath);
             }
 
             currentStage = "保存本地地图数据缓存";
@@ -374,6 +593,72 @@ public sealed partial class AppDataStore
             FailureReason: string.IsNullOrWhiteSpace(failureReason) ? "未知原因。" : failureReason);
     }
 
+    private bool TryUseCachedMapDataSnapshot(
+        string expectedSource,
+        string version,
+        string sourcePath,
+        string sourceFingerprint,
+        DateTime successfulSyncTime,
+        string failureStage,
+        string invalidCacheReason,
+        out MapDataLoadResult? result)
+    {
+        result = null;
+        if (string.IsNullOrWhiteSpace(version))
+        {
+            return false;
+        }
+
+        return TryUseCachedMapDataSnapshot(
+            expectedSource,
+            cache =>
+                string.Equals(cache.Version, version, StringComparison.OrdinalIgnoreCase) &&
+                (string.IsNullOrWhiteSpace(sourceFingerprint) ||
+                    string.Equals(cache.SourceFingerprint, sourceFingerprint, StringComparison.OrdinalIgnoreCase)),
+            sourcePath,
+            successfulSyncTime,
+            failureStage,
+            invalidCacheReason,
+            out result);
+    }
+
+    private bool TryUseCachedMapDataSnapshot(
+        string expectedSource,
+        Func<MapDataCache, bool> matchesCache,
+        string sourcePath,
+        DateTime successfulSyncTime,
+        string failureStage,
+        string invalidCacheReason,
+        out MapDataLoadResult? result)
+    {
+        result = null;
+        if (!TryReadMapDataCache(expectedSource, out MapDataCache cache) ||
+            !matchesCache(cache))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(sourcePath))
+        {
+            cache.SourcePath = sourcePath;
+        }
+
+        TryUpdateMapDataSuccessfulSyncTime(cache, successfulSyncTime);
+        if (!ApplyMapDataCache(cache))
+        {
+            result = CreateMapDataFailureResult(cache.Version, failureStage, invalidCacheReason);
+            return true;
+        }
+
+        result = new MapDataLoadResult(
+            true,
+            false,
+            cache.Version,
+            CacheAvailable: true,
+            SourcePath: MapDataSourcePath);
+        return true;
+    }
+
     private bool LoadMapDataCache(string expectedSource)
     {
         if (!TryReadMapDataCache(expectedSource, out MapDataCache cache) || !ApplyMapDataCache(cache))
@@ -389,7 +674,7 @@ public sealed partial class AppDataStore
     {
         if (Settings.MapDataTableMode == MapDataTableMode.Manual)
         {
-            _ = LoadMapDataFromUserCsv();
+            _ = LoadMapDataFromUserCsv(forceRefresh: false);
             return;
         }
 
@@ -452,6 +737,7 @@ public sealed partial class AppDataStore
         cache = metadataResult.Value ?? new MapDataCache();
         cache.Source ??= string.Empty;
         cache.SourcePath ??= string.Empty;
+        cache.SourceFingerprint ??= string.Empty;
         if (metadataResult.Status == JsonFileReadStatus.Missing)
         {
             cache.Source = expectedSource;
@@ -508,13 +794,15 @@ public sealed partial class AppDataStore
         string version,
         IReadOnlyDictionary<ushort, string> mapNames,
         string sourcePath,
-        string source)
+        string source,
+        string sourceFingerprint = "")
     {
         return new MapDataCache
         {
             Version = version,
             Source = source,
             SourcePath = sourcePath,
+            SourceFingerprint = sourceFingerprint,
             LastUpdated = DateTime.Now,
             MapNames = mapNames
                 .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))
@@ -566,6 +854,35 @@ public sealed partial class AppDataStore
             return false;
         }
 
+        if (!string.Equals(left.SourceFingerprint, right.SourceFingerprint, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (left.MapNames.Count != right.MapNames.Count)
+        {
+            return false;
+        }
+
+        foreach (KeyValuePair<ushort, string> pair in right.MapNames)
+        {
+            if (!left.MapNames.TryGetValue(pair.Key, out string? leftName) ||
+                !string.Equals(leftName, pair.Value, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsSameMapDataContent(MapDataCache left, MapDataCache right)
+    {
+        if (!string.Equals(left.Source, right.Source, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
         if (left.MapNames.Count != right.MapNames.Count)
         {
             return false;
@@ -608,6 +925,18 @@ public sealed partial class AppDataStore
         return true;
     }
 
+    private static string CreateFileMetadataFingerprint(string source, FileInfo fileInfo)
+    {
+        return FormattableString.Invariant($"{source}:{fileInfo.LastWriteTimeUtc.Ticks}:{fileInfo.Length}");
+    }
+
+    private static string CreateSourceFingerprint(string source, string value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : $"{source}:{value.Trim()}";
+    }
+
     private static string FormatOnlineMapDataSourceFailures(IReadOnlyList<string> sourceFailures)
     {
         return sourceFailures.Count == 0
@@ -628,7 +957,8 @@ public sealed partial class AppDataStore
                 MapDataOnlineSourceKind.ContentFinderConditionCsv,
                 "GitHub ffxiv-datamining-cn",
                 "ContentFinderCondition.csv",
-                ExternalLinks.MapDataOnlineReferenceCsv);
+                ExternalLinks.MapDataOnlineReferenceCsv,
+                ExternalLinks.MapDataOnlineReferenceCommitApi);
     }
 
     private static string FormatMapDataOnlineSourceName(MapDataOnlineSourceDefinition source)
@@ -638,6 +968,11 @@ public sealed partial class AppDataStore
 
     private string GetCurrentMapDataCacheSource()
     {
+        if (Settings.MapDataTableMode == MapDataTableMode.Manual)
+        {
+            return UserCsvMapDataSource;
+        }
+
         return Settings.MapDataSource == MapDataSource.LocalGame
             ? LocalSqpackMapDataSource
             : CreateOnlineReferenceMapDataSource(Settings.MapDataOnlineSource);
