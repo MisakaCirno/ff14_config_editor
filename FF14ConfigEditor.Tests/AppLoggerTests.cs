@@ -1,7 +1,9 @@
 ﻿using FF14ConfigEditor;
+using Xunit;
 
 namespace FF14ConfigEditor.Tests;
 
+[Collection("AppLogger")]
 public sealed class AppLoggerTests : IDisposable
 {
     private readonly string testDirectory = Path.Combine(

@@ -1,7 +1,9 @@
 ﻿using FF14ConfigEditor.UISave;
+using Xunit;
 
 namespace FF14ConfigEditor.Tests;
 
+[Collection("AppLogger")]
 public sealed class ConfigUISaveBinaryTests : IDisposable
 {
     private readonly string testDirectory = Path.Combine(
