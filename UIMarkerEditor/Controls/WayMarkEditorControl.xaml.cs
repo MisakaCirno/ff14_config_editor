@@ -31,12 +31,17 @@ public partial class WayMarkEditorControl : UserControl
     private bool canSelectLocalCharacter;
     public event EventHandler? WayMarksChanged;
     public event EventHandler? SelectLocalCharacterRequested;
+    public event EventHandler<RecentWayMarkFileRequestedEventArgs>? RecentFileRequested;
 
     public WayMarkEditorControl()
     {
         InitializeComponent();
         AddHandler(PreviewKeyDownEvent, new KeyEventHandler(WayMarkEditorControl_PreviewKeyDown), true);
         Unloaded += (_, _) => StopWatchingWayMarkListDragSuppressionRelease();
+        OpenFileOverlay_Control.SelectLocalCharacterRequested += (_, _) =>
+            SelectLocalCharacterRequested?.Invoke(this, EventArgs.Empty);
+        OpenFileOverlay_Control.RecentFileRequested += (_, e) =>
+            RecentFileRequested?.Invoke(this, e);
         WayMarkEditPanel_Control.WayMarkChanged += (_, _) =>
         {
             WayMark_ListBox.Items.Refresh();
@@ -114,19 +119,17 @@ public partial class WayMarkEditorControl : UserControl
         RefreshOpenFileOverlay();
     }
 
-    private void RefreshOpenFileOverlay()
+    public void SetRecentFiles(IEnumerable<RecentWayMarkFileItem> recentFiles)
     {
-        OpenFileOverlay_Grid.Visibility = wayMarks == null
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        OpenLocalCharacter_Button.Visibility = canSelectLocalCharacter
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        OpenFileOverlay_Control.SetRecentFiles(recentFiles);
     }
 
-    private void OpenLocalCharacter_Button_Click(object sender, RoutedEventArgs e)
+    private void RefreshOpenFileOverlay()
     {
-        SelectLocalCharacterRequested?.Invoke(this, EventArgs.Empty);
+        OpenFileOverlay_Control.Visibility = wayMarks == null
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        OpenFileOverlay_Control.SetLocalCharacterSelectionAvailable(canSelectLocalCharacter);
     }
 
     public void ApplyLayoutSettings(WindowLayoutSettings layout)

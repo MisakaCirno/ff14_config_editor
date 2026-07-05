@@ -193,48 +193,9 @@
 
         <controls:WayMarkPreviewControl x:Name="WayMarkPreview_Control" Grid.Column="4"/>
 
-        <Grid x:Name="OpenFileOverlay_Grid"
-              Grid.ColumnSpan="5"
-              Panel.ZIndex="5"
-              Background="#DDF8FAFC"
-              Focusable="True">
-            <Border HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Width="360"
-                    Padding="22"
-                    Background="#F8FFFFFF"
-                    BorderBrush="{StaticResource AppBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
-                <StackPanel>
-                    <TextBlock Text="还没有读取标点文件"
-                               HorizontalAlignment="Center"
-                               FontSize="16"
-                               FontWeight="SemiBold"
-                               Foreground="{StaticResource AppTextBrush}"/>
-                    <TextBlock Text="请选择角色目录下的 UISAVE.DAT 后开始编辑。"
-                               HorizontalAlignment="Center"
-                               TextAlignment="Center"
-                               TextWrapping="Wrap"
-                               Margin="0,8,0,14"
-                               Foreground="{StaticResource AppMutedTextBrush}"/>
-                    <Button Content="读取 UISAVE.DAT..."
-                            Style="{StaticResource PrimaryButtonStyle}"
-                            Width="196"
-                            HorizontalAlignment="Center"
-                            Command="{x:Static local:MainWindow.OpenWayMarkFileCommand}"
-                            CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
-                    <Button x:Name="OpenLocalCharacter_Button"
-                            Content="或直接选择游戏角色..."
-                            Style="{StaticResource SuccessButtonStyle}"
-                            Width="196"
-                            HorizontalAlignment="Center"
-                            Margin="0,8,0,0"
-                            Click="OpenLocalCharacter_Button_Click"
-                            Visibility="Collapsed"/>
-                </StackPanel>
-            </Border>
-        </Grid>
+        <controls:OpenFileOverlayControl x:Name="OpenFileOverlay_Control"
+                                         Grid.ColumnSpan="5"
+                                         Panel.ZIndex="5"/>
         <Grid x:Name="LoadingOverlay_Grid"
               Grid.ColumnSpan="5"
               Panel.ZIndex="10"

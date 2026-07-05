@@ -72,6 +72,7 @@ namespace UIMarkerEditor
             InitializeCurrentFileChangeMonitor();
             WayMarkEditor_Control.WayMarksChanged += (_, _) => MarkWayMarkDirty();
             WayMarkEditor_Control.SelectLocalCharacterRequested += (_, _) => OpenLocalGameCharacterPicker();
+            WayMarkEditor_Control.RecentFileRequested += (_, e) => OpenRecentWayMarkFile(e.FilePath);
             Title = DefaultWindowTitle;
             ApplySavedLayoutSettings();
             UpdateMaximizeRestoreButton();

@@ -1,0 +1,159 @@
+﻿<UserControl x:Class="UIMarkerEditor.Controls.OpenFileOverlayControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UIMarkerEditor"
+             xmlns:controls="clr-namespace:UIMarkerEditor.Controls"
+             Focusable="True">
+    <UserControl.Resources>
+        <Style x:Key="RecentFilesListBoxStyle" TargetType="{x:Type ListBox}">
+            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ListBox}">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="2"
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer Focusable="False">
+                                <ItemsPresenter/>
+                            </ScrollViewer>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RecentFilesListBoxItemStyle" TargetType="{x:Type ListBoxItem}">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="ToolTip" Value="{Binding ToolTip}"/>
+            <Setter Property="IsEnabled" Value="{Binding Exists}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="1"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource AppControlHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource AppSelectionBrush}"/>
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource AppAccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ItemBorder" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="#DDF8FAFC"
+          Focusable="True">
+        <Border HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="520"
+                Padding="22"
+                Background="#F8FFFFFF"
+                BorderBrush="{StaticResource AppBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+            <StackPanel>
+                <TextBlock Text="还没有读取标点文件"
+                           HorizontalAlignment="Center"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource AppTextBrush}"/>
+                <TextBlock Text="请选择角色目录下的 UISAVE.DAT 后开始编辑。"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           Margin="0,8,0,14"
+                           Foreground="{StaticResource AppMutedTextBrush}"/>
+                <Button Content="读取 UISAVE.DAT..."
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Width="196"
+                        HorizontalAlignment="Center"
+                        Command="{x:Static local:MainWindow.OpenWayMarkFileCommand}"
+                        CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+                <Button x:Name="OpenLocalCharacter_Button"
+                        Content="或直接选择游戏角色..."
+                        Style="{StaticResource SuccessButtonStyle}"
+                        Width="196"
+                        HorizontalAlignment="Center"
+                        Margin="0,8,0,0"
+                        Click="OpenLocalCharacter_Button_Click"
+                        Visibility="Collapsed"/>
+
+                <StackPanel Margin="0,18,0,0">
+                    <Border Height="1"
+                            Background="{StaticResource AppBorderBrush}"
+                            Margin="0,0,0,12"/>
+                    <TextBlock Text="最近打开"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource AppTextBrush}"
+                               HorizontalAlignment="Left"
+                               Margin="0,0,0,8"/>
+                    <TextBlock x:Name="NoRecentFiles_TextBlock"
+                               Text="暂无最近文件"
+                               Foreground="{StaticResource AppMutedTextBrush}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,2"/>
+                    <ListBox x:Name="RecentFiles_ListBox"
+                             ItemsSource="{Binding RecentFiles, RelativeSource={RelativeSource AncestorType={x:Type controls:OpenFileOverlayControl}}}"
+                             MaxHeight="190"
+                             Style="{StaticResource RecentFilesListBoxStyle}"
+                             ItemContainerStyle="{StaticResource RecentFilesListBoxItemStyle}"
+                             Visibility="Collapsed"
+                             SelectionChanged="RecentFiles_ListBox_SelectionChanged">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type controls:RecentWayMarkFileItem}">
+                                <StackPanel Margin="8,5"
+                                            HorizontalAlignment="Stretch">
+                                    <TextBlock Text="{Binding UserID}"
+                                               TextWrapping="NoWrap"
+                                               FontFamily="Consolas"
+                                               Foreground="{StaticResource AppTextBrush}"/>
+                                    <TextBlock Text="{Binding Note}"
+                                               TextWrapping="Wrap"
+                                               Margin="0,2,0,0"
+                                               Foreground="{StaticResource AppMutedTextBrush}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="{x:Type TextBlock}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="Text" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using UIMarkerEditor.Controls;
 
 namespace UIMarkerEditor
 {
@@ -19,6 +20,11 @@ namespace UIMarkerEditor
         {
             if (sender is not MenuItem { Tag: string filePath }) return;
 
+            OpenRecentWayMarkFile(filePath);
+        }
+
+        private void OpenRecentWayMarkFile(string filePath)
+        {
             if (!File.Exists(filePath))
             {
                 AppMessageBox.Show(this, "这个最近文件已经不存在。", "最近打开", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -45,6 +51,7 @@ namespace UIMarkerEditor
             RecentFiles_MenuItem.Items.Clear();
             Style subMenuItemStyle = (Style)FindResource("TitleBarSubMenuItemStyle");
             List<string> recentFiles = appDataStore.GetRecentFiles();
+            RefreshRecentFileOverlay(recentFiles);
 
             RecentFiles_MenuItem.IsEnabled = true;
             if (recentFiles.Count == 0)
@@ -96,5 +103,25 @@ namespace UIMarkerEditor
             return fileExists ? displayName : $"{displayName}（文件不存在）";
         }
 
+        private void RefreshRecentFileOverlay(IReadOnlyList<string> recentFiles)
+        {
+            List<RecentWayMarkFileItem> overlayItems = [];
+            foreach (string filePath in recentFiles)
+            {
+                bool exists = File.Exists(filePath);
+                string userID = AppDataStore.GetUserIDFromCharacterFolder(filePath) ?? "未知 User ID";
+                CharacterProfile? profile = appDataStore.Characters.FirstOrDefault(character =>
+                    string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase));
+
+                overlayItems.Add(new RecentWayMarkFileItem(
+                    filePath,
+                    userID,
+                    profile?.Note.Trim() ?? string.Empty,
+                    exists ? filePath : $"{filePath}\n文件不存在",
+                    exists));
+            }
+
+            WayMarkEditor_Control.SetRecentFiles(overlayItems);
+        }
     }
 }
