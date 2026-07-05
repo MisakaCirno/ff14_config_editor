@@ -55,8 +55,11 @@
                               Header="工具数据目录"
                               Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="这里管理工具自己的可迁移数据。设置、备份、缓存和日志保存在下方数据目录中；启动配置和迁移进度是固定辅助文件，不属于迁移对象。"
-                                       Style="{StaticResource SettingsSectionDescriptionStyle}"/>
+                            <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}">
+                                <Run Text="设置工具所用数据的存储位置。数据文件包括：设置、备份、缓存和日志。"/>
+                                <LineBreak/>
+                                <Run Text="其中，“启动配置”和“迁移进度”是存放在固定位置的辅助文件，不会随着调整数据目录位置而移动。"/>
+                            </TextBlock>
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -134,90 +137,6 @@
                                             Click="OpenDataDirectory_Button_Click"/>
                                 </StackPanel>
                             </Grid>
-
-                            <TextBlock Text="选择新目录或恢复默认目录会先进入迁移确认，再执行复制、校验、切换和旧目录清理。"
-                                       Style="{StaticResource SettingsMutedTextStyle}"
-                                       Margin="100,4,0,4"/>
-                        </StackPanel>
-                    </GroupBox>
-
-                    <GroupBox x:Name="FileOpen_Section"
-                              Header="文件打开"
-                              Style="{StaticResource SettingsSectionGroupBoxStyle}">
-                        <StackPanel>
-                            <TextBlock Text="选择 UISAVE.DAT 时，文件选择器默认进入的位置。"
-                                       Style="{StaticResource SettingsSectionDescriptionStyle}"/>
-
-                            <TextBlock Text="游戏安装目录"
-                                       Style="{StaticResource SettingsSubsectionTitleStyle}"/>
-                            <TextBlock Text="保存最终幻想 XIV 的安装根目录；也可以填写 game 目录或 ffxiv_dx11.exe，保存时会自动规范化为安装根目录。工具启动时会尝试从注册表自动读取，也可以扫描当前运行中的游戏；无法读取时请手动填写。"
-                                       Style="{StaticResource SettingsMutedTextStyle}"
-                                       Margin="0,-4,0,8"/>
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBox x:Name="GameInstallDirectory_TextBox"
-                                         HorizontalContentAlignment="Left"
-                                         TextAlignment="Left"
-                                         LostFocus="GameInstallDirectory_TextBox_LostFocus"
-                                         PreviewKeyDown="GameInstallDirectory_TextBox_PreviewKeyDown"/>
-                                <Button x:Name="ScanRunningGameInstallDirectory_Button"
-                                        Grid.Column="1"
-                                        Content="扫描运行中的游戏"
-                                        Margin="8,0,0,0"
-                                        Click="ScanRunningGameInstallDirectory_Button_Click"/>
-                            </Grid>
-
-                            <TextBlock Text="打开位置"
-                                       Style="{StaticResource SettingsSubsectionTitleStyle}"/>
-                            <RadioButton x:Name="OpenDirectoryDefault_RadioButton"
-                                         GroupName="WayMarkOpenDirectoryMode"
-                                         Content="默认"
-                                         Margin="0,0,0,8"
-                                         Checked="OpenDirectoryMode_RadioButton_Checked"/>
-                            <TextBlock Text="使用 Windows 文件选择器记住的位置。"
-                                       Style="{StaticResource SettingsMutedTextStyle}"
-                                       Margin="22,-4,0,10"/>
-
-                            <RadioButton x:Name="OpenDirectoryGameCharacter_RadioButton"
-                                         GroupName="WayMarkOpenDirectoryMode"
-                                         Content="游戏角色目录"
-                                         Margin="0,0,0,8"
-                                         Checked="OpenDirectoryMode_RadioButton_Checked"/>
-                            <TextBlock Text="使用游戏安装目录下的 game\My Games\FINAL FANTASY XIV - A Realm Reborn 目录。"
-                                       Style="{StaticResource SettingsMutedTextStyle}"
-                                       Margin="22,-4,0,8"/>
-                            <TextBox x:Name="GameCharacterDirectory_TextBox"
-                                     Style="{StaticResource SettingsReadOnlyTextBoxStyle}"
-                                     Margin="22,0,0,10"/>
-
-                            <RadioButton x:Name="OpenDirectoryCustom_RadioButton"
-                                         GroupName="WayMarkOpenDirectoryMode"
-                                         Content="自定义目录"
-                                         Margin="0,0,0,8"
-                                         Checked="OpenDirectoryMode_RadioButton_Checked"/>
-                            <TextBlock Text="使用你指定的目录。"
-                                       Style="{StaticResource SettingsMutedTextStyle}"
-                                       Margin="22,-4,0,8"/>
-                            <Grid Margin="22,0,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBox x:Name="WayMarkCustomDirectory_TextBox"
-                                         HorizontalContentAlignment="Left"
-                                         TextAlignment="Left"
-                                         LostFocus="WayMarkCustomDirectory_TextBox_LostFocus"
-                                         PreviewKeyDown="WayMarkCustomDirectory_TextBox_PreviewKeyDown"/>
-                                <Button x:Name="BrowseWayMarkCustomDirectory_Button"
-                                        Grid.Column="1"
-                                        Content="选择目录..."
-                                        Margin="8,0,0,0"
-                                        Click="BrowseWayMarkCustomDirectory_Button_Click"/>
-                            </Grid>
-
                         </StackPanel>
                     </GroupBox>
 
@@ -314,6 +233,84 @@
                         </StackPanel>
                     </GroupBox>
 
+
+                    <GroupBox x:Name="FileOpen_Section"
+                              Header="文件打开"
+                              Style="{StaticResource SettingsSectionGroupBoxStyle}">
+                        <StackPanel>
+                            <TextBlock Text="游戏安装目录"
+                                       Style="{StaticResource SettingsSubsectionTitleStyle}"/>
+                            <TextBlock Style="{StaticResource SettingsMutedTextStyle}"
+                                       Margin="0,-4,0,8">
+                                <Run Text="最终幻想 XIV 的游戏安装目录，工具启动时会尝试从注册表自动读取。"/>
+                                <LineBreak/>
+                                <Run Text="若未能自动获取，可以手动填写、选择目录，或扫描正在运行中的游戏进程。"/>
+                            </TextBlock>
+
+                            <TextBox x:Name="GameInstallDirectory_TextBox"
+                                         HorizontalContentAlignment="Left"
+                                         TextAlignment="Left"
+                                         LostFocus="GameInstallDirectory_TextBox_LostFocus"
+                                         PreviewKeyDown="GameInstallDirectory_TextBox_PreviewKeyDown"/>
+
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="ScanRunningGameInstallDirectory_Button"
+                                        Content="扫描运行中的游戏"
+                                        Click="ScanRunningGameInstallDirectory_Button_Click"/>
+
+                                <Button x:Name="BrowseGameInstallDirectory_Button"
+                                        Content="选择游戏安装目录..."
+                                        Click="BrowseGameInstallDirectory_Button_Click"/>
+
+                                <Button x:Name="OpenGameInstallDirectory_Button"
+                                        Content="打开游戏安装目录"
+                                        Click="OpenGameInstallDirectory_Button_Click"/>
+                            </StackPanel>
+
+                            <TextBlock Text="打开位置"
+                                       Style="{StaticResource SettingsSubsectionTitleStyle}"/>
+                            <TextBlock Text="选择文件时，文件选择窗口默认打开的目录。"
+                                       Style="{StaticResource SettingsSectionDescriptionStyle}"/>
+                            <RadioButton x:Name="OpenDirectoryDefault_RadioButton"
+                                         GroupName="WayMarkOpenDirectoryMode"
+                                         Content="默认：使用系统文件选择器记住的位置"
+                                         Margin="0,0,0,8"
+                                         Checked="OpenDirectoryMode_RadioButton_Checked"/>
+
+                            <RadioButton x:Name="OpenDirectoryGameCharacter_RadioButton"
+                                         GroupName="WayMarkOpenDirectoryMode"
+                                         Content="游戏角色目录：使用游戏安装目录下的 game\My Games\FINAL FANTASY XIV - A Realm Reborn 目录。"
+                                         Margin="0,0,0,8"
+                                         Checked="OpenDirectoryMode_RadioButton_Checked"/>
+                            <TextBox x:Name="GameCharacterDirectory_TextBox"
+                                     Style="{StaticResource SettingsReadOnlyTextBoxStyle}"
+                                     Margin="22,0,0,10"/>
+
+                            <RadioButton x:Name="OpenDirectoryCustom_RadioButton"
+                                         GroupName="WayMarkOpenDirectoryMode"
+                                         Content="自定义目录：使用你指定的目录。"
+                                         Margin="0,0,0,8"
+                                         Checked="OpenDirectoryMode_RadioButton_Checked"/>
+                            <Grid Margin="22,0,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="WayMarkCustomDirectory_TextBox"
+                                         HorizontalContentAlignment="Left"
+                                         TextAlignment="Left"
+                                         LostFocus="WayMarkCustomDirectory_TextBox_LostFocus"
+                                         PreviewKeyDown="WayMarkCustomDirectory_TextBox_PreviewKeyDown"/>
+                                <Button x:Name="BrowseWayMarkCustomDirectory_Button"
+                                        Grid.Column="1"
+                                        Content="选择目录..."
+                                        Margin="8,0,0,0"
+                                        Click="BrowseWayMarkCustomDirectory_Button_Click"/>
+                            </Grid>
+
+                        </StackPanel>
+                    </GroupBox>
+
                     <GroupBox x:Name="Appearance_Section"
                               Header="外观"
                               Style="{StaticResource SettingsSectionGroupBoxStyle}">
@@ -322,7 +319,7 @@
                                 <ColumnDefinition Width="120"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="标点编辑显示形式"
+                            <TextBlock Text="标点标签显示形式"
                                         Style="{StaticResource SettingsFormLabelStyle}"/>
                             <StackPanel Grid.Column="1"
                                         Orientation="Horizontal">
@@ -391,8 +388,13 @@
                               Header="自动备份"
                               Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="按设置自动创建 UISAVE.DAT 工具备份；自动备份只作用于由游戏安装目录推导出的角色配置目录，临时文件和其他位置的文件会被跳过。清理策略只影响工具生成的备份，不会删除游戏原始文件。"
-                                       Style="{StaticResource SettingsSectionDescriptionStyle}"/>
+                            <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}">
+                                <Run Text="自动备份 UISAVE.DAT 的功能。"/>
+                                <LineBreak/>
+                                <Run Text="本功能仅作用于由游戏安装目录推导出的角色配置目录，其他位置文件不会被自动备份。"/>
+                                <LineBreak/>
+                                <Run Text="清理策略只影响工具创建的备份文件，不会删除游戏原始文件。"/>
+                            </TextBlock>
 
                             <TextBlock Text="备份时机"
                                        Style="{StaticResource SettingsSubsectionTitleStyle}"/>
@@ -502,40 +504,43 @@
                               Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}">
-                                <Run Text="地图数据决定区域名称、区域列表和导入时的地图 ID 校验。"/>
-                                <LineBreak/>
-                                <Run Text="在线数据和本地游戏数据会维护 mapdata.csv；用户填写数据只读取用户维护的 mapdata_user.csv，工具不会自动覆盖它。"/>
-                                <LineBreak/>
-                                <Run Text="为减轻服务器压力，在线数据手动检查 1 分钟内只能成功触发一次；检查失败不会进入频率限制。"/>
+                                <Run Text="地图数据用于将地图 ID 转换为地图名称，也用于区域列表和地图 ID 校验。"/>
                             </TextBlock>
 
                             <Grid Margin="0,0,0,14">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                                <TextBlock Text="地图 ID 限制"
+                                <TextBlock Text="允许输入未知地图 ID"
                                            Style="{StaticResource SettingsFormLabelStyle}"/>
-                                <StackPanel Grid.Column="1">
-                                    <controls:SegmentedSwitchControl x:Name="UnknownMapIdPolicy_SegmentedSwitch"
-                                                                     LeftText="不允许"
-                                                                     LeftToolTip="只允许选择或导入当前地图列表中存在的 ID。"
-                                                                     RightText="允许"
-                                                                     RightToolTip="允许输入或导入列表中不存在的地图 ID，只校验 DAT 可保存范围。"
-                                                                     VerticalAlignment="Center"
-                                                                     SelectionChanged="UnknownMapIdPolicy_SegmentedSwitch_SelectionChanged"/>
-                                    <TextBlock x:Name="UnknownMapIdPolicyHint_TextBlock"
-                                               Style="{StaticResource SettingsMutedTextStyle}"
-                                               TextWrapping="Wrap"
-                                               Margin="0,4,0,0"/>
-                                    <CheckBox x:Name="ShowAllowUnknownMapIdPolicyWarning_CheckBox"
-                                              Content="切换到“允许未知地图 ID”时弹出确认"
-                                              Margin="0,8,0,0"
-                                              Checked="ShowAllowUnknownMapIdPolicyWarning_CheckBox_CheckedChanged"
-                                              Unchecked="ShowAllowUnknownMapIdPolicyWarning_CheckBox_CheckedChanged"/>
-                                </StackPanel>
+                                <controls:SegmentedSwitchControl x:Name="UnknownMapIdPolicy_SegmentedSwitch" Grid.Column="1"
+                                                                    LeftText="不允许"
+                                                                    LeftToolTip="只允许选择或导入当前地图列表中存在的 ID。"
+                                                                    RightText="允许"
+                                                                    RightToolTip="允许输入或导入列表中不存在的地图 ID，只校验 DAT 可保存范围。"
+                                                                    VerticalAlignment="Center"
+                                                                    SelectionChanged="UnknownMapIdPolicy_SegmentedSwitch_SelectionChanged"
+                                                                 Margin="5"/>
+
+                                <TextBlock Text="切换到“允许未知地图 ID”时弹出确认" Grid.Row="1"
+                                           Style="{StaticResource SettingsFormLabelStyle}"/>
+                                <controls:SegmentedSwitchControl x:Name="ShowAllowUnknownMapIdPolicyWarning_SegmentedSwitch" Grid.Row="1" Grid.Column="1"
+                                            LeftText="不弹出"
+                                            LeftToolTip="不会弹出窗口让用户二次确认。"
+                                            RightText="弹出"
+                                            RightToolTip="会弹出窗口让用户二次确认。"
+                                              SelectionChanged="ShowAllowUnknownMapIdPolicyWarning_SegmentedSwitch_SelectionChanged"
+                                                                 Margin="5"/>
                             </Grid>
+                            <TextBlock x:Name="UnknownMapIdPolicyHint_TextBlock"
+                                       Style="{StaticResource SettingsMutedTextStyle}"
+                                       Margin="0,-6,0,10"/>
 
                             <Separator Margin="0,0,0,12"/>
 
@@ -547,25 +552,30 @@
                                              Content="在线数据"
                                              Margin="0,0,0,8"
                                              Checked="MapDataSelection_RadioButton_Checked"/>
-                                <TextBlock Text="使用下方选择的在线来源；不会读取游戏文件，但需要网络，且数据可能滞后。"
-                                           Style="{StaticResource SettingsMutedTextStyle}"
-                                           Margin="22,-4,0,8"/>
+                                <TextBlock Style="{StaticResource SettingsMutedTextStyle}"
+                                           Margin="22,-4,0,8">
+                                    <Run Text="使用下方选择的在线来源；不会读取游戏文件，但需要网络，且数据可能滞后。"/>
+                                    <LineBreak/>
+                                    <Run Text="工具会在每次启动时都尝试获取最新的数据。"/>
+                                    <LineBreak/>
+                                    <Run Text="为减轻服务器压力，手动检查 1 分钟内只能成功触发一次；检查失败不会进入频率限制。"/>
+                                </TextBlock>
                                 <StackPanel Margin="22,0,0,10">
                                     <RadioButton x:Name="GitHubMapDataOnlineSource_RadioButton"
                                                  GroupName="ToolSettingsOnlineMapDataSource"
-                                                 Content="GitHub ffxiv-datamining-cn"
+                                                 Content="GitHub ffxiv-datamining-cn 仓库"
                                                  Margin="0,0,0,6"
                                                  Checked="OnlineMapDataSource_RadioButton_Checked"/>
-                                    <TextBlock Text="读取 ContentFinderCondition.csv。访问成本低，但可能受 GitHub 网络状态影响。"
+                                    <TextBlock Text="从仓库中的 ContentFinderCondition.csv 读取，但需要网络环境允许访问。"
                                                Style="{StaticResource SettingsMutedTextStyle}"
                                                Margin="22,-2,0,8"/>
 
                                     <RadioButton x:Name="DiemoeMapDataOnlineSource_RadioButton"
                                                  GroupName="ToolSettingsOnlineMapDataSource"
-                                                 Content="diemoe MatchaData"
+                                                 Content="呆萌数据站"
                                                  Margin="0,0,0,6"
                                                  Checked="OnlineMapDataSource_RadioButton_Checked"/>
-                                    <TextBlock Text="读取 diemoe 的 data.version + instance.json。作为独立在线来源，需要使用站点服务器资源。"
+                                    <TextBlock Text="从呆萌提供的数据站上读取，国内环境推荐使用该来源。"
                                                Style="{StaticResource SettingsMutedTextStyle}"
                                                Margin="22,-2,0,0"/>
                                 </StackPanel>
@@ -575,7 +585,7 @@
                                              Content="本地游戏数据"
                                              Margin="0,0,0,8"
                                              Checked="MapDataSelection_RadioButton_Checked"/>
-                                <TextBlock Text="读取本地游戏安装目录下的 game\sqpack，数据更贴近当前客户端；这是稍有敏感的本地游戏资源文件读取行为。"
+                                <TextBlock Text="只读访问本地游戏目录下的 game\sqpack 来解析地图数据，不依赖网络，也不会修改游戏文件。"
                                            Style="{StaticResource SettingsMutedTextStyle}"
                                            Margin="22,-4,0,10"/>
 
@@ -584,7 +594,7 @@
                                              Content="用户填写数据"
                                              Margin="0,0,0,8"
                                              Checked="MapDataSelection_RadioButton_Checked"/>
-                                <TextBlock Text="只读取用户维护的 mapdata_user.csv；不联网、不读取游戏资源文件，工具不会自动覆盖这个文件。"
+                                <TextBlock Text="读取用户手动维护的地图列表文件 mapdata_user.csv；无需联网、不读取游戏资源文件，工具不会自动覆盖该文件。"
                                            Style="{StaticResource SettingsMutedTextStyle}"
                                            Margin="22,-4,0,6"/>
                                 <Button x:Name="EditUserMapData_Button"
@@ -811,8 +821,13 @@
                               Header="服务器数据"
                               Style="{StaticResource SettingsSectionGroupBoxStyle}">
                         <StackPanel>
-                            <TextBlock Text="服务器列表会在进入角色备注页，或从备份创建、编辑角色备注时按需同步；已有缓存时每 7 天最多自动同步一次。在线同步失败但缓存可用时，会继续使用本地缓存。为减轻服务器压力，手动检查 1 分钟内只能成功触发一次；检查失败不会进入频率限制。"
-                                       Style="{StaticResource SettingsSectionDescriptionStyle}"/>
+                            <TextBlock Style="{StaticResource SettingsSectionDescriptionStyle}">
+                                <Run Text="服务器列表会在进入角色备注页，或从备份创建、编辑角色备注时按需同步。已有缓存时每 7 天最多自动同步一次。"/>
+                                <LineBreak/>
+                                <Run Text="在线同步失败但缓存可用时，会继续使用本地缓存。"/>
+                                <LineBreak/>
+                                <Run Text="为减轻服务器压力，手动检查 1 分钟内只能成功触发一次；检查失败不会进入频率限制。"/>
+                            </TextBlock>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="120"/>

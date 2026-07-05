@@ -50,7 +50,10 @@ public partial class HelpAboutControl
         AddSectionTitle("第三方使用");
         AddInfoRow("服务器列表页面", ExternalLinks.ServerListPage, ExternalLinks.ServerListPage);
         AddInfoRow("服务器状态 API", ExternalLinks.ServerStatusApi, ExternalLinks.ServerStatusApi);
+        AddInfoRow("地图数据来源", "ffxiv-datamining-cn ContentFinderCondition.csv", ExternalLinks.MapDataOnlineReferenceCsv);
+        AddInfoRow("地图数据来源", "Diemoe MatchaData", ExternalLinks.MapDataDiemoeInstance);
         AddInfoRow("地图数据读取", "本地 FFXIV 客户端 sqpack");
+        AddInfoRow("标点分享页面", "Souma", Souma);
         AddInfoRow("游戏数据读取库", "Lumina", Lumina);
         AddInfoRow("界面图标", "Lucide Icons（ISC License，部分源自 Feather / MIT License）", LucideLicense);
         AddInfoRow("图片素材", "FINAL FANTASY XIV 游戏内素材，© SQUARE ENIX CO., LTD. All Rights Reserved.", FfxivMaterialUsageLicense);

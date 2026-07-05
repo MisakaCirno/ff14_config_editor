@@ -100,7 +100,7 @@ public partial class ToolSettingsControl : UserControl
             DiemoeMapDataOnlineSource_RadioButton.IsChecked =
                 appDataStore.Settings.MapDataOnlineSource == MapDataOnlineSourceKind.DiemoeMatcha;
             UnknownMapIdPolicy_SegmentedSwitch.IsLeftSelected = appDataStore.Settings.UnknownMapIdPolicy == UnknownMapIdPolicy.RejectUnknown;
-            ShowAllowUnknownMapIdPolicyWarning_CheckBox.IsChecked = appDataStore.Settings.ShowAllowUnknownMapIdPolicyWarning;
+            ShowAllowUnknownMapIdPolicyWarning_SegmentedSwitch.IsLeftSelected = !appDataStore.Settings.ShowAllowUnknownMapIdPolicyWarning;
             UpdateUnknownMapIdPolicyHint();
             LimitBackupCount_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCount;
             LimitBackupCountPerUser_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCountPerUser;
@@ -310,14 +310,14 @@ public partial class ToolSettingsControl : UserControl
             CleanupBackupsIfEnabled);
     }
 
-    private void ShowAllowUnknownMapIdPolicyWarning_CheckBox_CheckedChanged(object sender, RoutedEventArgs e)
+    private void ShowAllowUnknownMapIdPolicyWarning_SegmentedSwitch_SelectionChanged(object sender, RoutedEventArgs e)
     {
         if (isLoadingSettingsIntoUi) return;
 
         SaveSettingsMutation(
             settings =>
             {
-                settings.ShowAllowUnknownMapIdPolicyWarning = ShowAllowUnknownMapIdPolicyWarning_CheckBox.IsChecked == true;
+                settings.ShowAllowUnknownMapIdPolicyWarning = !ShowAllowUnknownMapIdPolicyWarning_SegmentedSwitch.IsLeftSelected;
             },
             "保存未知地图 ID 提示设置");
     }
@@ -406,6 +406,99 @@ public partial class ToolSettingsControl : UserControl
             LoadSettingsIntoUi();
             AppMessageBox.Show(ownerWindow, $"保存游戏安装目录失败：{ex.Message}", "设置保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    private void BrowseGameInstallDirectory_Button_Click(object sender, RoutedEventArgs e)
+    {
+        if (appDataStore == null) return;
+
+        Microsoft.Win32.OpenFolderDialog dialog = new()
+        {
+            Title = "选择游戏安装目录",
+            InitialDirectory = ResolveInitialGameInstallDirectoryDialogPath()
+        };
+
+        if (DialogOwnerHelper.ShowCommonDialog(dialog, ownerWindow ?? Window.GetWindow(this)) != true)
+        {
+            return;
+        }
+
+        SetSettingsUiSilently(() =>
+        {
+            GameInstallDirectory_TextBox.Text = dialog.FolderName;
+        });
+
+        if (CommitGameInstallDirectory())
+        {
+            ToastService.ShowSuccess("游戏安装目录已更新。");
+        }
+    }
+
+    private void OpenGameInstallDirectory_Button_Click(object sender, RoutedEventArgs e)
+    {
+        if (appDataStore == null) return;
+
+        if (!string.Equals(
+                GameInstallDirectory_TextBox.Text.Trim(),
+                appDataStore.Settings.GameInstallDirectory,
+                StringComparison.OrdinalIgnoreCase) &&
+            !CommitGameInstallDirectory())
+        {
+            return;
+        }
+
+        if (!WayMarkOpenDirectoryResolver.TryNormalizeGameInstallDirectory(
+                appDataStore.Settings.GameInstallDirectory,
+                out string? normalizedGameInstallDirectory))
+        {
+            AppMessageBox.Show(
+                ownerWindow,
+                "当前游戏安装目录为空或无效。请先选择包含 game 文件夹和游戏程序的最终幻想 XIV 安装目录。",
+                "打开游戏安装目录",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        try
+        {
+            OpenDirectory(normalizedGameInstallDirectory);
+        }
+        catch (Exception ex)
+        {
+            AppMessageBox.Show(ownerWindow, $"打开游戏安装目录失败：{ex.Message}", "打开游戏安装目录", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private string ResolveInitialGameInstallDirectoryDialogPath()
+    {
+        if (WayMarkOpenDirectoryResolver.TryNormalizeGameInstallDirectory(
+                GameInstallDirectory_TextBox.Text,
+                out string? normalizedTextDirectory))
+        {
+            return normalizedTextDirectory;
+        }
+
+        if (appDataStore != null &&
+            WayMarkOpenDirectoryResolver.TryNormalizeGameInstallDirectory(
+                appDataStore.Settings.GameInstallDirectory,
+                out string? normalizedSettingsDirectory))
+        {
+            return normalizedSettingsDirectory;
+        }
+
+        string typedDirectory = GameInstallDirectory_TextBox.Text.Trim();
+        return Directory.Exists(typedDirectory) ? typedDirectory : string.Empty;
+    }
+
+    private bool IsGameInstallDirectoryActionButtonActive()
+    {
+        return ScanRunningGameInstallDirectory_Button.IsKeyboardFocusWithin ||
+            ScanRunningGameInstallDirectory_Button.IsMouseOver ||
+            BrowseGameInstallDirectory_Button.IsKeyboardFocusWithin ||
+            BrowseGameInstallDirectory_Button.IsMouseOver ||
+            OpenGameInstallDirectory_Button.IsKeyboardFocusWithin ||
+            OpenGameInstallDirectory_Button.IsMouseOver;
     }
 
     private void BrowseWayMarkCustomDirectory_Button_Click(object sender, RoutedEventArgs e)
@@ -556,8 +649,8 @@ public partial class ToolSettingsControl : UserControl
         {
             SetSettingsUiSilently(() =>
             {
-                ShowAllowUnknownMapIdPolicyWarning_CheckBox.IsChecked =
-                    appDataStore.Settings.ShowAllowUnknownMapIdPolicyWarning;
+                ShowAllowUnknownMapIdPolicyWarning_SegmentedSwitch.IsLeftSelected =
+                    !appDataStore.Settings.ShowAllowUnknownMapIdPolicyWarning;
             });
         }
 
@@ -734,6 +827,11 @@ public partial class ToolSettingsControl : UserControl
 
     private void GameInstallDirectory_TextBox_LostFocus(object sender, RoutedEventArgs e)
     {
+        if (IsGameInstallDirectoryActionButtonActive())
+        {
+            return;
+        }
+
         CommitGameInstallDirectory();
     }
 
