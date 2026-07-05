@@ -302,4 +302,39 @@ internal static class UISaveTestData
 
         return ms.ToArray();
     }
+
+    // 构造一个语义明确的单 WayMark marker 数据：
+    // - 16 字节头（0x00..0x0F）。
+    // - 1 个 WayMark，8 个点坐标连续递增 1..24（A.X=1 ... Four.Z=24），便于发现偏移或点顺序错误。
+    // - 4 字节尾部。
+    // 配合语义断言测试使用：坐标递增 + 交错 enableFlag 可暴露"读写对称但点顺序/位映射写反"的对称 bug。
+    public static byte[] BuildMarkerDataWithKnownWayMark(byte enableFlag, ushort regionId, int timestamp, byte unknown = 0x12)
+    {
+        using MemoryStream ms = new();
+        using BinaryWriter writer = new(ms);
+
+        writer.Write(Enumerable.Range(0, SectionFMARKER.MarkerHeaderByteLength).Select(value => (byte)value).ToArray());
+        writer.Write(BuildKnownWayMarkBytes(enableFlag, regionId, timestamp, unknown));
+        writer.Write(MarkerTail());
+
+        return ms.ToArray();
+    }
+
+    private static byte[] BuildKnownWayMarkBytes(byte enableFlag, ushort regionId, int timestamp, byte unknown)
+    {
+        using MemoryStream ms = new();
+        using BinaryWriter writer = new(ms);
+
+        for (int i = 0; i < 24; i++)
+        {
+            writer.Write(i + 1);
+        }
+
+        writer.Write(enableFlag);
+        writer.Write(unknown);
+        writer.Write(regionId);
+        writer.Write(timestamp);
+
+        return ms.ToArray();
+    }
 }

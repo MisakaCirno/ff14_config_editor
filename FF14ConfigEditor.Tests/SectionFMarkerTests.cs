@@ -167,4 +167,62 @@ public class SectionFMarkerTests
             section.length);
         Assert.Equal(UISaveTestData.BuildSection(17, section.data), rawBytes);
     }
+
+    [Fact]
+    public void ParseMarker_KnownRawBytes_PreservesWayMarkSemantics()
+    {
+        // 用交错 enableFlag=0x55 和连续递增坐标验证解析后语义字段对应正确，而不只是字节 round-trip。
+        // 坐标递增可暴露点顺序/偏移错误；交错位可暴露 enableFlag 位映射错误。这类"读写对称但语义错"的 bug
+        // 会让普通 round-trip 测试通过，但本测试会失败。
+        byte enableFlag = 0x55;   // 0b01010101：位 0/2/4/6 = A/C/One/Three 启用
+        ushort regionId = 1234;
+        int timestamp = 1700000000;
+        byte unknown = 0x12;
+        byte[] markerData = UISaveTestData.BuildMarkerDataWithKnownWayMark(enableFlag, regionId, timestamp, unknown);
+        SectionFMARKER section = UISaveTestData.BuildFMarkerSection(markerData);
+
+        Assert.Single(section.WayMarks);
+        WayMark mark = section.WayMarks[0];
+
+        // 8 个点坐标连续递增 1..24，点顺序或偏移错误都会暴露。
+        Assert.Equal(1, mark.A.X);
+        Assert.Equal(2, mark.A.Y);
+        Assert.Equal(3, mark.A.Z);
+        Assert.Equal(4, mark.B.X);
+        Assert.Equal(5, mark.B.Y);
+        Assert.Equal(6, mark.B.Z);
+        Assert.Equal(7, mark.C.X);
+        Assert.Equal(8, mark.C.Y);
+        Assert.Equal(9, mark.C.Z);
+        Assert.Equal(10, mark.D.X);
+        Assert.Equal(11, mark.D.Y);
+        Assert.Equal(12, mark.D.Z);
+        Assert.Equal(13, mark.One.X);
+        Assert.Equal(14, mark.One.Y);
+        Assert.Equal(15, mark.One.Z);
+        Assert.Equal(16, mark.Two.X);
+        Assert.Equal(17, mark.Two.Y);
+        Assert.Equal(18, mark.Two.Z);
+        Assert.Equal(19, mark.Three.X);
+        Assert.Equal(20, mark.Three.Y);
+        Assert.Equal(21, mark.Three.Z);
+        Assert.Equal(22, mark.Four.X);
+        Assert.Equal(23, mark.Four.Y);
+        Assert.Equal(24, mark.Four.Z);
+
+        // enableFlag=0x55：A/C/One/Three 启用，B/D/Two/Four 禁用。
+        Assert.True(mark.AEnabled);
+        Assert.False(mark.BEnabled);
+        Assert.True(mark.CEnabled);
+        Assert.False(mark.DEnabled);
+        Assert.True(mark.OneEnabled);
+        Assert.False(mark.TwoEnabled);
+        Assert.True(mark.ThreeEnabled);
+        Assert.False(mark.FourEnabled);
+
+        Assert.Equal(enableFlag, mark.enableFlag);
+        Assert.Equal(unknown, mark.unknown);
+        Assert.Equal(regionId, mark.RegionID);
+        Assert.Equal(timestamp, mark.timestamp);
+    }
 }
