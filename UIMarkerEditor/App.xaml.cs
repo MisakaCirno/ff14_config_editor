@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using System.Windows.Threading;
 using FF14ConfigEditor;
 
 namespace UIMarkerEditor;
@@ -70,42 +71,104 @@ public partial class App : Application
             return;
         }
 
-        MapDataLoadResult mapDataLoadResult = await appDataStore.EnsureMapDataAvailableAsync();
-        if (!mapDataLoadResult.Success)
+        StartupLoadingWindow? loadingWindow = null;
+        try
         {
-            appDataStore.AddDataLoadWarning(
-                "map-data-unavailable",
-                BuildMapDataUnavailableWarningMessage(mapDataLoadResult));
+            StartupLoadingWindow startupLoadingWindow = ShowStartupLoadingWindow(BuildMapDataLoadingStatus(appDataStore));
+            loadingWindow = startupLoadingWindow;
+            await YieldForStartupLoadingWindowAsync();
+
+            MapDataLoadResult mapDataLoadResult = await appDataStore.EnsureMapDataAvailableAsync();
+            if (!mapDataLoadResult.Success)
+            {
+                appDataStore.AddDataLoadWarning(
+                    "map-data-unavailable",
+                    BuildMapDataUnavailableWarningMessage(mapDataLoadResult));
+            }
+            else if (mapDataLoadResult.UsedCache)
+            {
+                appDataStore.AddDataLoadWarning(
+                    "map-data-cache-fallback",
+                    BuildMapDataCacheFallbackWarningMessage(mapDataLoadResult));
+            }
+
+            if (mapDataLoadResult.Updated)
+            {
+                string versionText = string.IsNullOrWhiteSpace(mapDataLoadResult.Version)
+                    ? "未知版本"
+                    : mapDataLoadResult.Version;
+                AppMessageBox.Show(
+                    startupLoadingWindow,
+                    $"地图数据已更新并重新加载到版本：{versionText}",
+                    "地图数据更新完成",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+
+            startupLoadingWindow.SetStatus("正在加载主窗口...");
+            await YieldForStartupLoadingWindowAsync();
+
+            MainWindow mainWindow = new(appDataStore);
+            MainWindow = mainWindow;
+            mainWindow.Show();
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
+            CloseStartupLoadingWindow(startupLoadingWindow);
+            loadingWindow = null;
+
+            if (activateMainWindowWhenReady)
+            {
+                activateMainWindowWhenReady = false;
+                ActivateWindow(mainWindow);
+            }
         }
-        else if (mapDataLoadResult.UsedCache)
+        finally
         {
-            appDataStore.AddDataLoadWarning(
-                "map-data-cache-fallback",
-                BuildMapDataCacheFallbackWarningMessage(mapDataLoadResult));
+            CloseStartupLoadingWindow(loadingWindow);
+        }
+    }
+
+    private static StartupLoadingWindow ShowStartupLoadingWindow(string status)
+    {
+        StartupLoadingWindow window = new();
+        window.SetStatus(status);
+        window.Show();
+        return window;
+    }
+
+    private static void CloseStartupLoadingWindow(StartupLoadingWindow? window)
+    {
+        if (window == null)
+        {
+            return;
         }
 
-        if (mapDataLoadResult.Updated)
+        try
         {
-            string versionText = string.IsNullOrWhiteSpace(mapDataLoadResult.Version)
-                ? "未知版本"
-                : mapDataLoadResult.Version;
-            AppMessageBox.Show(
-                $"地图数据已更新并重新加载到版本：{versionText}",
-                "地图数据更新完成",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            window.Close();
+        }
+        catch (InvalidOperationException)
+        {
+            // 启动异常路径中窗口可能已经被 WPF 关闭，忽略即可。
+        }
+    }
+
+    private static Task YieldForStartupLoadingWindowAsync()
+    {
+        return Current.Dispatcher.InvokeAsync(
+            static () => { },
+            DispatcherPriority.Background).Task;
+    }
+
+    private static string BuildMapDataLoadingStatus(AppDataStore appDataStore)
+    {
+        if (appDataStore.Settings.MapDataTableMode == MapDataTableMode.Manual)
+        {
+            return "正在读取用户维护的地图数据...";
         }
 
-        MainWindow mainWindow = new(appDataStore);
-        MainWindow = mainWindow;
-        mainWindow.Show();
-        ShutdownMode = ShutdownMode.OnMainWindowClose;
-
-        if (activateMainWindowWhenReady)
-        {
-            activateMainWindowWhenReady = false;
-            ActivateWindow(mainWindow);
-        }
+        return appDataStore.Settings.MapDataSource == MapDataSource.LocalGame
+            ? "正在读取本地游戏地图数据..."
+            : "正在检查在线地图数据...";
     }
 
     private static bool EnsureMapDataTableSelected(AppDataStore appDataStore)
