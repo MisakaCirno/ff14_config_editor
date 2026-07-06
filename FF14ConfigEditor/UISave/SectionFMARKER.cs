@@ -32,7 +32,7 @@ namespace FF14ConfigEditor.UISave
             ParseMarker();
         }
 
-        public void ParseMarker()
+        internal void ParseMarker()
         {
             ValidateMarkerDataLength();
 
@@ -79,9 +79,10 @@ namespace FF14ConfigEditor.UISave
 
         public override byte[] ToRawBytes()
         {
+            // 纯读取：只返回当前编辑状态对应的字节，不改 length/data。
+            // 内存状态（length/data）的提交由 Save() 经 PrepareSave() + 落盘后 CommitRawState() 完成，
+            // 保证落盘失败时不会半提交。基类 ToRawBytes() 契约即纯读取，这里保持一致。
             PreparedSave preparedSave = PrepareSave();
-            preparedSave.CommitRawState();
-
             return preparedSave.RawBytes;
         }
 

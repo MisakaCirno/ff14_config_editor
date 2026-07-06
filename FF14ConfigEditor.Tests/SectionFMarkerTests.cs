@@ -152,8 +152,8 @@ public class SectionFMarkerTests
     [Fact]
     public void ToRawBytes_MoreThanThirtyWayMarks_Succeeds()
     {
-        SectionFMARKER section = UISaveTestData.BuildFMarkerSection(
-            UISaveTestData.BuildMarkerData(1, UISaveTestData.MarkerTail()));
+        byte[] oneMarkerData = UISaveTestData.BuildMarkerData(1, UISaveTestData.MarkerTail());
+        SectionFMARKER section = UISaveTestData.BuildFMarkerSection(oneMarkerData);
         while (section.WayMarks.Count < 31)
         {
             section.WayMarks.Add(new WayMark());
@@ -162,10 +162,18 @@ public class SectionFMarkerTests
         byte[] rawBytes = section.ToRawBytes();
 
         Assert.Equal(31, section.WayMarks.Count);
-        Assert.Equal(
-            SectionFMARKER.MarkerHeaderByteLength + SectionFMARKER.WayMarkByteLength * 31 + section.MarkerTailLength,
-            section.length);
-        Assert.Equal(UISaveTestData.BuildSection(17, section.data), rawBytes);
+        // ToRawBytes 是纯读取，不应提交 length/data：length 仍为构造时的 1-mark 数据长度。
+        Assert.Equal(oneMarkerData.Length, section.length);
+
+        // 期望：header + 首个标点（来自 oneMarkerData）+ 30 个全零标点 + 尾部，套上 section 信封。
+        byte[] headerAndFirstMark = oneMarkerData
+            .Take(SectionFMARKER.MarkerHeaderByteLength + SectionFMARKER.WayMarkByteLength)
+            .ToArray();
+        byte[] expectedMarkerData = headerAndFirstMark
+            .Concat(new byte[30 * SectionFMARKER.WayMarkByteLength])
+            .Concat(UISaveTestData.MarkerTail())
+            .ToArray();
+        Assert.Equal(UISaveTestData.BuildSection(17, expectedMarkerData), rawBytes);
     }
 
     [Fact]
