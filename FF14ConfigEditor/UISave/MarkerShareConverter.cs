@@ -137,6 +137,14 @@ namespace FF14ConfigEditor.UISave
         public static MarkerShare CreateShare(WayMark wayMark, Func<ushort, string>? resolveMapName = null)
         {
             ArgumentNullException.ThrowIfNull(wayMark);
+            ThrowIfPointNull(wayMark.A, nameof(wayMark.A));
+            ThrowIfPointNull(wayMark.B, nameof(wayMark.B));
+            ThrowIfPointNull(wayMark.C, nameof(wayMark.C));
+            ThrowIfPointNull(wayMark.D, nameof(wayMark.D));
+            ThrowIfPointNull(wayMark.One, nameof(wayMark.One));
+            ThrowIfPointNull(wayMark.Two, nameof(wayMark.Two));
+            ThrowIfPointNull(wayMark.Three, nameof(wayMark.Three));
+            ThrowIfPointNull(wayMark.Four, nameof(wayMark.Four));
 
             return new MarkerShare
             {
@@ -243,6 +251,9 @@ namespace FF14ConfigEditor.UISave
                 Active = active
             };
         }
+
+        private static void ThrowIfPointNull(WayMarkPoint? point, string pointName)
+            => ArgumentNullException.ThrowIfNull(point, pointName);
 
         private static double RawToShareCoordinate(int rawCoordinate)
         {

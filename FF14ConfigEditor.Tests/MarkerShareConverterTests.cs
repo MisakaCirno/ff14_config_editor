@@ -253,6 +253,40 @@ public class MarkerShareConverterTests
         }
     }
 
+    [Fact]
+    public void CreateShare_NullWayMark_ThrowsArgumentNullException()
+    {
+        ArgumentNullException ex = Assert.Throws<ArgumentNullException>(
+            () => MarkerShareConverter.CreateShare(null!));
+
+        Assert.Equal("wayMark", ex.ParamName);
+    }
+
+    [Fact]
+    public void CreateShare_NullFirstPoint_ThrowsArgumentNullException()
+    {
+        WayMark wayMark = new() { RegionID = 123 };
+        wayMark.A = null!;
+
+        ArgumentNullException ex = Assert.Throws<ArgumentNullException>(
+            () => MarkerShareConverter.CreateShare(wayMark));
+
+        Assert.Equal(nameof(wayMark.A), ex.ParamName);
+    }
+
+    [Fact]
+    public void CreateShare_NullNumberedPoint_ThrowsArgumentNullException()
+    {
+        // A-D 均非 null（默认值），应通过前四项校验，在 One 处抛出。
+        WayMark wayMark = new() { RegionID = 123 };
+        wayMark.One = null!;
+
+        ArgumentNullException ex = Assert.Throws<ArgumentNullException>(
+            () => MarkerShareConverter.CreateShare(wayMark));
+
+        Assert.Equal(nameof(wayMark.One), ex.ParamName);
+    }
+
     private static string ValidateError(MarkerShare share, IReadOnlySet<ushort>? knownMapIds = null)
     {
         bool result = MarkerShareConverter.TryCreateValidatedImport(
