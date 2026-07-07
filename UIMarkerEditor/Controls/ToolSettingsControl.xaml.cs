@@ -328,10 +328,15 @@ public partial class ToolSettingsControl : UserControl
         if (isLoadingSettingsIntoUi) return;
 
         WayMarkOpenDirectoryMode nextMode = ReadWayMarkOpenDirectoryModeFromUi();
-        string? normalizedCustomDirectory = null;
-        if (nextMode == WayMarkOpenDirectoryMode.CustomDirectory &&
-            !TryReadWayMarkCustomDirectory(showMessage: false, out normalizedCustomDirectory))
+        if (nextMode == WayMarkOpenDirectoryMode.CustomDirectory)
         {
+            if (!TryEnsureWayMarkCustomDirectory(out string? normalizedCustomDirectory))
+            {
+                RestoreWayMarkOpenDirectorySettingsUi();
+                return;
+            }
+
+            SaveWayMarkCustomDirectory(normalizedCustomDirectory);
             return;
         }
 
@@ -340,10 +345,6 @@ public partial class ToolSettingsControl : UserControl
             {
                 settings.WayMarkOpenDirectoryMode = nextMode;
                 settings.WayMarkOpenDirectoryModeInitialized = true;
-                if (nextMode == WayMarkOpenDirectoryMode.CustomDirectory)
-                {
-                    settings.WayMarkCustomDirectory = normalizedCustomDirectory!;
-                }
             },
             "保存文件打开设置");
         if (saved)
@@ -412,25 +413,57 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null) return;
 
-        Microsoft.Win32.OpenFolderDialog dialog = new()
-        {
-            Title = "选择游戏安装目录",
-            InitialDirectory = ResolveInitialGameInstallDirectoryDialogPath()
-        };
-
-        if (DialogOwnerHelper.ShowCommonDialog(dialog, ownerWindow ?? Window.GetWindow(this)) != true)
+        if (!TrySelectGameInstallDirectory(out string? normalizedGameInstallDirectory))
         {
             return;
         }
 
         SetSettingsUiSilently(() =>
         {
-            GameInstallDirectory_TextBox.Text = dialog.FolderName;
+            GameInstallDirectory_TextBox.Text = normalizedGameInstallDirectory;
         });
 
-        if (CommitGameInstallDirectory())
+        if (SaveGameInstallDirectory(normalizedGameInstallDirectory))
         {
             ToastService.ShowSuccess("游戏安装目录已更新。");
+        }
+    }
+
+    private bool TrySelectGameInstallDirectory(
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? normalizedGameInstallDirectory)
+    {
+        normalizedGameInstallDirectory = null;
+        string initialDirectory = ResolveInitialGameInstallDirectoryDialogPath();
+        while (true)
+        {
+            Microsoft.Win32.OpenFolderDialog dialog = new()
+            {
+                Title = "选择游戏安装目录",
+                InitialDirectory = initialDirectory
+            };
+
+            if (DialogOwnerHelper.ShowCommonDialog(dialog, ownerWindow ?? Window.GetWindow(this)) != true)
+            {
+                return false;
+            }
+
+            if (WayMarkOpenDirectoryResolver.TryNormalizeGameInstallDirectory(
+                dialog.FolderName,
+                out normalizedGameInstallDirectory))
+            {
+                return true;
+            }
+
+            AppMessageBox.Show(
+                ownerWindow,
+                "选择的目录不是可识别的最终幻想 XIV 安装目录。请选择包含 game 文件夹和游戏程序的安装目录。",
+                "选择游戏安装目录",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            if (Directory.Exists(dialog.FolderName))
+            {
+                initialDirectory = dialog.FolderName;
+            }
         }
     }
 
@@ -505,47 +538,9 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null) return;
 
-        string initialDirectory = string.Empty;
-        string currentDirectory = WayMarkCustomDirectory_TextBox.Text.Trim();
-        if (Directory.Exists(currentDirectory))
+        if (TrySelectWayMarkCustomDirectory(out string? normalizedDirectory))
         {
-            initialDirectory = currentDirectory;
-        }
-        else if (Directory.Exists(appDataStore.Settings.WayMarkCustomDirectory))
-        {
-            initialDirectory = appDataStore.Settings.WayMarkCustomDirectory;
-        }
-
-        Microsoft.Win32.OpenFolderDialog dialog = new()
-        {
-            Title = "选择自定义目录",
-            InitialDirectory = initialDirectory
-        };
-
-        if (DialogOwnerHelper.ShowCommonDialog(dialog, ownerWindow ?? Window.GetWindow(this)) == true)
-        {
-            if (!WayMarkOpenDirectoryResolver.TryNormalizeExistingDirectory(
-                dialog.FolderName,
-                out string? normalizedDirectory))
-            {
-                ShowInvalidWayMarkCustomDirectoryMessage(dialog.FolderName);
-                return;
-            }
-
-            SetSettingsUiSilently(() =>
-            {
-                WayMarkCustomDirectory_TextBox.Text = normalizedDirectory;
-                OpenDirectoryCustom_RadioButton.IsChecked = true;
-                UpdateWayMarkCustomDirectoryInputState();
-            });
-            SaveSettingsMutation(
-                settings =>
-                {
-                    settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.CustomDirectory;
-                    settings.WayMarkOpenDirectoryModeInitialized = true;
-                    settings.WayMarkCustomDirectory = normalizedDirectory;
-                },
-                "保存自定义目录");
+            SaveWayMarkCustomDirectory(normalizedDirectory);
         }
     }
 
@@ -1496,6 +1491,30 @@ public partial class ToolSettingsControl : UserControl
             return true;
         }
 
+        string normalizedGameInstallDirectory = string.Empty;
+        if (!string.IsNullOrWhiteSpace(gameInstallDirectory))
+        {
+            if (!WayMarkOpenDirectoryResolver.TryNormalizeGameInstallDirectory(
+                gameInstallDirectory,
+                out string? normalizedDirectory))
+            {
+                if (!TrySelectGameInstallDirectory(out normalizedDirectory))
+                {
+                    RestoreGameInstallDirectorySettingsUi();
+                    return false;
+                }
+            }
+
+            normalizedGameInstallDirectory = normalizedDirectory;
+        }
+
+        return SaveGameInstallDirectory(normalizedGameInstallDirectory);
+    }
+
+    private bool SaveGameInstallDirectory(string gameInstallDirectory)
+    {
+        if (appDataStore == null) return false;
+
         bool saved = SaveSettingsMutation(
             settings =>
             {
@@ -1520,7 +1539,7 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null || isLoadingSettingsIntoUi) return false;
 
-        if (!TryReadWayMarkCustomDirectory(showMessage: true, out string? normalizedDirectory))
+        if (!TryEnsureWayMarkCustomDirectory(out string? normalizedDirectory))
         {
             RestoreWayMarkOpenDirectorySettingsUi();
             return false;
@@ -1533,6 +1552,19 @@ public partial class ToolSettingsControl : UserControl
             return true;
         }
 
+        return SaveWayMarkCustomDirectory(normalizedDirectory);
+    }
+
+    private bool SaveWayMarkCustomDirectory(string normalizedDirectory)
+    {
+        if (appDataStore == null) return false;
+
+        SetSettingsUiSilently(() =>
+        {
+            WayMarkCustomDirectory_TextBox.Text = normalizedDirectory;
+            OpenDirectoryCustom_RadioButton.IsChecked = true;
+            UpdateWayMarkCustomDirectoryInputState();
+        });
         bool saved = SaveSettingsMutation(
             settings =>
             {
@@ -1543,6 +1575,63 @@ public partial class ToolSettingsControl : UserControl
             "保存自定义目录");
         RestoreWayMarkOpenDirectorySettingsUi();
         return saved;
+    }
+
+    private bool TryEnsureWayMarkCustomDirectory(
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? normalizedDirectory)
+    {
+        if (TryReadWayMarkCustomDirectory(showMessage: false, out normalizedDirectory))
+        {
+            return true;
+        }
+
+        return TrySelectWayMarkCustomDirectory(out normalizedDirectory);
+    }
+
+    private bool TrySelectWayMarkCustomDirectory(
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? normalizedDirectory)
+    {
+        normalizedDirectory = null;
+        string initialDirectory = ResolveInitialWayMarkCustomDirectoryDialogPath();
+        while (true)
+        {
+            Microsoft.Win32.OpenFolderDialog dialog = new()
+            {
+                Title = "选择自定义目录",
+                InitialDirectory = initialDirectory
+            };
+
+            if (DialogOwnerHelper.ShowCommonDialog(dialog, ownerWindow ?? Window.GetWindow(this)) != true)
+            {
+                return false;
+            }
+
+            if (WayMarkOpenDirectoryResolver.TryNormalizeExistingDirectory(
+                dialog.FolderName,
+                out normalizedDirectory))
+            {
+                return true;
+            }
+
+            ShowInvalidWayMarkCustomDirectoryMessage(dialog.FolderName);
+            if (Directory.Exists(dialog.FolderName))
+            {
+                initialDirectory = dialog.FolderName;
+            }
+        }
+    }
+
+    private string ResolveInitialWayMarkCustomDirectoryDialogPath()
+    {
+        string currentDirectory = WayMarkCustomDirectory_TextBox.Text.Trim();
+        if (Directory.Exists(currentDirectory))
+        {
+            return currentDirectory;
+        }
+
+        return appDataStore != null && Directory.Exists(appDataStore.Settings.WayMarkCustomDirectory)
+            ? appDataStore.Settings.WayMarkCustomDirectory
+            : string.Empty;
     }
 
     private bool TryReadWayMarkCustomDirectory(
@@ -1579,6 +1668,17 @@ public partial class ToolSettingsControl : UserControl
         {
             WayMarkCustomDirectory_TextBox.Text = appDataStore.Settings.WayMarkCustomDirectory;
             ApplyWayMarkOpenDirectoryModeSelectionToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
+        });
+    }
+
+    private void RestoreGameInstallDirectorySettingsUi()
+    {
+        if (appDataStore == null) return;
+
+        SetSettingsUiSilently(() =>
+        {
+            GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
+            ApplyWayMarkOpenDirectoryModeToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
         });
     }
 
