@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Text;
@@ -519,16 +518,6 @@ public partial class DataDirectoryMigrationReportDialog : Window
 
     private void OpenExistingDirectory(string directory)
     {
-        if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
-        {
-            AppMessageBox.Show(this, "目录不存在。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        using Process? _ = Process.Start(new ProcessStartInfo
-        {
-            FileName = directory,
-            UseShellExecute = true
-        });
+        DirectoryOpenHelper.OpenExistingDirectory(this, directory, "打开目录");
     }
 }

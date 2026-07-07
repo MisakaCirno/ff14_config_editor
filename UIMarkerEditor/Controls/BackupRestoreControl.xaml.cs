@@ -1,5 +1,4 @@
 ﻿using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -522,10 +521,18 @@ public partial class BackupRestoreControl : UserControl
 
     private void OpenBackupDirectory_Button_Click(object sender, RoutedEventArgs e)
     {
-        if (Backup_DataGrid.SelectedItem is BackupMetadata backup && Directory.Exists(backup.BackupDirectory))
+        if (Backup_DataGrid.SelectedItem is not BackupMetadata backup)
         {
-            OpenDirectory(backup.BackupDirectory);
+            AppMessageBox.Show(ownerWindow, "请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
         }
+
+        DirectoryOpenHelper.OpenExistingDirectory(
+            ownerWindow,
+            backup.BackupDirectory,
+            "打开备份目录",
+            emptyMessage: "备份目录为空。",
+            missingMessage: "备份目录不存在。");
     }
 
     private bool HasCharacterProfile(string userID)
@@ -577,16 +584,6 @@ public partial class BackupRestoreControl : UserControl
     private static bool IsValidUserID(string userID)
     {
         return userID.Length == 16 && userID.All(Uri.IsHexDigit);
-    }
-
-    private static void OpenDirectory(string directory)
-    {
-        if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
-        using Process? _ = Process.Start(new ProcessStartInfo
-        {
-            FileName = directory,
-            UseShellExecute = true
-        });
     }
 
     private static T? FindVisualParent<T>(DependencyObject? source) where T : DependencyObject

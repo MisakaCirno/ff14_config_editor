@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Text;
+﻿using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -61,16 +60,6 @@ namespace UIMarkerEditor
         private static bool IsValidUserID(string userID)
         {
             return userID.Length == 16 && userID.All(Uri.IsHexDigit);
-        }
-
-        private static void OpenDirectory(string directory)
-        {
-            if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
-            using Process? _ = Process.Start(new ProcessStartInfo
-            {
-                FileName = directory,
-                UseShellExecute = true
-            });
         }
 
         private static T? FindVisualParent<T>(DependencyObject? source) where T : DependencyObject

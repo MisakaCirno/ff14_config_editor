@@ -1,5 +1,4 @@
 ﻿using FF14ConfigEditor;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Windows;
@@ -493,14 +492,11 @@ public partial class ToolSettingsControl : UserControl
             return;
         }
 
-        try
-        {
-            OpenDirectory(normalizedGameInstallDirectory);
-        }
-        catch (Exception ex)
-        {
-            AppMessageBox.Show(ownerWindow, $"打开游戏安装目录失败：{ex.Message}", "打开游戏安装目录", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        DirectoryOpenHelper.OpenExistingDirectory(
+            ownerWindow,
+            normalizedGameInstallDirectory,
+            "打开游戏安装目录",
+            missingMessage: "当前游戏安装目录不存在或无法访问。请重新选择游戏安装目录。");
     }
 
     private string ResolveInitialGameInstallDirectoryDialogPath()
@@ -948,26 +944,12 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null) return;
 
-        string directory = appDataStore.DataDirectory;
-        if (string.IsNullOrWhiteSpace(directory))
-        {
-            AppMessageBox.Show(ownerWindow, "当前工具数据目录为空。", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-        if (!Directory.Exists(directory))
-        {
-            AppMessageBox.Show(ownerWindow, "当前工具数据目录不存在，请先迁移到一个可用目录。", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        try
-        {
-            OpenDirectory(directory);
-        }
-        catch (Exception ex)
-        {
-            AppMessageBox.Show(ownerWindow, $"打开当前目录失败：{ex.Message}", "打开当前目录", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        DirectoryOpenHelper.OpenExistingDirectory(
+            ownerWindow,
+            appDataStore.DataDirectory,
+            "打开当前目录",
+            emptyMessage: "当前工具数据目录为空。",
+            missingMessage: "当前工具数据目录不存在，请先迁移到一个可用目录。");
     }
 
     private void ArchiveCurrentLog_Button_Click(object sender, RoutedEventArgs e)
@@ -1052,7 +1034,11 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null) return;
 
-        OpenDirectory(appDataStore.LogDirectory);
+        DirectoryOpenHelper.OpenOrCreateDirectory(
+            ownerWindow,
+            appDataStore.LogDirectory,
+            "打开日志目录",
+            emptyMessage: "当前日志目录为空。");
     }
 
     private void UpdateCurrentLogFilePathText()
@@ -1905,16 +1891,6 @@ public partial class ToolSettingsControl : UserControl
     private static bool IsDigitsOnly(string text)
     {
         return !string.IsNullOrEmpty(text) && text.All(character => character is >= '0' and <= '9');
-    }
-
-    private static void OpenDirectory(string directory)
-    {
-        if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
-        using Process? _ = Process.Start(new ProcessStartInfo
-        {
-            FileName = directory,
-            UseShellExecute = true
-        });
     }
 
 }
