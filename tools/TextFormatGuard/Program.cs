@@ -22,8 +22,8 @@ foreach (var finding in result.Findings)
 
 Console.WriteLine();
 Console.WriteLine(fix
-    ? $"TextFormatGuard fix: checked {result.CheckedCount} text files, fixed {result.FixedCount} files, skipped {result.SkippedCount} binary files, errors {result.ErrorCount}."
-    : $"TextFormatGuard check: checked {result.CheckedCount} text files, issues {result.IssueCount}, skipped {result.SkippedCount} binary files, errors {result.ErrorCount}.");
+    ? $"TextFormatGuard fix: checked {result.CheckedCount} text files, fixed {result.FixedCount} files, skipped {result.SkippedCount} binary files, skipped {result.MissingCount} missing tracked files, errors {result.ErrorCount}."
+    : $"TextFormatGuard check: checked {result.CheckedCount} text files, issues {result.IssueCount}, skipped {result.SkippedCount} binary files, skipped {result.MissingCount} missing tracked files, errors {result.ErrorCount}.");
 
 return result.HasFailures ? 1 : 0;
 
@@ -82,6 +82,12 @@ internal static class TextFormatGuard
             if (BinaryExtensions.Contains(extension))
             {
                 result.SkippedCount++;
+                continue;
+            }
+
+            if (!File.Exists(fullPath))
+            {
+                result.AddMissing(displayPath);
                 continue;
             }
 
@@ -261,6 +267,7 @@ internal sealed class GuardResult
 {
     public int CheckedCount { get; set; }
     public int SkippedCount { get; set; }
+    public int MissingCount { get; private set; }
     public int FixedCount { get; private set; }
     public int IssueCount { get; private set; }
     public int ErrorCount { get; private set; }
@@ -277,6 +284,12 @@ internal sealed class GuardResult
     {
         FixedCount++;
         Findings.Add($"FIXED {path}: {message}");
+    }
+
+    public void AddMissing(string path)
+    {
+        MissingCount++;
+        Findings.Add($"SKIPPED {path}: missing from working tree");
     }
 
     public void AddError(string path, string message)
