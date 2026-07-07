@@ -122,7 +122,7 @@ public partial class CharacterProfilesControl : UserControl
         if (result == MessageBoxResult.Cancel) return false;
         if (result == MessageBoxResult.No)
         {
-            isCharacterDetailDirty = false;
+            DiscardCharacterDetailChanges();
             return true;
         }
 
@@ -131,6 +131,18 @@ public partial class CharacterProfilesControl : UserControl
         Character_DataGrid.Items.Refresh();
         refreshBackupList();
         return true;
+    }
+
+    private void DiscardCharacterDetailChanges()
+    {
+        if (loadedCharacterProfile == null)
+        {
+            ClearCharacterDetailFields();
+            UpdateCharacterDetailVisibility(showDetail: false);
+            return;
+        }
+
+        LoadCharacterProfileIntoDetail(loadedCharacterProfile);
     }
 
     public void RefreshServerPicker()
