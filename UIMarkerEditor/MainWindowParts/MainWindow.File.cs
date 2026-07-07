@@ -111,6 +111,11 @@ namespace UIMarkerEditor
                 return false;
             }
 
+            if (!TryCommitPendingWayMarkEdits())
+            {
+                return false;
+            }
+
             // 保存修改后的UISAVE.DAT文件
             if (configUISave != null)
             {

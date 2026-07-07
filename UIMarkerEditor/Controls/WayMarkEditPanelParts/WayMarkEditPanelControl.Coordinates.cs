@@ -115,19 +115,61 @@ namespace UIMarkerEditor.Controls
 
         private void CommitOrRevertCoordinateText(TextBox textBox, CoordinateEditContext context)
         {
+            if (!TryCommitCoordinateText(textBox, context, restoreTextOnFailure: true))
+            {
+                return;
+            }
+        }
+
+        private bool CommitPendingCoordinateEdits()
+        {
+            foreach (TextBox textBox in FindVisualChildren<TextBox>(Edit2_Grid))
+            {
+                if (!TryGetCoordinateEditContext(textBox, out CoordinateEditContext context))
+                {
+                    continue;
+                }
+
+                if (TryCommitCoordinateText(textBox, context, restoreTextOnFailure: false))
+                {
+                    continue;
+                }
+
+                textBox.Focus();
+                textBox.SelectAll();
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TryCommitCoordinateText(
+            TextBox textBox,
+            CoordinateEditContext context,
+            bool restoreTextOnFailure)
+        {
             if (TryParseCoordinateText(textBox.Text, out int rawCoordinate))
             {
                 SetCoordinateValue(context.Point, context.Axis, rawCoordinate);
-
                 CloseCoordinateInputTipFor(textBox);
-            }
-            else
-            {
-                ShowInvalidCoordinateFeedback(textBox);
+                RefreshCoordinateText(textBox);
+                return true;
             }
 
+            ShowInvalidCoordinateFeedback(textBox);
+            if (restoreTextOnFailure)
+            {
+                RefreshCoordinateText(textBox);
+            }
+
+            return false;
+        }
+
+        private void RefreshCoordinateText(TextBox textBox)
+        {
             textBox.GetBindingExpression(TextBox.TextProperty)?.UpdateTarget();
             textBox.CaretIndex = textBox.Text.Length;
+            coordinateAcceptedTexts[textBox] = textBox.Text;
         }
 
         private void RegisterCoordinateTextBoxPasteHandlers()

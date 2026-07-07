@@ -316,6 +316,11 @@ namespace UIMarkerEditor
                     return;
                 }
 
+                if (!TryCommitPendingWayMarkEdits())
+                {
+                    return;
+                }
+
                 string message = isWayMarkDirty
                     ? "当前 UISAVE.DAT 已被外部更新，且本窗口有未保存的修改。\n\n选择“是”重新读取磁盘上的最新内容并放弃本窗口未保存修改，选择“否”继续保留当前编辑。"
                     : "当前 UISAVE.DAT 已被外部更新。\n\n是否重新读取磁盘上的最新内容？";

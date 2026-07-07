@@ -117,6 +117,22 @@ public partial class WayMarkEditPanelControl : UserControl, INotifyPropertyChang
         }
     }
 
+    public bool CommitPendingEdits()
+    {
+        if (currentWayMark == null)
+        {
+            return true;
+        }
+
+        if (!CommitPendingCoordinateEdits())
+        {
+            return false;
+        }
+
+        CommitPendingRegionEdit();
+        return true;
+    }
+
     public void RefreshMapDataDisplay(IEnumerable<ushort>? extraRegionIds = null)
     {
         observedRegionIds = extraRegionIds?.ToHashSet() ?? observedRegionIds;

@@ -345,6 +345,28 @@ namespace UIMarkerEditor.Controls
             regionOptionsView?.Refresh();
         }
 
+        private void CommitPendingRegionEdit()
+        {
+            if (!RegionSearch_TextBox.IsKeyboardFocusWithin &&
+                !RegionOptions_ListBox.IsKeyboardFocusWithin &&
+                !RegionSearch_Popup.IsOpen)
+            {
+                return;
+            }
+
+            if (RegionOptions_ListBox.IsKeyboardFocusWithin &&
+                RegionOptions_ListBox.SelectedItem is MapData selectedRegion)
+            {
+                CommitSelectedRegionOption(selectedRegion);
+            }
+            else
+            {
+                CommitFreeRegionTextOrRestore();
+                RegionSearch_Popup.IsOpen = false;
+                SetRegionClearButtonVisible(false);
+            }
+        }
+
         private void EnsureRegionOption(ushort regionId)
         {
             if (regionOptions.Any(option => option.Index == regionId)) return;

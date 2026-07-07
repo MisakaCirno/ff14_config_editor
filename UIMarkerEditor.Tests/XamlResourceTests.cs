@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -13,9 +12,9 @@ public sealed class XamlResourceTests
     [Fact]
     public void MainWindow_CanInitializeWithThemeResources()
     {
-        Exception? exception = RunOnStaThread(() =>
+        Exception? exception = WpfTestHost.Run(() =>
         {
-            EnsureApplicationResources();
+            WpfTestHost.EnsureApplicationResources();
             AssertButtonPadding();
             AssertColoredButtonForegroundPassesIntoTemplate();
 
@@ -148,45 +147,6 @@ public sealed class XamlResourceTests
             "TealButtonStyle",
             "PinkButtonStyle"
         ];
-    }
-
-    private static void EnsureApplicationResources()
-    {
-        Application application = Application.Current ?? new Application
-        {
-            ShutdownMode = ShutdownMode.OnExplicitShutdown
-        };
-
-        application.Resources.MergedDictionaries.Clear();
-        application.Resources.MergedDictionaries.Add(new ResourceDictionary
-        {
-            Source = new Uri("pack://application:,,,/UIMarkerEditor;component/Styles/Theme.xaml", UriKind.Absolute)
-        });
-    }
-
-    private static Exception? RunOnStaThread(Action action)
-    {
-        Exception? exception = null;
-        Thread thread = new(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception ex)
-            {
-                exception = ex;
-            }
-            finally
-            {
-                Application.Current?.Shutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-        return exception;
     }
 
     private static T? FindVisualChild<T>(DependencyObject parent)

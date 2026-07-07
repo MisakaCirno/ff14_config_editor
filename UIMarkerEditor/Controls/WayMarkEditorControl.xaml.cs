@@ -113,6 +113,11 @@ public partial class WayMarkEditorControl : UserControl
         UpdateMoveButtonState();
     }
 
+    public bool CommitPendingEdits()
+    {
+        return WayMarkEditPanel_Control.CommitPendingEdits();
+    }
+
     public void SetLocalCharacterSelectionAvailable(bool isAvailable)
     {
         canSelectLocalCharacter = isAvailable;
