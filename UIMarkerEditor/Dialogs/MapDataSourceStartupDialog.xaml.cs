@@ -6,15 +6,21 @@ public partial class MapDataSourceStartupDialog : Window
 {
     public MapDataTableMode SelectedTableMode { get; private set; } = MapDataTableMode.Automatic;
     public MapDataSource SelectedSource { get; private set; } = MapDataSource.OnlineReference;
+    public MapDataOnlineSourceKind SelectedOnlineSource { get; private set; } = MapDataOnlineSourceKind.ContentFinderConditionCsv;
 
     public MapDataSourceStartupDialog()
     {
         InitializeComponent();
     }
 
-    private void OnlineReference_Button_Click(object sender, RoutedEventArgs e)
+    private void GitHubOnlineReference_Button_Click(object sender, RoutedEventArgs e)
     {
-        SelectAutomaticSource(MapDataSource.OnlineReference);
+        SelectOnlineSource(MapDataOnlineSourceKind.ContentFinderConditionCsv);
+    }
+
+    private void DiemoeOnlineReference_Button_Click(object sender, RoutedEventArgs e)
+    {
+        SelectOnlineSource(MapDataOnlineSourceKind.DiemoeMatcha);
     }
 
     private void LocalGame_Button_Click(object sender, RoutedEventArgs e)
@@ -43,5 +49,11 @@ public partial class MapDataSourceStartupDialog : Window
         SelectedTableMode = MapDataTableMode.Automatic;
         SelectedSource = source;
         DialogResult = true;
+    }
+
+    private void SelectOnlineSource(MapDataOnlineSourceKind onlineSource)
+    {
+        SelectedOnlineSource = onlineSource;
+        SelectAutomaticSource(MapDataSource.OnlineReference);
     }
 }

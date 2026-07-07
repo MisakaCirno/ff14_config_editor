@@ -192,6 +192,10 @@ public partial class App : Application
         {
             settings.MapDataSource = dialog.SelectedSource;
             settings.MapDataSourceInitialized = true;
+            if (dialog.SelectedSource == MapDataSource.OnlineReference)
+            {
+                settings.MapDataOnlineSource = dialog.SelectedOnlineSource;
+            }
         }
 
         settings.UnknownMapIdPolicy = UnknownMapIdPolicy.RejectUnknown;

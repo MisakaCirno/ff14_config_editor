@@ -8,6 +8,17 @@ public sealed partial class AppDataStore
 {
     private const string LocalSqpackMapDataSource = "local-sqpack";
     private const string UserCsvMapDataSource = "user-csv";
+    private const string DefaultUserMapDataCsv =
+        "1,监狱废墟托托·拉克千狱\r\n" +
+        "2,地下灵殿塔姆·塔拉墓园\r\n" +
+        "3,封锁坑道铜铃铜山\r\n" +
+        "4,天然要害沙斯塔夏溶洞\r\n" +
+        "5,毒雾洞窟黄金谷\r\n" +
+        "6,名门府邸静语庄园\r\n" +
+        "7,魔兽领域日影地修炼所\r\n" +
+        "8,休养胜地布雷福洛克斯野营地\r\n" +
+        "9,古代遗迹喀恩埋没圣堂\r\n" +
+        "10,神灵圣域放浪神古神殿\r\n";
     private static readonly Encoding MapDataCsvEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
     private static readonly TimeSpan MapDataRequestTimeout = TimeSpan.FromSeconds(20);
     private static readonly IReadOnlyDictionary<string, string> GitHubApiHeaders = new Dictionary<string, string>
@@ -59,13 +70,8 @@ public sealed partial class AppDataStore
                 Directory.CreateDirectory(CacheDirectory);
                 SafeFileWriter.WriteAllText(
                     UserMapDataFilePath,
-                    MapDataTableCsv.Serialize(new Dictionary<ushort, string>()),
+                    DefaultUserMapDataCsv,
                     MapDataCsvEncoding);
-                return LoadMapDataCacheFallback(
-                    UserCsvMapDataSource,
-                    string.Empty,
-                    currentStage,
-                    $"手动地图数据文件不存在，已创建空白模板。请填写后重新读取：{UserMapDataFilePath}");
             }
 
             FileInfo userMapDataFileInfo = new(UserMapDataFilePath);

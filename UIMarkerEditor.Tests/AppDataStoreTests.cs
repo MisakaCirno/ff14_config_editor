@@ -1905,7 +1905,7 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task EnsureMapDataAvailableAsync_WhenManualCsvMissing_CreatesTemplateAndReturnsFailure()
+    public async Task EnsureMapDataAvailableAsync_WhenManualCsvMissing_CreatesDefaultCsvAndLoadsIt()
     {
         FakeAppDataNetworkClient networkClient = new();
         AppDataStore store = CreateStore(networkClient);
@@ -1914,16 +1914,22 @@ public sealed class AppDataStoreTests : IDisposable
 
         MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
 
-        Assert.False(result.Success);
-        Assert.False(result.Updated);
+        Assert.True(result.Success);
+        Assert.True(result.Updated);
         Assert.False(result.UsedCache);
-        Assert.False(result.CacheAvailable);
-        Assert.Equal("读取手动地图数据", result.FailureStage);
-        Assert.Contains("已创建空白模板", result.FailureReason);
+        Assert.True(result.CacheAvailable);
+        Assert.Equal(store.UserMapDataFilePath, result.SourcePath);
         Assert.True(File.Exists(store.UserMapDataFilePath));
-        Assert.Equal("ID,Name\r\n", File.ReadAllText(store.UserMapDataFilePath));
+        string csv = File.ReadAllText(store.UserMapDataFilePath);
+        Assert.StartsWith("1,监狱废墟托托·拉克千狱\r\n", csv, StringComparison.Ordinal);
+        Assert.DoesNotContain("ID,Name", csv, StringComparison.Ordinal);
+        Dictionary<ushort, string> userMapNames = ReadUserMapDataCsv(store);
+        Assert.Equal("监狱废墟托托·拉克千狱", userMapNames[1]);
+        Assert.Equal("神灵圣域放浪神古神殿", userMapNames[10]);
+        Assert.Equal(10, userMapNames.Count);
+        Assert.Equal("监狱废墟托托·拉克千狱", MapData.GetName(1));
+        Assert.Equal("神灵圣域放浪神古神殿", MapData.GetName(10));
         Assert.Empty(networkClient.Requests);
-        Assert.False(MapData.HasData);
     }
 
     [Fact]
