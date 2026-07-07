@@ -1723,6 +1723,37 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task ForceRefreshMapDataAsync_WhenOnlineSourceChangesDuringDownload_DiscardsStaleSnapshot()
+    {
+        MapData.Clear();
+        string pinnedCsvUrl = CreateMapDataPinnedCsvUrl(GitHubMapDataCommitSha);
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddResponse(
+            MapDataOnlineReferenceCommitApiUrl,
+            CreateGitHubCommitApiResponse(GitHubMapDataCommitSha, "[ver 2026.06.10.0000.0000]"));
+        TaskCompletionSource<string> pinnedCsvResponse = networkClient.AddPendingResponse(pinnedCsvUrl);
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+
+        Task<MapDataLoadResult> refreshTask = store.ForceRefreshMapDataAsync();
+        Assert.Contains(networkClient.Requests, request =>
+            string.Equals(request.Url, pinnedCsvUrl, StringComparison.Ordinal));
+
+        AppSettings settings = store.CreateSettingsSnapshot();
+        settings.MapDataOnlineSource = MapDataOnlineSourceKind.DiemoeMatcha;
+        store.SaveSettings(settings);
+
+        pinnedCsvResponse.SetResult(CreateContentFinderConditionCsv(123, "过期 GitHub 副本"));
+        MapDataLoadResult result = await refreshTask;
+
+        Assert.False(result.Success);
+        Assert.Contains("地图数据来源已在刷新过程中变更", result.FailureReason);
+        Assert.False(MapData.HasData);
+        Assert.False(File.Exists(store.MapDataCacheFilePath));
+        Assert.False(File.Exists(store.MapDataCacheMetadataFilePath));
+    }
+
+    [Fact]
     public void SaveSettings_WhenMapDataOnlineSourceInvalid_NormalizesToGitHub()
     {
         AppDataStore store = CreateStore();
@@ -3113,13 +3144,20 @@ public sealed class AppDataStoreTests : IDisposable
 
     private sealed class FakeAppDataNetworkClient : IAppDataNetworkClient
     {
-        private readonly Dictionary<string, Queue<Func<string>>> responses = [];
+        private readonly Dictionary<string, Queue<Func<Task<string>>>> responses = [];
 
         public List<FakeNetworkRequest> Requests { get; } = [];
 
         public void AddResponse(string url, string response)
         {
-            Add(url, () => response);
+            Add(url, () => Task.FromResult(response));
+        }
+
+        public TaskCompletionSource<string> AddPendingResponse(string url)
+        {
+            TaskCompletionSource<string> response = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            Add(url, () => response.Task);
+            return response;
         }
 
         public void AddException(string url, Exception exception)
@@ -3140,19 +3178,19 @@ public sealed class AppDataStoreTests : IDisposable
                     pair => pair.Value,
                     StringComparer.OrdinalIgnoreCase) ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)));
 
-            if (!responses.TryGetValue(url, out Queue<Func<string>>? queue) || queue.Count == 0)
+            if (!responses.TryGetValue(url, out Queue<Func<Task<string>>>? queue) || queue.Count == 0)
             {
                 throw new InvalidOperationException($"未配置测试网络响应：{url}");
             }
 
-            return Task.FromResult(queue.Dequeue().Invoke());
+            return queue.Dequeue().Invoke();
         }
 
-        private void Add(string url, Func<string> responseFactory)
+        private void Add(string url, Func<Task<string>> responseFactory)
         {
-            if (!responses.TryGetValue(url, out Queue<Func<string>>? queue))
+            if (!responses.TryGetValue(url, out Queue<Func<Task<string>>>? queue))
             {
-                queue = new Queue<Func<string>>();
+                queue = new Queue<Func<Task<string>>>();
                 responses[url] = queue;
             }
 

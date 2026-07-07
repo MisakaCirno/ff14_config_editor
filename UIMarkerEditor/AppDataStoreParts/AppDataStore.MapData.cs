@@ -8,6 +8,7 @@ public sealed partial class AppDataStore
 {
     private const string LocalSqpackMapDataSource = "local-sqpack";
     private const string UserCsvMapDataSource = "user-csv";
+    private const string MapDataSourceChangedDuringLoadReason = "地图数据来源已在刷新过程中变更，本次刷新结果已丢弃。";
     private const string DefaultUserMapDataCsv =
         "1,监狱废墟托托·拉克千狱\r\n" +
         "2,地下灵殿塔姆·塔拉墓园\r\n" +
@@ -112,6 +113,15 @@ public sealed partial class AppDataStore
                 userMapDataFingerprint);
             userTable.LastUpdated = userMapDataLastWriteTime;
             userTable.LastSuccessfulSyncAt = DateTime.Now;
+            if (TryCreateMapDataSourceChangedResult(
+                UserCsvMapDataSource,
+                userTable.Version,
+                "应用手动地图数据",
+                out MapDataLoadResult? sourceChangedResult))
+            {
+                return sourceChangedResult!;
+            }
+
             if (TryReadMapDataCache(UserCsvMapDataSource, out MapDataCache cachedUserTable) &&
                 IsSameMapDataSnapshot(cachedUserTable, userTable))
             {
@@ -136,7 +146,14 @@ public sealed partial class AppDataStore
             if (IsSameMapDataContent(cachedUserTable, userTable))
             {
                 WriteMapDataCache(userTable);
-                ApplyMapDataTable(userTable);
+                if (!ApplyMapDataCache(userTable))
+                {
+                    return CreateMapDataFailureResult(
+                        userTable.Version,
+                        "应用手动地图数据",
+                        MapDataSourceChangedDuringLoadReason);
+                }
+
                 return new MapDataLoadResult(
                     true,
                     false,
@@ -147,7 +164,14 @@ public sealed partial class AppDataStore
 
             bool updated = !IsCurrentMapDataTableSameAs(userTable);
             WriteMapDataCache(userTable);
-            ApplyMapDataTable(userTable);
+            if (!ApplyMapDataCache(userTable))
+            {
+                return CreateMapDataFailureResult(
+                    userTable.Version,
+                    "应用手动地图数据",
+                    MapDataSourceChangedDuringLoadReason);
+            }
+
             return new MapDataLoadResult(
                 true,
                 updated,
@@ -312,6 +336,7 @@ public sealed partial class AppDataStore
             ? MapDataSourceParsers.CreateContentHashVersion(csv)
             : version;
         return ApplyOnlineMapDataSnapshot(
+            CreateOnlineReferenceMapDataSource(source.Kind),
             snapshotVersion,
             string.IsNullOrWhiteSpace(sourceFingerprint) ? snapshotVersion : sourceFingerprint,
             mapNames,
@@ -389,17 +414,32 @@ public sealed partial class AppDataStore
             sourceFingerprint = version;
         }
 
-        return ApplyOnlineMapDataSnapshot(version, sourceFingerprint, mapNames, source.ContentUrl, successfulSyncTime);
+        return ApplyOnlineMapDataSnapshot(
+            CreateOnlineReferenceMapDataSource(source.Kind),
+            version,
+            sourceFingerprint,
+            mapNames,
+            source.ContentUrl,
+            successfulSyncTime);
     }
 
     private MapDataLoadResult ApplyOnlineMapDataSnapshot(
+        string cacheSource,
         string version,
         string sourceFingerprint,
         IReadOnlyDictionary<ushort, string> mapNames,
         string sourcePath,
         DateTime successfulSyncTime)
     {
-        string cacheSource = CreateOnlineReferenceMapDataSource(Settings.MapDataOnlineSource);
+        if (TryCreateMapDataSourceChangedResult(
+            cacheSource,
+            version,
+            "应用在线地图数据",
+            out MapDataLoadResult? sourceChangedResult))
+        {
+            return sourceChangedResult!;
+        }
+
         MapDataCache nextCache = CreateMapDataCache(
             version,
             mapNames,
@@ -416,8 +456,8 @@ public sealed partial class AppDataStore
             {
                 return CreateMapDataFailureResult(
                     version,
-                    "读取在线地图数据缓存",
-                    "在线地图数据缓存为空或格式不受支持。");
+                    "应用在线地图数据",
+                    MapDataSourceChangedDuringLoadReason);
             }
 
             return new MapDataLoadResult(
@@ -431,7 +471,14 @@ public sealed partial class AppDataStore
         if (IsSameMapDataContent(cachedMapData, nextCache))
         {
             WriteMapDataCache(nextCache);
-            ApplyMapDataCache(nextCache);
+            if (!ApplyMapDataCache(nextCache))
+            {
+                return CreateMapDataFailureResult(
+                    nextCache.Version,
+                    "应用在线地图数据",
+                    MapDataSourceChangedDuringLoadReason);
+            }
+
             return new MapDataLoadResult(
                 true,
                 false,
@@ -441,7 +488,14 @@ public sealed partial class AppDataStore
         }
 
         WriteMapDataCache(nextCache);
-        ApplyMapDataCache(nextCache);
+        if (!ApplyMapDataCache(nextCache))
+        {
+            return CreateMapDataFailureResult(
+                nextCache.Version,
+                "应用在线地图数据",
+                MapDataSourceChangedDuringLoadReason);
+        }
+
         return new MapDataLoadResult(
             true,
             true,
@@ -493,6 +547,15 @@ public sealed partial class AppDataStore
                 LocalSqpackMapDataSource,
                 snapshot.SourceFingerprint);
             nextCache.LastSuccessfulSyncAt = successfulSyncTime;
+            if (TryCreateMapDataSourceChangedResult(
+                LocalSqpackMapDataSource,
+                nextCache.Version,
+                "应用本地地图数据",
+                out MapDataLoadResult? sourceChangedResult))
+            {
+                return sourceChangedResult!;
+            }
+
             if (TryReadMapDataCache(LocalSqpackMapDataSource, out MapDataCache cachedMapData) &&
                 IsSameMapDataSnapshot(cachedMapData, nextCache))
             {
@@ -516,7 +579,14 @@ public sealed partial class AppDataStore
             if (IsSameMapDataContent(cachedMapData, nextCache))
             {
                 WriteMapDataCache(nextCache);
-                ApplyMapDataCache(nextCache);
+                if (!ApplyMapDataCache(nextCache))
+                {
+                    return CreateMapDataFailureResult(
+                        nextCache.Version,
+                        "应用本地地图数据",
+                        MapDataSourceChangedDuringLoadReason);
+                }
+
                 return new MapDataLoadResult(
                     true,
                     false,
@@ -528,7 +598,14 @@ public sealed partial class AppDataStore
             currentStage = "保存本地地图数据缓存";
             WriteMapDataCache(nextCache);
             currentStage = "应用本地地图数据";
-            ApplyMapDataCache(nextCache);
+            if (!ApplyMapDataCache(nextCache))
+            {
+                return CreateMapDataFailureResult(
+                    nextCache.Version,
+                    currentStage,
+                    MapDataSourceChangedDuringLoadReason);
+            }
+
             return new MapDataLoadResult(
                 true,
                 true,
@@ -569,6 +646,15 @@ public sealed partial class AppDataStore
         string failureStage = "",
         string failureReason = "")
     {
+        if (TryCreateMapDataSourceChangedResult(
+            expectedSource,
+            version,
+            failureStage,
+            out MapDataLoadResult? sourceChangedResult))
+        {
+            return sourceChangedResult!;
+        }
+
         if (!LoadMapDataCache(expectedSource))
         {
             return CreateMapDataFailureResult(version, failureStage, failureReason);
@@ -649,10 +735,20 @@ public sealed partial class AppDataStore
             cache.SourcePath = sourcePath;
         }
 
+        if (TryCreateMapDataSourceChangedResult(
+            expectedSource,
+            cache.Version,
+            failureStage,
+            out MapDataLoadResult? sourceChangedResult))
+        {
+            result = sourceChangedResult;
+            return true;
+        }
+
         TryUpdateMapDataSuccessfulSyncTime(cache, successfulSyncTime);
         if (!ApplyMapDataCache(cache))
         {
-            result = CreateMapDataFailureResult(cache.Version, failureStage, invalidCacheReason);
+            result = CreateMapDataFailureResult(cache.Version, failureStage, MapDataSourceChangedDuringLoadReason);
             return true;
         }
 
@@ -698,7 +794,7 @@ public sealed partial class AppDataStore
 
     private bool ApplyMapDataCache(MapDataCache cache)
     {
-        if (!IsExpectedMapDataCacheSource(cache, GetCurrentMapDataCacheSource()))
+        if (!IsCurrentMapDataCacheSource(cache.Source))
         {
             return false;
         }
@@ -982,6 +1078,30 @@ public sealed partial class AppDataStore
         return Settings.MapDataSource == MapDataSource.LocalGame
             ? LocalSqpackMapDataSource
             : CreateOnlineReferenceMapDataSource(Settings.MapDataOnlineSource);
+    }
+
+    private bool TryCreateMapDataSourceChangedResult(
+        string expectedSource,
+        string version,
+        string failureStage,
+        out MapDataLoadResult? result)
+    {
+        result = null;
+        if (IsCurrentMapDataCacheSource(expectedSource))
+        {
+            return false;
+        }
+
+        result = CreateMapDataFailureResult(
+            version,
+            failureStage,
+            MapDataSourceChangedDuringLoadReason);
+        return true;
+    }
+
+    private bool IsCurrentMapDataCacheSource(string expectedSource)
+    {
+        return string.Equals(GetCurrentMapDataCacheSource(), expectedSource, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string CreateOnlineReferenceMapDataSource(MapDataOnlineSourceKind source)
