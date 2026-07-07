@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Windows;
+using FF14ConfigEditor;
 
 namespace UIMarkerEditor
 {
@@ -35,14 +36,14 @@ namespace UIMarkerEditor
         private void LoadMostRecentWayMarkFileOnStartup()
         {
             List<string> recentFiles = appDataStore.GetRecentFiles();
-            if (recentFiles.Count == 0) return;
+            StartupRecentFileSelection selection = StartupRecentFileSelector.SelectFirstExisting(recentFiles, File.Exists);
+            if (!selection.HasRecentFiles) return;
 
-            string filePath = recentFiles[0];
-            if (!File.Exists(filePath))
+            if (!selection.HasExistingFile)
             {
                 AppMessageBox.Show(
                     this,
-                    $"最近一次打开的标点文件已经不存在，已跳过启动自动加载。\n\n文件：{filePath}",
+                    "最近打开的标点文件都已经不存在，已跳过启动自动加载。",
                     "启动自动加载",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -50,7 +51,12 @@ namespace UIMarkerEditor
                 return;
             }
 
-            LoadConfigFileWithOverlay(filePath);
+            if (selection.SkippedMissingFiles)
+            {
+                AppLogger.Info(AppLogCategory.IO, $"启动自动加载跳过已不存在的最近文件，改用：{selection.FilePath}");
+            }
+
+            LoadConfigFileWithOverlay(selection.FilePath);
         }
     }
 }
