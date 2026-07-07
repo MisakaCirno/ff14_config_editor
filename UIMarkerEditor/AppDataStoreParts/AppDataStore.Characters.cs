@@ -14,12 +14,17 @@ public sealed partial class AppDataStore
         }
 
         EnsureDataDirectory();
-        WriteJson(CharactersFilePath, Characters.OrderBy(c => c.UserID, StringComparer.OrdinalIgnoreCase).ToList());
+        WriteJson(
+            CharactersFilePath,
+            Characters
+                .Select(NormalizeCharacterProfile)
+                .OrderBy(c => c.UserID, StringComparer.OrdinalIgnoreCase)
+                .ToList());
     }
 
     public CharacterProfile GetOrCreateCharacter(string? userID)
     {
-        string normalizedUserID = string.IsNullOrWhiteSpace(userID) ? "UNKNOWN" : userID.ToUpperInvariant();
+        string normalizedUserID = NormalizeCharacterUserID(userID);
         CharacterProfile? existing = Characters.FirstOrDefault(c =>
             string.Equals(c.UserID, normalizedUserID, StringComparison.OrdinalIgnoreCase));
         if (existing != null) return existing;
@@ -58,12 +63,41 @@ public sealed partial class AppDataStore
             return;
         }
 
-        foreach (CharacterProfile? profile in charactersResult.Value ?? [])
+        foreach (CharacterProfile profile in NormalizeCharacterProfiles(charactersResult.Value ?? []))
         {
-            if (profile != null)
-            {
-                Characters.Add(profile);
-            }
+            Characters.Add(profile);
         }
+    }
+
+    private static List<CharacterProfile> NormalizeCharacterProfiles(IEnumerable<CharacterProfile?> profiles)
+    {
+        return profiles
+            .Where(static profile => profile != null)
+            .Select(static profile => NormalizeCharacterProfile(profile!))
+            .ToList();
+    }
+
+    private static CharacterProfile NormalizeCharacterProfile(CharacterProfile profile)
+    {
+        return new CharacterProfile
+        {
+            UserID = NormalizeCharacterUserID(profile.UserID),
+            CharacterName = NormalizeCharacterText(profile.CharacterName),
+            DataCenter = NormalizeCharacterText(profile.DataCenter),
+            World = NormalizeCharacterText(profile.World),
+            Note = NormalizeCharacterText(profile.Note),
+            UpdatedAt = profile.UpdatedAt == default ? DateTime.Now : profile.UpdatedAt
+        };
+    }
+
+    private static string NormalizeCharacterUserID(string? userID)
+    {
+        string normalizedUserID = NormalizeCharacterText(userID).ToUpperInvariant();
+        return string.IsNullOrWhiteSpace(normalizedUserID) ? "UNKNOWN" : normalizedUserID;
+    }
+
+    private static string NormalizeCharacterText(string? value)
+    {
+        return value?.Trim() ?? string.Empty;
     }
 }

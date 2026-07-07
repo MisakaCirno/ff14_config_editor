@@ -101,6 +101,49 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public void Initialize_WhenCharactersJsonContainsNullFields_NormalizesCharacters()
+    {
+        string charactersPath = Path.Combine(testDirectory, "Data", "configs", "characters.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(charactersPath)!);
+        File.WriteAllText(charactersPath, """
+[
+  {
+    "UserID": " abc123 ",
+    "CharacterName": null,
+    "DataCenter": null,
+    "World": null,
+    "Note": null
+  },
+  null,
+  {
+    "UserID": null,
+    "CharacterName": "  测试角色  ",
+    "DataCenter": "  Elemental  ",
+    "World": "  Aegis  ",
+    "Note": "  备注  "
+  }
+]
+""");
+        AppDataStore store = CreateStore();
+
+        store.Initialize();
+
+        Assert.Equal(2, store.Characters.Count);
+        Assert.Equal("ABC123", store.Characters[0].UserID);
+        Assert.Equal(string.Empty, store.Characters[0].CharacterName);
+        Assert.Equal(string.Empty, store.Characters[0].DataCenter);
+        Assert.Equal(string.Empty, store.Characters[0].World);
+        Assert.Equal(string.Empty, store.Characters[0].Note);
+        Assert.NotEqual(default, store.Characters[0].UpdatedAt);
+        Assert.Equal("UNKNOWN", store.Characters[1].UserID);
+        Assert.Equal("测试角色", store.Characters[1].CharacterName);
+        Assert.Equal("Elemental", store.Characters[1].DataCenter);
+        Assert.Equal("Aegis", store.Characters[1].World);
+        Assert.Equal("备注", store.Characters[1].Note);
+        Assert.NotEqual(default, store.Characters[1].UpdatedAt);
+    }
+
+    [Fact]
     public void Initialize_WhenBootstrapDirectoryCannotBeCreated_ThrowsAppDataStoreException()
     {
         Directory.CreateDirectory(testDirectory);
