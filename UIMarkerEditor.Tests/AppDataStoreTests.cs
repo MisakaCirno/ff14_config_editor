@@ -1422,6 +1422,34 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenOnlineCacheWriteFails_ReturnsFailureWithoutApplyingMapData()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        string pinnedCsvUrl = CreateMapDataPinnedCsvUrl(GitHubMapDataCommitSha);
+        networkClient.AddResponse(
+            MapDataOnlineReferenceCommitApiUrl,
+            CreateGitHubCommitApiResponse(GitHubMapDataCommitSha, "[ver 2026.06.10.0000.0000]"));
+        networkClient.AddResponse(pinnedCsvUrl, CreateContentFinderConditionCsv(123, "在线副本"));
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+        Directory.CreateDirectory(store.MapDataCacheFilePath);
+
+        MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
+
+        Assert.False(result.Success);
+        Assert.False(result.CacheAvailable);
+        Assert.Equal("应用在线地图数据", result.FailureStage);
+        Assert.Contains("应用失败", result.FailureReason);
+        Assert.Contains("写入地图数据缓存", result.FailureReason);
+        Assert.False(MapData.HasData);
+        Assert.Equal(2, networkClient.Requests.Count);
+        Assert.Contains(networkClient.Requests, request =>
+            string.Equals(request.Url, MapDataOnlineReferenceCommitApiUrl, StringComparison.Ordinal));
+        Assert.Contains(networkClient.Requests, request =>
+            string.Equals(request.Url, pinnedCsvUrl, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task EnsureMapDataAvailableAsync_WhenGitHubSnapshotMatchesCache_DoesNotReportUpdated()
     {
         string pinnedCsvUrl = CreateMapDataPinnedCsvUrl(GitHubMapDataCommitSha);

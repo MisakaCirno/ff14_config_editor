@@ -335,7 +335,8 @@ public sealed partial class AppDataStore
         string snapshotVersion = string.IsNullOrWhiteSpace(version)
             ? MapDataSourceParsers.CreateContentHashVersion(csv)
             : version;
-        return ApplyOnlineMapDataSnapshot(
+        return TryApplyOnlineMapDataSnapshot(
+            source,
             CreateOnlineReferenceMapDataSource(source.Kind),
             snapshotVersion,
             string.IsNullOrWhiteSpace(sourceFingerprint) ? snapshotVersion : sourceFingerprint,
@@ -414,13 +415,41 @@ public sealed partial class AppDataStore
             sourceFingerprint = version;
         }
 
-        return ApplyOnlineMapDataSnapshot(
+        return TryApplyOnlineMapDataSnapshot(
+            source,
             CreateOnlineReferenceMapDataSource(source.Kind),
             version,
             sourceFingerprint,
             mapNames,
             source.ContentUrl,
             successfulSyncTime);
+    }
+
+    private MapDataLoadResult? TryApplyOnlineMapDataSnapshot(
+        MapDataOnlineSourceDefinition source,
+        string cacheSource,
+        string version,
+        string sourceFingerprint,
+        IReadOnlyDictionary<ushort, string> mapNames,
+        string sourcePath,
+        DateTime successfulSyncTime)
+    {
+        bool hasFallbackCache = TryReadMapDataCache(cacheSource, out MapDataCache fallbackCache);
+        try
+        {
+            return ApplyOnlineMapDataSnapshot(
+                cacheSource,
+                version,
+                sourceFingerprint,
+                mapNames,
+                sourcePath,
+                successfulSyncTime);
+        }
+        catch (Exception ex) when (IsRecoverableMapDataSnapshotApplyException(ex))
+        {
+            string failureReason = $"{FormatMapDataOnlineSourceName(source)}（{sourcePath}）：应用失败，{FormatDataSyncFailureReason(ex)}";
+            return CreateOnlineMapDataApplyFailureResult(cacheSource, version, failureReason, hasFallbackCache, fallbackCache);
+        }
     }
 
     private MapDataLoadResult ApplyOnlineMapDataSnapshot(
@@ -502,6 +531,45 @@ public sealed partial class AppDataStore
             nextCache.Version,
             CacheAvailable: true,
             SourcePath: nextCache.SourcePath);
+    }
+
+    private MapDataLoadResult CreateOnlineMapDataApplyFailureResult(
+        string cacheSource,
+        string version,
+        string failureReason,
+        bool hasFallbackCache,
+        MapDataCache fallbackCache)
+    {
+        const string failureStage = "应用在线地图数据";
+        if (TryCreateMapDataSourceChangedResult(
+            cacheSource,
+            version,
+            failureStage,
+            out MapDataLoadResult? sourceChangedResult))
+        {
+            return sourceChangedResult!;
+        }
+
+        if (hasFallbackCache && ApplyMapDataCache(fallbackCache))
+        {
+            string cacheVersion = string.IsNullOrWhiteSpace(MapDataVersion) ? version : MapDataVersion;
+            return new MapDataLoadResult(
+                true,
+                false,
+                cacheVersion,
+                UsedCache: true,
+                CacheAvailable: true,
+                FailureStage: failureStage,
+                FailureReason: failureReason,
+                SourcePath: MapDataSourcePath);
+        }
+
+        return CreateMapDataFailureResult(version, failureStage, failureReason);
+    }
+
+    private static bool IsRecoverableMapDataSnapshotApplyException(Exception ex)
+    {
+        return ex is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException or AppDataStoreException;
     }
 
     private MapDataLoadResult LoadMapDataFromLocalGame(bool forceRefresh)
