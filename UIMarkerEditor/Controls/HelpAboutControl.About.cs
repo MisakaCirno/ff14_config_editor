@@ -15,6 +15,7 @@ namespace UIMarkerEditor.Controls;
 public partial class HelpAboutControl
 {
     private const string Repository = "https://github.com/MisakaCirno/ff14_config_editor";
+    private const string License = "https://github.com/MisakaCirno/ff14_config_editor/blob/master/LICENSE";
     private const string BilibiliName = "@御琪幽然";
     private const string Bilibili = "https://space.bilibili.com/2908365";
     private const string QqGroupNumber = "1075777023";
@@ -47,6 +48,7 @@ public partial class HelpAboutControl
         AddInfoRow("版本号", GetVersionText());
         AddInfoRow("发布日期", "2026年6月19日");
         AddInfoRow("Git 仓库", Repository, Repository);
+        AddInfoRow("开源协议", "MIT License", License);
         AddInfoRow("Bilibili", BilibiliName, Bilibili);
         AddInfoRow("QQ交流群", QqGroupNumber, QqGroup);
         AddReleaseDownloadPanel();
@@ -58,14 +60,15 @@ public partial class HelpAboutControl
         AddSectionTitle("第三方使用");
         AddInfoRow("服务器列表页面", ExternalLinks.ServerListPage, ExternalLinks.ServerListPage);
         AddInfoRow("服务器状态 API", ExternalLinks.ServerStatusApi, ExternalLinks.ServerStatusApi);
-        AddInfoRow("地图数据来源", "ffxiv-datamining-cn ContentFinderCondition.csv", ExternalLinks.MapDataOnlineReferenceCsv);
-        AddInfoRow("地图数据来源", "Diemoe MatchaData", ExternalLinks.MapDataDiemoeInstance);
-        AddInfoRow("地图数据读取", "本地 FFXIV 客户端 sqpack");
-        AddInfoRow("标点分享页面", "Souma", Souma);
-        AddInfoRow("游戏数据读取库", "Lumina", Lumina);
+        AddInfoRow("地图数据来源", ExternalLinks.MapDataOnlineReferenceCsv, ExternalLinks.MapDataOnlineReferenceCsv);
+        AddInfoRow("地图数据来源", ExternalLinks.MapDataDiemoeInstance, ExternalLinks.MapDataDiemoeInstance);
+        AddInfoRow("地图数据版本", ExternalLinks.MapDataDiemoeVersion, ExternalLinks.MapDataDiemoeVersion);
+        AddInfoRow("标点分享页面", Souma, Souma);
+        AddInfoRow("游戏数据读取库", Lumina, Lumina);
         AddInfoRow("界面图标", "Lucide Icons（ISC License，部分源自 Feather / MIT License）", LucideLicense);
         AddInfoRow("图片素材", "FINAL FANTASY XIV 游戏内素材，© SQUARE ENIX CO., LTD. All Rights Reserved.", FfxivMaterialUsageLicense);
-        AddTextLine("FINAL FANTASY XIV 及相关素材版权、商标归 Square Enix Holdings Co., Ltd. / Square Enix Co., Ltd. 所有。本工具为非官方工具，与 Square Enix 无从属或授权关系。");
+        AddTextLine("FINAL FANTASY XIV 及相关素材版权、商标归 Square Enix Holdings Co., Ltd. / Square Enix Co., Ltd. 所有。");
+        AddTextLine("本工具为非官方工具，与 Square Enix 无从属或授权关系。");
 
         AddSectionTitle("参考项目");
         AddInfoRow("解析算法", UisaveReader, UisaveReader);
@@ -342,6 +345,7 @@ public partial class HelpAboutControl
         {
             NavigateUri = new Uri(url, UriKind.Absolute)
         };
+        ToolTipService.SetToolTip(hyperlink, url);
         hyperlink.RequestNavigate += Hyperlink_RequestNavigate;
         return hyperlink;
     }
