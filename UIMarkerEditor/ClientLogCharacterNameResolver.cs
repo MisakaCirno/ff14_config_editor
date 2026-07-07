@@ -10,6 +10,7 @@ internal static class ClientLogCharacterNameResolver
 {
     private const int EntryHeaderLength = 8;
     private const int FileBufferSize = 4096;
+    private const int MaxOffsetTableLength = 4 * 1024 * 1024;
     private const int JobChangeLogKind = 57;
     private const int PartyChatLogKind = 14;
     private const int AllianceChatLogKind = 15;
@@ -273,12 +274,22 @@ internal static class ClientLogCharacterNameResolver
         int entryCount = (int)entryCountLong;
         long offsetTableLength = (long)entryCount * sizeof(uint);
         long bodyBase = 8 + offsetTableLength;
-        if (offsetTableLength > int.MaxValue || bodyBase > fileLength)
+        if (offsetTableLength > MaxOffsetTableLength)
+        {
+            throw new FF14LogParseException(
+                $"日志 offset table 过大：{offsetTableLength} 字节，超过 offset table 上限 {MaxOffsetTableLength} 字节（4 MiB）。",
+                8,
+                expectedLength: MaxOffsetTableLength,
+                remainingLength: checked((int)Math.Min(Math.Max(0, fileLength - 8), int.MaxValue)),
+                filePath: filePath);
+        }
+
+        if (bodyBase > fileLength)
         {
             throw new FF14LogParseException(
                 "日志 offset table 超出文件长度。",
                 8,
-                expectedLength: offsetTableLength > int.MaxValue ? int.MaxValue : (int)offsetTableLength,
+                expectedLength: (int)offsetTableLength,
                 remainingLength: checked((int)Math.Min(Math.Max(0, fileLength - 8), int.MaxValue)),
                 filePath: filePath);
         }

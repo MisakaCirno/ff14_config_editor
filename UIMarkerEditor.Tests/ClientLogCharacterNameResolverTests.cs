@@ -7,6 +7,7 @@ namespace UIMarkerEditor.Tests;
 
 public sealed class ClientLogCharacterNameResolverTests : IDisposable
 {
+    private const int OffsetTableLengthLimit = 4 * 1024 * 1024;
     private const string JobChangeMarker = "\u7684\u804C\u4E1A\u8F6C\u6362\u6210\u4E86\u201C";
     private const string JobChangeSuffix = "\u201D\u3002";
     private const string PlayerOne = "\u73A9\u5BB6\u4E00\u53F7";
@@ -209,6 +210,26 @@ public sealed class ClientLogCharacterNameResolverTests : IDisposable
         Assert.Contains("SEString token", error.Message);
     }
 
+    [Fact]
+    public void FindLatestFromCharacterDirectory_WhenOffsetTableIsTooLarge_ReportsLogReadError()
+    {
+        string characterDirectory = CreateCharacterDirectory("0011223344556677");
+        WriteSparseLogWithEntryCount(
+            characterDirectory,
+            "00000000.log",
+            (OffsetTableLengthLimit / sizeof(uint)) + 1);
+        List<ClientLogCharacterNameScanError> errors = [];
+
+        ClientLogCharacterNameMatch? match = ClientLogCharacterNameResolver.FindLatestFromCharacterDirectory(
+            characterDirectory,
+            errors);
+
+        Assert.Null(match);
+        ClientLogCharacterNameScanError error = Assert.Single(errors);
+        Assert.Equal(Path.Combine(characterDirectory, "log", "00000000.log"), error.Path);
+        Assert.Contains("offset table 过大", error.Message);
+    }
+
     private string CreateCharacterDirectory(string userID)
     {
         string characterDirectory = Path.Combine(testDirectory, $"FFXIV_CHR{userID}");
@@ -221,6 +242,20 @@ public sealed class ClientLogCharacterNameResolverTests : IDisposable
         string logDirectory = Path.Combine(characterDirectory, "log");
         Directory.CreateDirectory(logDirectory);
         File.WriteAllBytes(Path.Combine(logDirectory, fileName), BuildLogFile(entries));
+    }
+
+    private static void WriteSparseLogWithEntryCount(string characterDirectory, string fileName, int entryCount)
+    {
+        string logDirectory = Path.Combine(characterDirectory, "log");
+        Directory.CreateDirectory(logDirectory);
+        string logPath = Path.Combine(logDirectory, fileName);
+
+        using FileStream stream = new(logPath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.Read);
+        Span<byte> header = stackalloc byte[8];
+        BinaryPrimitives.WriteUInt32LittleEndian(header[..4], 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(header.Slice(4, 4), checked((uint)(100 + entryCount)));
+        stream.Write(header);
+        stream.SetLength(8L + ((long)entryCount * sizeof(uint)));
     }
 
     private static LogSource Entry(uint timestamp, uint kind, string body)

@@ -7,6 +7,7 @@ public static class FF14LogFileParser
     private const int HeaderLength = 8;
     private const int EntryHeaderLength = 8;
     private const int MaxEntryLength = 4 * 1024 * 1024;
+    private const int MaxOffsetTableLength = 4 * 1024 * 1024;
     private const int FileBufferSize = 4096;
 
     public static IReadOnlyList<FF14LogEntry> ParseFile(string path)
@@ -158,12 +159,12 @@ public static class FF14LogFileParser
 
         var entryCount = (int)entryCountLong;
         var offsetTableLength = (long)entryCount * sizeof(uint);
-        if (offsetTableLength > int.MaxValue)
+        if (offsetTableLength > MaxOffsetTableLength)
         {
             throw new FF14LogParseException(
-                $"日志 offset table 过大：{offsetTableLength} 字节。",
+                $"日志 offset table 过大：{offsetTableLength} 字节，超过 offset table 上限 {MaxOffsetTableLength} 字节（4 MiB）。",
                 offset: HeaderLength,
-                expectedLength: null,
+                expectedLength: MaxOffsetTableLength,
                 remainingLength: checked((int)Math.Min(Math.Max(0, fileLength - HeaderLength), int.MaxValue)),
                 filePath: filePath);
         }

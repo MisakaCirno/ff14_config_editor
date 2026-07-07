@@ -5,6 +5,7 @@ namespace FF14LogParser.Tests;
 
 public sealed class FF14LogFileParserTests
 {
+    private const int OffsetTableLengthLimit = 4 * 1024 * 1024;
     private static readonly UTF8Encoding Utf8 = new(false, true);
 
     [Fact]
@@ -72,6 +73,22 @@ public sealed class FF14LogFileParserTests
         Assert.Equal(0, exception.EntryIndex);
         Assert.Equal(8, exception.ExpectedLength);
         Assert.Equal(4, exception.RemainingLength);
+    }
+
+    [Fact]
+    public void Parse_RejectsOversizedOffsetTable()
+    {
+        var bytes = new byte[8];
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(0, 4), 100);
+        BinaryPrimitives.WriteUInt32LittleEndian(
+            bytes.AsSpan(4, 4),
+            100u + (uint)((OffsetTableLengthLimit / sizeof(uint)) + 1));
+
+        var exception = Assert.Throws<FF14LogParseException>(() => FF14LogFileParser.Parse(bytes));
+
+        Assert.Equal(8, exception.Offset);
+        Assert.Equal(OffsetTableLengthLimit, exception.ExpectedLength);
+        Assert.Contains("offset table 过大", exception.Message);
     }
 
     private static LogSource Entry(uint timestamp, uint meta, string text)
