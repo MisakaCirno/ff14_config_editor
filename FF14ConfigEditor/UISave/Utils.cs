@@ -11,6 +11,8 @@ namespace FF14ConfigEditor.UISave
     {
         public static byte[] DecryptData(byte[] encryptedData, byte xor_key = 0x31)
         {
+            ArgumentNullException.ThrowIfNull(encryptedData);
+
             byte[] decryptedData = new byte[encryptedData.Length];
             for (int i = 0; i < encryptedData.Length; i++)
             {
@@ -21,6 +23,8 @@ namespace FF14ConfigEditor.UISave
 
         public static byte[] EncryptData(byte[] plainData, byte xor_key = 0x31)
         {
+            ArgumentNullException.ThrowIfNull(plainData);
+
             byte[] encryptedData = new byte[plainData.Length];
             for (int i = 0; i < plainData.Length; i++)
             {

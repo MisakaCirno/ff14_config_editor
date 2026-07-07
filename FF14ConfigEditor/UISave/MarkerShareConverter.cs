@@ -231,6 +231,7 @@ namespace FF14ConfigEditor.UISave
                 return false;
             }
 
+            // 分享码导入要求坐标能按 3 位小数精确保存，不在这里做取整。
             if (rawValue != decimal.Truncate(rawValue))
             {
                 errorMessage = $"{pointName} 点 {axisName} 坐标最多支持 3 位小数：{FormatCoordinateForMessage(value.Value)}。";

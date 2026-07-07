@@ -16,6 +16,15 @@ public class UtilsTests
     }
 
     [Fact]
+    public void EncryptData_NullPlainData_ThrowsArgumentNullException()
+    {
+        ArgumentNullException exception = Assert.Throws<ArgumentNullException>(
+            () => Utils.EncryptData(null!));
+
+        Assert.Equal("plainData", exception.ParamName);
+    }
+
+    [Fact]
     public void EncryptAndDecryptData_AreSymmetric()
     {
         byte[] plainData = [0x00, 0x01, 0x31, 0x7F, 0x80, 0xFF];
@@ -24,6 +33,15 @@ public class UtilsTests
         byte[] decryptedData = Utils.DecryptData(encryptedData);
 
         Assert.Equal(plainData, decryptedData);
+    }
+
+    [Fact]
+    public void DecryptData_NullEncryptedData_ThrowsArgumentNullException()
+    {
+        ArgumentNullException exception = Assert.Throws<ArgumentNullException>(
+            () => Utils.DecryptData(null!));
+
+        Assert.Equal("encryptedData", exception.ParamName);
     }
 
     [Fact]

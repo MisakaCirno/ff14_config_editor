@@ -13,11 +13,18 @@ namespace FF14ConfigEditor
 
         public static void WriteAllText(string path, string contents, Encoding encoding)
         {
+            ArgumentNullException.ThrowIfNull(path);
+            ArgumentNullException.ThrowIfNull(contents);
+            ArgumentNullException.ThrowIfNull(encoding);
+
             WriteAllBytes(path, encoding.GetBytes(contents));
         }
 
         public static void WriteAllBytes(string path, byte[] contents)
         {
+            ArgumentNullException.ThrowIfNull(path);
+            ArgumentNullException.ThrowIfNull(contents);
+
             string fullPath = Path.GetFullPath(path);
             string directory = Path.GetDirectoryName(fullPath)
                 ?? throw new InvalidOperationException("Target file must have a parent directory.");
@@ -48,6 +55,9 @@ namespace FF14ConfigEditor
 
         public static void Copy(string sourcePath, string targetPath)
         {
+            ArgumentNullException.ThrowIfNull(sourcePath);
+            ArgumentNullException.ThrowIfNull(targetPath);
+
             string sourceFullPath = Path.GetFullPath(sourcePath);
             string targetFullPath = Path.GetFullPath(targetPath);
             string targetDirectory = Path.GetDirectoryName(targetFullPath)

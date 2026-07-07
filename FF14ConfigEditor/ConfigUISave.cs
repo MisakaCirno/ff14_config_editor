@@ -24,6 +24,7 @@ namespace FF14ConfigEditor
         private const int PayloadUnknownByteLength = 8;
         private const int UserIdByteLength = 8;
         private const int SectionIndexByteLength = 2;
+        // 防御性解析上限：真实 UISAVE 体积远低于这些值，先限制长度再分配数组。
         private const int BytesPerMiB = 1024 * 1024;
         private const int MaxEncryptedPayloadLength = 32 * BytesPerMiB;
         private const int MaxSectionDataLength = 8 * BytesPerMiB;

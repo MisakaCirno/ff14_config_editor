@@ -45,6 +45,25 @@ public sealed class SafeFileWriterTests : IDisposable
     }
 
     [Fact]
+    public void WriteAllText_NullArguments_ThrowArgumentNullException()
+    {
+        string targetPath = Path.Combine(testDirectory, "config.json");
+
+        AssertArgumentNull("path", () => SafeFileWriter.WriteAllText(null!, "contents"));
+        AssertArgumentNull("contents", () => SafeFileWriter.WriteAllText(targetPath, null!));
+        AssertArgumentNull("encoding", () => SafeFileWriter.WriteAllText(targetPath, "contents", null!));
+    }
+
+    [Fact]
+    public void WriteAllBytes_NullArguments_ThrowArgumentNullException()
+    {
+        string targetPath = Path.Combine(testDirectory, "UISAVE.DAT");
+
+        AssertArgumentNull("path", () => SafeFileWriter.WriteAllBytes(null!, [0x01]));
+        AssertArgumentNull("contents", () => SafeFileWriter.WriteAllBytes(targetPath, null!));
+    }
+
+    [Fact]
     public void WriteAllBytes_WhenTargetIsLocked_ThrowsAndLeavesTargetUnchanged()
     {
         string targetPath = Path.Combine(testDirectory, "UISAVE.DAT");
@@ -78,6 +97,16 @@ public sealed class SafeFileWriterTests : IDisposable
 
         Assert.Equal(sourceContents, File.ReadAllBytes(targetPath));
         AssertNoTemporaryFiles();
+    }
+
+    [Fact]
+    public void Copy_NullArguments_ThrowArgumentNullException()
+    {
+        string sourcePath = Path.Combine(testDirectory, "source.dat");
+        string targetPath = Path.Combine(testDirectory, "target", "UISAVE.DAT");
+
+        AssertArgumentNull("sourcePath", () => SafeFileWriter.Copy(null!, targetPath));
+        AssertArgumentNull("targetPath", () => SafeFileWriter.Copy(sourcePath, null!));
     }
 
     [Fact]
@@ -133,5 +162,11 @@ public sealed class SafeFileWriterTests : IDisposable
         Assert.True(
             exception is IOException or UnauthorizedAccessException,
             $"Expected an IO or access failure, but got {exception.GetType().FullName}: {exception.Message}");
+    }
+
+    private static void AssertArgumentNull(string expectedParamName, Action action)
+    {
+        ArgumentNullException exception = Assert.Throws<ArgumentNullException>(action);
+        Assert.Equal(expectedParamName, exception.ParamName);
     }
 }
