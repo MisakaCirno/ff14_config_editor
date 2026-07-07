@@ -271,8 +271,9 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         ConfigUISave config = new(path);
         config.Sections[0].data = null!;
 
-        Assert.Throws<UISaveFormatException>(config.Save);
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(config.Save);
         Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "段数据");
     }
 
     [Fact]
@@ -307,8 +308,9 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         ConfigUISave config = new(path);
         UISaveTestData.SetConfigByteArrayField(config, "fileTailRaw", null);
 
-        Assert.Throws<UISaveFormatException>(config.Save);
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(config.Save);
         Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "文件尾部填充");
     }
 
     [Fact]
@@ -320,8 +322,9 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         ConfigUISave config = new(path);
         UISaveTestData.SetConfigByteArrayField(config, "payloadTailRaw", null);
 
-        Assert.Throws<UISaveFormatException>(config.Save);
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(config.Save);
         Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "加密部分尾部填充");
     }
 
     [Fact]
@@ -441,8 +444,9 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         SectionFMARKER section = Assert.IsType<SectionFMARKER>(config.Sections[0]);
         UISaveTestData.SetMarkerTail(section, [0xAA]);
 
-        Assert.Throws<UISaveFormatException>(config.Save);
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(config.Save);
         Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "FMARKER 标记尾部");
     }
 
     [Fact]
@@ -456,8 +460,9 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         SectionFMARKER section = Assert.IsType<SectionFMARKER>(config.Sections[0]);
         UISaveTestData.SetMarkerHeader(section, [0xAA]);
 
-        Assert.Throws<UISaveFormatException>(config.Save);
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(config.Save);
         Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "FMARKER 标记头");
     }
 
     [Fact]
@@ -471,8 +476,9 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         SectionFMARKER section = Assert.IsType<SectionFMARKER>(config.Sections[0]);
         section.WayMarks.Add(null!);
 
-        Assert.Throws<UISaveFormatException>(config.Save);
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(config.Save);
         Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "FMARKER 第 2 个标点预设");
     }
 
     [Fact]
@@ -486,8 +492,9 @@ public sealed class ConfigUISaveBinaryTests : IDisposable
         SectionFMARKER section = Assert.IsType<SectionFMARKER>(config.Sections[0]);
         section.WayMarks[0].A = null!;
 
-        Assert.Throws<UISaveFormatException>(config.Save);
+        UISaveFormatException ex = Assert.Throws<UISaveFormatException>(config.Save);
         Assert.Equal(originalFileBytes, File.ReadAllBytes(path));
+        UISaveFormatExceptionAssert.HasDiagnostic(ex, "FMARKER 第 1 个标点预设的 A 点");
     }
 
     [Fact]
