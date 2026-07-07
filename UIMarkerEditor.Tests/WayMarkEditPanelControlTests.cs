@@ -1,6 +1,9 @@
 ﻿using System.Windows;
+using System.IO;
 using System.Windows.Controls;
+using System.Windows.Media;
 using FF14ConfigEditor.UISave;
+using UIMarkerEditor;
 using UIMarkerEditor.Controls;
 
 namespace UIMarkerEditor.Tests;
@@ -47,6 +50,58 @@ public sealed class WayMarkEditPanelControlTests
         Assert.Null(exception);
     }
 
+    [Fact]
+    public void FavoriteConfirmSaveOrDiscardChanges_WhenAutoSaveMode_CommitsPendingCoordinateBeforeSaving()
+    {
+        string testDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "UIMarkerEditor.FavoritePendingEditTests",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(testDirectory);
+        try
+        {
+            Exception? exception = WpfTestHost.Run(() =>
+            {
+                WpfTestHost.EnsureApplicationResources();
+                AppDataStore store = new(testDirectory);
+                store.Initialize();
+                WayMark wayMark = new()
+                {
+                    RegionID = 123
+                };
+                store.AddWayMarkFavorite(WayMarkSnapshotConverter.CreateSnapshot(wayMark), "测试收藏");
+
+                WayMarkFavoritesControl control = new();
+                Window owner = new()
+                {
+                    Content = control
+                };
+                control.Initialize(store, owner);
+                control.ApplySettings(new AppSettings
+                {
+                    WayMarkFavoriteSaveMode = WayMarkFavoriteSaveMode.Auto
+                });
+                owner.Show();
+                control.UpdateLayout();
+
+                TextBox textBox = FindVisualChildByName<TextBox>(control, "A_X_TextBox")
+                    ?? throw new InvalidOperationException("A_X_TextBox not found.");
+                textBox.Text = "123.456";
+
+                Assert.True(control.ConfirmSaveOrDiscardChanges());
+                Assert.Equal(123456, store.WayMarkFavorites[0].Marker.A.X);
+
+                owner.Close();
+            });
+
+            Assert.Null(exception);
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
     private static WayMarkEditPanelControl CreateControl(WayMark wayMark)
     {
         WpfTestHost.EnsureApplicationResources();
@@ -73,5 +128,26 @@ public sealed class WayMarkEditPanelControlTests
     private static TextBox GetCoordinateTextBox(WayMarkEditPanelControl control, string name)
     {
         return Assert.IsType<TextBox>(control.FindName(name));
+    }
+
+    private static T? FindVisualChildByName<T>(DependencyObject parent, string name)
+        where T : FrameworkElement
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T typedChild && typedChild.Name == name)
+            {
+                return typedChild;
+            }
+
+            T? descendant = FindVisualChildByName<T>(child, name);
+            if (descendant != null)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
     }
 }

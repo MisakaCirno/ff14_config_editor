@@ -20,6 +20,7 @@ namespace UIMarkerEditor
         private void Window_Closing(object? sender, CancelEventArgs e)
         {
             if (!ConfirmSaveOrDiscardWayMarkChanges() ||
+                !WayMarkFavorites_Control.ConfirmSaveOrDiscardChanges() ||
                 !ConfirmSaveOrDiscardCharacterChanges())
             {
                 e.Cancel = true;

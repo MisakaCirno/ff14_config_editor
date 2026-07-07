@@ -128,6 +128,11 @@ public partial class WayMarkFavoritesControl : UserControl
         layout.WayMarkFavoritePreviewRatio = FavoritePreview_Column.ActualWidth / totalWidth;
     }
 
+    public bool ConfirmSaveOrDiscardChanges()
+    {
+        return TryHandlePendingChanges();
+    }
+
     private static double ClampRatio(double value)
     {
         return double.IsFinite(value) && value > 0.05 ? value : 0.05;
@@ -365,6 +370,11 @@ public partial class WayMarkFavoritesControl : UserControl
 
     private bool TryHandlePendingChanges()
     {
+        if (!TryCommitPendingFavoriteEdits())
+        {
+            return false;
+        }
+
         if (!hasUnsavedChanges) return true;
 
         if (isAutoSaveMode)
@@ -391,6 +401,8 @@ public partial class WayMarkFavoritesControl : UserControl
     {
         autoSaveTimer.Stop();
         if (appDataStore == null || loadedFavorite == null || editingWayMark == null) return false;
+        if (!TryCommitPendingFavoriteEdits()) return false;
+        autoSaveTimer.Stop();
 
         WayMarkFavorite updatedFavorite = WayMarkSnapshotConverter.CloneFavorite(loadedFavorite);
         updatedFavorite.CommentName = CommentName_TextBox.Text.Trim();
@@ -417,6 +429,22 @@ public partial class WayMarkFavoritesControl : UserControl
             }
             return false;
         }
+    }
+
+    private bool TryCommitPendingFavoriteEdits()
+    {
+        if (WayMarkEditPanel_Control.CommitPendingEdits())
+        {
+            return true;
+        }
+
+        AppMessageBox.Show(
+            ownerWindow,
+            "当前坐标输入不完整或超出可保存范围，请修正后再继续。",
+            "坐标输入无效",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+        return false;
     }
 
     private void SetAutoSaveStatus(string text, Brush foreground, string? toolTip = null)
