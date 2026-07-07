@@ -139,22 +139,6 @@ namespace FF14ConfigEditor.UISave
                 {
                     _regionID = value;
                     OnPropertyChanged(nameof(RegionID));
-                    OnPropertyChanged(nameof(DisplayRegionID));
-                }
-            }
-        }
-
-        public string DisplayRegionID
-        {
-            get
-            {
-                return _regionID.ToString();
-            }
-            set
-            {
-                if (ushort.TryParse(value, out ushort parsedID))
-                {
-                    RegionID = parsedID;
                 }
             }
         }
