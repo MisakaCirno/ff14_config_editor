@@ -185,6 +185,30 @@ public sealed class ClientLogCharacterNameResolverTests : IDisposable
         Assert.Null(match);
     }
 
+    [Fact]
+    public void FindLatestFromCharacterDirectory_WhenSenderTokenLengthWouldOverflow_ReportsLogReadError()
+    {
+        string characterDirectory = CreateCharacterDirectory("0011223344556677");
+        WriteLog(
+            characterDirectory,
+            "00000000.log",
+            ChatEntryWithRawSender(
+                100,
+                15,
+                [0x02, 0x27, 0xFE, 0x7F, 0xFF, 0xFF, 0xFF],
+                "\u635F\u574F\u804A\u5929\u8BB0\u5F55"));
+        List<ClientLogCharacterNameScanError> errors = [];
+
+        ClientLogCharacterNameMatch? match = ClientLogCharacterNameResolver.FindLatestFromCharacterDirectory(
+            characterDirectory,
+            errors);
+
+        Assert.Null(match);
+        ClientLogCharacterNameScanError error = Assert.Single(errors);
+        Assert.Equal(Path.Combine(characterDirectory, "log", "00000000.log"), error.Path);
+        Assert.Contains("SEString token", error.Message);
+    }
+
     private string CreateCharacterDirectory(string userID)
     {
         string characterDirectory = Path.Combine(testDirectory, $"FFXIV_CHR{userID}");

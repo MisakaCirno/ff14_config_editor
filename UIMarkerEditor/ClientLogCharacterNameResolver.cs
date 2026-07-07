@@ -491,19 +491,19 @@ internal static class ClientLogCharacterNameResolver
 
         cursor += lengthBytes;
         int dataLength = (int)length;
-        int inclusiveEnd = cursor + dataLength - 1;
-        if (dataLength > 0 && inclusiveEnd < bytes.Length && bytes[inclusiveEnd] == SeStringTokenEnd)
+        long inclusiveEnd = (long)cursor + dataLength - 1;
+        if (dataLength > 0 && inclusiveEnd < bytes.Length && bytes[(int)inclusiveEnd] == SeStringTokenEnd)
         {
             data = bytes.Slice(cursor, dataLength - 1);
-            nextPosition = inclusiveEnd + 1;
+            nextPosition = (int)inclusiveEnd + 1;
             return true;
         }
 
-        int exclusiveEnd = cursor + dataLength;
-        if (exclusiveEnd < bytes.Length && bytes[exclusiveEnd] == SeStringTokenEnd)
+        long exclusiveEnd = (long)cursor + dataLength;
+        if (exclusiveEnd < bytes.Length && bytes[(int)exclusiveEnd] == SeStringTokenEnd)
         {
             data = bytes.Slice(cursor, dataLength);
-            nextPosition = exclusiveEnd + 1;
+            nextPosition = (int)exclusiveEnd + 1;
             return true;
         }
 

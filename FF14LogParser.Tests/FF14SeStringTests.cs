@@ -45,6 +45,17 @@ public sealed class FF14SeStringTests
         Assert.Equal(0, exception.Offset);
     }
 
+    [Fact]
+    public void ExtractPlainText_RejectsTokenLengthThatWouldOverflowPosition()
+    {
+        byte[] payload = [0x02, 0x12, 0xFE, 0x7F, 0xFF, 0xFF, 0xFF];
+
+        var exception = Assert.Throws<FF14LogParseException>(() => FF14SeString.ExtractPlainText(payload));
+
+        Assert.Equal(0, exception.Offset);
+        Assert.Contains("长度越界", exception.Message);
+    }
+
     private static byte[] Concat(params byte[][] parts)
     {
         var result = new byte[parts.Sum(static p => p.Length)];

@@ -69,24 +69,24 @@ public static class FF14SeString
         }
 
         var dataLength = (int)length.Value;
-        var inclusiveEnd = cursor + dataLength - 1;
-        if (dataLength > 0 && inclusiveEnd < payload.Length && payload[inclusiveEnd] == TokenEnd)
+        var inclusiveEnd = (long)cursor + dataLength - 1;
+        if (dataLength > 0 && inclusiveEnd < payload.Length && payload[(int)inclusiveEnd] == TokenEnd)
         {
-            position = inclusiveEnd + 1;
+            position = (int)inclusiveEnd + 1;
             return;
         }
 
-        var exclusiveEnd = cursor + dataLength;
-        if (exclusiveEnd < payload.Length && payload[exclusiveEnd] == TokenEnd)
+        var exclusiveEnd = (long)cursor + dataLength;
+        if (exclusiveEnd < payload.Length && payload[(int)exclusiveEnd] == TokenEnd)
         {
-            position = exclusiveEnd + 1;
+            position = (int)exclusiveEnd + 1;
             return;
         }
 
         throw new FF14LogParseException(
             "SEString token 长度越界或缺少结束符 0x03。",
             tokenOffset,
-            expectedLength: dataLength + 1,
+            expectedLength: length.Value >= int.MaxValue ? null : dataLength + 1,
             remainingLength: Math.Max(0, payload.Length - cursor));
     }
 
