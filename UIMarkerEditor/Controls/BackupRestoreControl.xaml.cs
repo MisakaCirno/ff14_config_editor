@@ -306,10 +306,7 @@ public partial class BackupRestoreControl : UserControl
             return;
         }
 
-        bool willCreateSafetyBackup =
-            appDataStore.Settings.AutoBackupBeforeRestore &&
-            File.Exists(backup.OriginalFilePath) &&
-            appDataStore.IsTrustedGameCharacterSaveFile(backup.OriginalFilePath);
+        bool willCreateSafetyBackup = ShouldCreateSafetyBackupBeforeRestore(backup.OriginalFilePath);
         string warning = BuildRestoreWarning(backup, backup.OriginalFilePath, willCreateSafetyBackup);
         if (AppMessageBox.Show(ownerWindow, warning, "确认还原备份", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
         {
@@ -318,12 +315,9 @@ public partial class BackupRestoreControl : UserControl
 
         try
         {
-            if (willCreateSafetyBackup)
+            if (!TryCreateSafetyBackupBeforeRestore(backup.OriginalFilePath, willCreateSafetyBackup))
             {
-                appDataStore.CreateBackup(
-                    backup.OriginalFilePath,
-                    cleanupAfterCreate: false,
-                    creationTrigger: BackupCreationTriggers.BeforeRestore);
+                return;
             }
 
             appDataStore.RestoreBackup(backup, backup.OriginalFilePath);
@@ -381,13 +375,14 @@ public partial class BackupRestoreControl : UserControl
 
         string targetFilePath = saveFileDialog.FileName;
         bool targetIsCurrentFile = IsCurrentFile(targetFilePath);
+        bool willCreateSafetyBackup = ShouldCreateSafetyBackupBeforeRestore(targetFilePath);
         if (targetIsCurrentFile && !confirmSaveOrDiscardWayMarkChanges())
         {
             return;
         }
 
         RestoreBackupAsTargetConfirmation targetConfirmation =
-            RestoreBackupAsTargetConfirmation.Evaluate(targetFilePath, File.Exists(targetFilePath));
+            RestoreBackupAsTargetConfirmation.Evaluate(targetFilePath, File.Exists(targetFilePath), willCreateSafetyBackup);
         if (targetConfirmation.RequiresConfirmation &&
             AppMessageBox.Show(
                 ownerWindow,
@@ -401,17 +396,73 @@ public partial class BackupRestoreControl : UserControl
 
         try
         {
-            appDataStore.RestoreBackup(backup, targetFilePath);
-            if (targetIsCurrentFile)
+            if (!TryCreateSafetyBackupBeforeRestore(targetFilePath, willCreateSafetyBackup))
             {
-                loadConfigFile(getCurrentFilePath());
+                return;
             }
 
-            ToastService.ShowSuccess("备份已还原到指定位置。");
+            appDataStore.RestoreBackup(backup, targetFilePath);
         }
         catch (Exception ex)
         {
             AppMessageBox.Show(ownerWindow, $"还原失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        if (willCreateSafetyBackup)
+        {
+            try
+            {
+                RefreshBackupList();
+            }
+            catch (Exception ex)
+            {
+                AppMessageBox.Show(ownerWindow, $"备份已还原到指定位置，但刷新备份列表失败：{ex.Message}", "还原已完成", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        if (targetIsCurrentFile)
+        {
+            try
+            {
+                loadConfigFile(getCurrentFilePath());
+            }
+            catch (Exception ex)
+            {
+                AppMessageBox.Show(ownerWindow, $"备份已还原到指定位置，但重新加载当前文件失败：{ex.Message}", "还原已完成", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        ToastService.ShowSuccess("备份已还原到指定位置。");
+    }
+
+    private bool ShouldCreateSafetyBackupBeforeRestore(string targetFilePath)
+    {
+        return appDataStore != null &&
+            appDataStore.Settings.AutoBackupBeforeRestore &&
+            File.Exists(targetFilePath) &&
+            appDataStore.IsTrustedGameCharacterSaveFile(targetFilePath);
+    }
+
+    private bool TryCreateSafetyBackupBeforeRestore(string targetFilePath, bool willCreateSafetyBackup)
+    {
+        if (!willCreateSafetyBackup || appDataStore == null)
+        {
+            return true;
+        }
+
+        try
+        {
+            appDataStore.CreateBackup(
+                targetFilePath,
+                cleanupAfterCreate: false,
+                creationTrigger: BackupCreationTriggers.BeforeRestore);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            AppMessageBox.Show(ownerWindow, $"还原前安全备份失败，已取消还原：{ex.Message}", "还原前安全备份失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
         }
     }
 

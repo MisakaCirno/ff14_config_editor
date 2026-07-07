@@ -30,7 +30,25 @@ public sealed class RestoreBackupAsTargetConfirmationTests
         Assert.True(confirmation.RequiresConfirmation);
         Assert.Contains(Path.GetFullPath(targetFilePath), confirmation.Message);
         Assert.Contains("覆盖此文件", confirmation.Message);
+        Assert.Contains("当前不会创建还原前安全备份", confirmation.Message);
         Assert.DoesNotContain("目标文件名不是 UISAVE.DAT", confirmation.Message);
+    }
+
+    [Fact]
+    public void Evaluate_WhenExistingTargetWillCreateSafetyBackup_WarnsWithSafetyBackup()
+    {
+        string targetFilePath = Path.Combine(Path.GetTempPath(), "UISAVE.DAT");
+
+        RestoreBackupAsTargetConfirmation confirmation =
+            RestoreBackupAsTargetConfirmation.Evaluate(
+                targetFilePath,
+                targetExists: true,
+                willCreateSafetyBackup: true);
+
+        Assert.True(confirmation.RequiresConfirmation);
+        Assert.True(confirmation.WillCreateSafetyBackup);
+        Assert.Contains("覆盖前会自动备份当前目标文件", confirmation.Message);
+        Assert.DoesNotContain("当前不会创建还原前安全备份", confirmation.Message);
     }
 
     [Fact]
