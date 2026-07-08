@@ -300,7 +300,9 @@ public partial class BackupRestoreControl : UserControl
             return;
         }
 
-        if (IsCurrentFile(backup.OriginalFilePath) && !confirmSaveOrDiscardWayMarkChanges())
+        string currentFilePath = getCurrentFilePath();
+        bool targetIsCurrentFile = IsSameFilePath(currentFilePath, backup.OriginalFilePath);
+        if (targetIsCurrentFile && !confirmSaveOrDiscardWayMarkChanges())
         {
             return;
         }
@@ -336,8 +338,7 @@ public partial class BackupRestoreControl : UserControl
             AppMessageBox.Show(ownerWindow, $"备份已还原到原文件路径，但刷新备份列表失败：{ex.Message}", "还原已完成", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
-        string currentFilePath = getCurrentFilePath();
-        if (string.Equals(currentFilePath, backup.OriginalFilePath, StringComparison.OrdinalIgnoreCase))
+        if (targetIsCurrentFile)
         {
             try
             {
@@ -373,7 +374,8 @@ public partial class BackupRestoreControl : UserControl
         if (DialogOwnerHelper.ShowCommonDialog(saveFileDialog, ownerWindow ?? Window.GetWindow(this)) != true) return;
 
         string targetFilePath = saveFileDialog.FileName;
-        bool targetIsCurrentFile = IsCurrentFile(targetFilePath);
+        string currentFilePath = getCurrentFilePath();
+        bool targetIsCurrentFile = IsSameFilePath(currentFilePath, targetFilePath);
         bool willCreateSafetyBackup = ShouldCreateSafetyBackupBeforeRestore(targetFilePath);
         if (targetIsCurrentFile && !confirmSaveOrDiscardWayMarkChanges())
         {
@@ -424,7 +426,7 @@ public partial class BackupRestoreControl : UserControl
         {
             try
             {
-                loadConfigFile(getCurrentFilePath());
+                loadConfigFile(currentFilePath);
             }
             catch (Exception ex)
             {
@@ -467,16 +469,24 @@ public partial class BackupRestoreControl : UserControl
 
     private bool IsCurrentFile(string filePath)
     {
+        return IsSameFilePath(getCurrentFilePath(), filePath);
+    }
+
+    internal static bool IsSameFilePath(string currentFilePath, string targetFilePath)
+    {
+        if (string.IsNullOrWhiteSpace(currentFilePath) || string.IsNullOrWhiteSpace(targetFilePath))
+        {
+            return false;
+        }
+
         try
         {
-            string currentFilePath = getCurrentFilePath();
-            return !string.IsNullOrWhiteSpace(currentFilePath) &&
-                string.Equals(
-                    Path.GetFullPath(currentFilePath),
-                    Path.GetFullPath(filePath),
-                    StringComparison.OrdinalIgnoreCase);
+            return string.Equals(
+                Path.GetFullPath(currentFilePath),
+                Path.GetFullPath(targetFilePath),
+                StringComparison.OrdinalIgnoreCase);
         }
-        catch
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {
             return false;
         }
