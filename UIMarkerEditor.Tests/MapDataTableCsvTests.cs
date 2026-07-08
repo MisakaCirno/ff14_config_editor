@@ -37,6 +37,26 @@ public sealed class MapDataTableCsvTests
     }
 
     [Fact]
+    public void DiagnoseSimpleMapDataCsv_WhenQuotedFieldIsNotClosed_ReturnsErrorAndNoMapNames()
+    {
+        string csv =
+            "ID,Name\r\n" +
+            "321,\"未闭合\r\n" +
+            "322,下一行\r\n";
+
+        MapDataTableCsvDiagnosticResult result = MapDataTableCsv.DiagnoseSimpleMapDataCsv(csv);
+
+        Assert.True(result.HasErrors);
+        Assert.Empty(result.MapNames);
+        MapDataTableCsvIssue issue = Assert.Single(result.Issues.Where(issue =>
+            issue.Severity == MapDataTableCsvIssueSeverity.Error &&
+            issue.Message.Contains("引号没有闭合", StringComparison.Ordinal)));
+        Assert.Equal(1, issue.RowNumber);
+        Assert.Single(result.Rows);
+        Assert.Equal("321", result.Rows[0].MapIdText);
+    }
+
+    [Fact]
     public void DiagnoseSimpleMapDataRows_WhenRowsAreValid_ReturnsMapNames()
     {
         MapDataTableCsvDiagnosticResult result = MapDataTableCsv.DiagnoseSimpleMapDataRows(

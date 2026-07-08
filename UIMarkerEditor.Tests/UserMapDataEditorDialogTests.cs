@@ -51,4 +51,46 @@ public sealed class UserMapDataEditorDialogTests
             Directory.Delete(testDirectory, recursive: true);
         }
     }
+
+    [Fact]
+    public void Constructor_WhenUserCsvHasUnclosedQuote_MarksProblemRow()
+    {
+        string testDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "UIMarkerEditor.UserMapDataEditorDialogTests",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(testDirectory);
+        try
+        {
+            string filePath = Path.Combine(testDirectory, "mapdata_user.csv");
+            File.WriteAllText(
+                filePath,
+                "ID,Name\r\n" +
+                "321,\"未闭合\r\n" +
+                "322,下一行\r\n");
+
+            Exception? exception = WpfTestHost.Run(() =>
+            {
+                WpfTestHost.EnsureApplicationResources();
+                UserMapDataEditorDialog dialog = new(filePath);
+                DataGrid dataGrid = Assert.IsType<DataGrid>(dialog.FindName("MapDataRows_DataGrid"));
+                List<UserMapDataEditorRow> rows = dataGrid.ItemsSource
+                    .Cast<UserMapDataEditorRow>()
+                    .ToList();
+
+                UserMapDataEditorRow row = Assert.Single(rows);
+                Assert.Equal("321", row.MapId);
+                Assert.True(row.HasError);
+                Assert.Contains("引号没有闭合", row.IssueText, StringComparison.Ordinal);
+
+                dialog.Close();
+            });
+
+            Assert.Null(exception);
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
 }

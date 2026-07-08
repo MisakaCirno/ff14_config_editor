@@ -2075,6 +2075,27 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenManualCsvHasUnclosedQuote_RequiresRepairWithoutApplyingFoldedRow()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+        EnableMapDataManualTable(store);
+        WriteRawUserMapDataCsv(store, "ID,Name\r\n321,\"未闭合\r\n322,下一行\r\n");
+        MapData.Clear();
+
+        MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
+
+        Assert.False(result.Success);
+        Assert.True(result.RequiresUserMapDataRepair);
+        Assert.Equal(store.UserMapDataFilePath, result.SourcePath);
+        Assert.Contains("第 1 行", result.FailureReason);
+        Assert.Contains("引号没有闭合", result.FailureReason);
+        Assert.False(MapData.HasData);
+        Assert.Empty(networkClient.Requests);
+    }
+
+    [Fact]
     public async Task EnsureMapDataAvailableAsync_WhenManualCsvInvalidAndCacheExists_UsesCache()
     {
         DateTime successfulSyncAt = new(2026, 7, 6, 9, 0, 0);

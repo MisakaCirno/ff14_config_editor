@@ -58,10 +58,14 @@ internal static class MapDataTableCsv
 
     public static MapDataTableCsvDiagnosticResult DiagnoseSimpleMapDataCsv(string csv)
     {
-        List<List<string>> records = ReadRecords(csv);
+        CsvReadResult readResult = ReadRecordsWithDiagnostics(csv);
+        List<List<string>> records = readResult.Records;
+        HashSet<int> issueRecordIndexes = [.. readResult.Issues.Select(static issue => issue.RecordIndex)];
+        bool hasHeader = HasSimpleMapDataHeader(records) && !issueRecordIndexes.Contains(0);
         List<MapDataTableCsvRow> rows = [];
+        Dictionary<int, int> recordIndexToRowNumber = [];
         int visibleRowNumber = 0;
-        for (int i = HasSimpleMapDataHeader(records) ? 1 : 0; i < records.Count; i++)
+        for (int i = hasHeader ? 1 : 0; i < records.Count; i++)
         {
             List<string> fields = records[i];
             string mapIdText = fields.Count > 0
@@ -72,17 +76,38 @@ internal static class MapDataTableCsv
                 : string.Empty;
             if (string.IsNullOrWhiteSpace(mapIdText) && string.IsNullOrWhiteSpace(name))
             {
-                continue;
+                if (!issueRecordIndexes.Contains(i))
+                {
+                    continue;
+                }
             }
 
+            visibleRowNumber++;
+            recordIndexToRowNumber[i] = visibleRowNumber;
             rows.Add(new MapDataTableCsvRow(
-                ++visibleRowNumber,
+                visibleRowNumber,
                 mapIdText,
                 name,
                 HasExtraColumns: fields.Count > 2));
         }
 
-        return DiagnoseSimpleMapDataRows(rows);
+        MapDataTableCsvDiagnosticResult rowDiagnosticResult = DiagnoseSimpleMapDataRows(rows);
+        List<MapDataTableCsvIssue> issues = [.. rowDiagnosticResult.Issues];
+        foreach (CsvReadIssue issue in readResult.Issues)
+        {
+            int rowNumber = recordIndexToRowNumber.TryGetValue(issue.RecordIndex, out int mappedRowNumber)
+                ? mappedRowNumber
+                : Math.Max(1, visibleRowNumber);
+            issues.Add(new MapDataTableCsvIssue(
+                rowNumber,
+                MapDataTableCsvIssueSeverity.Error,
+                issue.Message));
+        }
+
+        IReadOnlyDictionary<ushort, string> mapNames = issues.Any(static issue => issue.Severity == MapDataTableCsvIssueSeverity.Error)
+            ? new Dictionary<ushort, string>()
+            : rowDiagnosticResult.MapNames;
+        return new MapDataTableCsvDiagnosticResult(rows, issues, mapNames);
     }
 
     public static MapDataTableCsvDiagnosticResult DiagnoseSimpleMapDataRows(IEnumerable<MapDataTableCsvRow> rows)
@@ -152,10 +177,17 @@ internal static class MapDataTableCsv
 
     public static List<List<string>> ReadRecords(string csv)
     {
+        return ReadRecordsWithDiagnostics(csv).Records;
+    }
+
+    private static CsvReadResult ReadRecordsWithDiagnostics(string csv)
+    {
         List<List<string>> records = [];
+        List<CsvReadIssue> issues = [];
         List<string> currentRecord = [];
         StringBuilder currentField = new();
         bool inQuotes = false;
+        int openQuoteRecordIndex = -1;
 
         for (int i = 0; i < csv.Length; i++)
         {
@@ -169,7 +201,16 @@ internal static class MapDataTableCsv
                 }
                 else
                 {
+                    if (!inQuotes)
+                    {
+                        openQuoteRecordIndex = records.Count;
+                    }
+
                     inQuotes = !inQuotes;
+                    if (!inQuotes)
+                    {
+                        openQuoteRecordIndex = -1;
+                    }
                 }
 
                 continue;
@@ -200,8 +241,18 @@ internal static class MapDataTableCsv
         }
 
         currentRecord.Add(currentField.ToString());
-        AddRecordIfNotEmpty(records, currentRecord);
-        return records;
+        AddRecordIfNotEmpty(records, currentRecord, force: inQuotes);
+        if (inQuotes)
+        {
+            int recordIndex = openQuoteRecordIndex >= 0
+                ? openQuoteRecordIndex
+                : Math.Max(0, records.Count - 1);
+            issues.Add(new CsvReadIssue(
+                recordIndex,
+                "CSV 引号没有闭合。请补上结尾双引号，或删除多余的开头双引号。"));
+        }
+
+        return new CsvReadResult(records, issues);
     }
 
     private static bool HasSimpleMapDataHeader(IReadOnlyList<List<string>> records)
@@ -217,12 +268,16 @@ internal static class MapDataTableCsv
         return header.Trim().TrimStart('\uFEFF');
     }
 
-    private static void AddRecordIfNotEmpty(List<List<string>> records, List<string> record)
+    private static bool AddRecordIfNotEmpty(List<List<string>> records, List<string> record, bool force = false)
     {
-        if (record.Count == 0) return;
-        if (record.Count == 1 && string.IsNullOrWhiteSpace(record[0])) return;
+        if (!force)
+        {
+            if (record.Count == 0) return false;
+            if (record.Count == 1 && string.IsNullOrWhiteSpace(record[0])) return false;
+        }
 
         records.Add(record);
+        return true;
     }
 
     private static void AppendCsvField(StringBuilder builder, string value)
@@ -238,6 +293,14 @@ internal static class MapDataTableCsv
         builder.Append(value.Replace("\"", "\"\"", StringComparison.Ordinal));
         builder.Append('"');
     }
+
+    private sealed record CsvReadResult(
+        List<List<string>> Records,
+        IReadOnlyList<CsvReadIssue> Issues);
+
+    private sealed record CsvReadIssue(
+        int RecordIndex,
+        string Message);
 }
 
 internal sealed record MapDataTableCsvRow(
