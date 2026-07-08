@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using UIMarkerEditor;
+using UIMarkerEditor.Controls;
 
 namespace UIMarkerEditor.Tests;
 
@@ -33,6 +34,35 @@ public sealed class XamlResourceTests
             {
                 Directory.Delete(testDirectory, recursive: true);
             }
+        });
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void BusyOverlayControl_CanShowAndHideWithStatusText()
+    {
+        Exception? exception = WpfTestHost.Run(() =>
+        {
+            WpfTestHost.EnsureApplicationResources();
+            BusyOverlayControl control = new();
+
+            Assert.Equal(Visibility.Collapsed, control.Visibility);
+
+            control.Show("正在测试...", "请等待测试完成。");
+            control.Measure(new Size(420, 240));
+            control.Arrange(new Rect(0, 0, 420, 240));
+            control.UpdateLayout();
+
+            TextBlock titleTextBlock = Assert.IsType<TextBlock>(control.FindName("Title_TextBlock"));
+            TextBlock messageTextBlock = Assert.IsType<TextBlock>(control.FindName("Message_TextBlock"));
+            Assert.Equal(Visibility.Visible, control.Visibility);
+            Assert.Equal("正在测试...", titleTextBlock.Text);
+            Assert.Equal("请等待测试完成。", messageTextBlock.Text);
+
+            control.Hide();
+
+            Assert.Equal(Visibility.Collapsed, control.Visibility);
         });
 
         Assert.Null(exception);

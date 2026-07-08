@@ -1,0 +1,41 @@
+﻿<UserControl x:Class="UIMarkerEditor.Controls.BusyOverlayControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root"
+             Focusable="True">
+    <Grid Background="#99FFFFFF"
+          Focusable="True">
+        <Border Width="340"
+                MaxWidth="520"
+                Background="#F8FFFFFF"
+                BorderBrush="{StaticResource AppBorderStrongBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="20"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="18"
+                                  ShadowDepth="3"
+                                  Opacity="0.22"/>
+            </Border.Effect>
+            <StackPanel>
+                <TextBlock x:Name="Title_TextBlock"
+                           Text="{Binding Title, ElementName=Root}"
+                           Foreground="{StaticResource AppTextBrush}"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"/>
+                <TextBlock x:Name="Message_TextBlock"
+                           Text="{Binding Message, ElementName=Root}"
+                           Foreground="{StaticResource AppMutedTextBrush}"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           Margin="0,8,0,14"/>
+                <ProgressBar Height="6"
+                             IsIndeterminate="True"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

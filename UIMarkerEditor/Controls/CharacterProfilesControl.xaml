@@ -9,7 +9,10 @@
             <ColumnDefinition x:Name="CharacterDetail_Column" Width="3*"/>
         </Grid.ColumnDefinitions>
 
-        <GroupBox Grid.Column="0" Header="角色备注列表" Padding="5">
+        <GroupBox x:Name="CharacterList_GroupBox"
+                  Grid.Column="0"
+                  Header="角色备注列表"
+                  Padding="5">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
@@ -95,7 +98,10 @@
             </Grid>
         </GroupBox>
 
-        <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>
+        <GridSplitter x:Name="CharacterGridSplitter"
+                      Grid.Column="1"
+                      Width="5"
+                      HorizontalAlignment="Stretch"/>
 
         <GroupBox x:Name="CharacterDetail_GroupBox"
                   Grid.Column="2"
@@ -164,5 +170,9 @@
                 </ScrollViewer>
             </Grid>
         </GroupBox>
+
+        <controls:BusyOverlayControl x:Name="CharacterBusyOverlay_Control"
+                                     Grid.ColumnSpan="3"
+                                     Panel.ZIndex="10"/>
     </Grid>
 </UserControl>

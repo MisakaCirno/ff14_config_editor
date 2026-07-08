@@ -18,6 +18,7 @@ public partial class CharacterProfilesControl : UserControl
     private string selectedCharacterDataCenter = string.Empty;
     private string selectedCharacterWorld = string.Empty;
     private bool isCharacterDetailDirty;
+    private bool isCharacterOperationBusy;
     private bool suppressCharacterSelectionChanged;
     private bool suppressCharacterChangeTracking;
     private Task<ServerListLoadResult?>? serverListSyncTask;
@@ -44,6 +45,8 @@ public partial class CharacterProfilesControl : UserControl
 
     public void RefreshCharacterList()
     {
+        if (isCharacterOperationBusy) return;
+
         if (!ConfirmSaveOrDiscardCharacterChanges())
         {
             return;
@@ -93,12 +96,7 @@ public partial class CharacterProfilesControl : UserControl
 
         if (showFailureMessage && result?.Success == false && appDataStore.ServerList.Groups.Count == 0)
         {
-            AppMessageBox.Show(
-                ownerWindow ?? Window.GetWindow(this),
-                "服务器列表同步失败，当前没有可用的服务器列表。你仍然可以编辑角色名和备注，稍后可在工具设置中手动检查服务器列表。",
-                "服务器列表不可用",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+            ShowServerListUnavailableMessage();
         }
 
         return result;
@@ -115,6 +113,17 @@ public partial class CharacterProfilesControl : UserControl
 
     public bool ConfirmSaveOrDiscardCharacterChanges()
     {
+        if (isCharacterOperationBusy)
+        {
+            AppMessageBox.Show(
+                ownerWindow,
+                "角色备注正在处理中，请稍候完成后再继续操作。",
+                "角色备注处理中",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return false;
+        }
+
         if (appDataStore == null || !isCharacterDetailDirty) return true;
 
         MessageBoxResult result = AppMessageBox.Show(
@@ -141,6 +150,17 @@ public partial class CharacterProfilesControl : UserControl
     public bool TryPrepareCloseChanges(out bool shouldSave)
     {
         shouldSave = false;
+        if (isCharacterOperationBusy)
+        {
+            AppMessageBox.Show(
+                ownerWindow,
+                "角色备注正在处理中，请稍候完成后再关闭工具。",
+                "角色备注处理中",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return false;
+        }
+
         if (appDataStore == null || !isCharacterDetailDirty) return true;
 
         MessageBoxResult result = AppMessageBox.Show(
@@ -262,9 +282,26 @@ public partial class CharacterProfilesControl : UserControl
 
     private async void NewCharacter_Button_Click(object sender, RoutedEventArgs e)
     {
-        if (appDataStore == null || !ConfirmSaveOrDiscardCharacterChanges()) return;
+        if (appDataStore == null || isCharacterOperationBusy || !ConfirmSaveOrDiscardCharacterChanges()) return;
 
-        await SyncServerListIfNeededAsync(showFailureMessage: true);
+        ServerListLoadResult? serverListResult = null;
+        ShowCharacterBusyOverlay("正在同步服务器列表...", "正在准备角色备注窗口，请稍候。");
+        try
+        {
+            serverListResult = await SyncServerListIfNeededAsync(showFailureMessage: false);
+        }
+        finally
+        {
+            HideCharacterBusyOverlay();
+        }
+
+        if (serverListResult?.Success == false && appDataStore.ServerList.Groups.Count == 0)
+        {
+            ShowServerListUnavailableMessage();
+        }
+
+        if (!ConfirmSaveOrDiscardCharacterChanges()) return;
+
         BackupCharacterProfileDialog dialog = new(appDataStore.ServerList.Groups);
         DialogOwnerHelper.ConfigureOwnedDialog(dialog, ownerWindow ?? Window.GetWindow(this));
         if (dialog.ShowDialog() != true) return;
@@ -277,7 +314,7 @@ public partial class CharacterProfilesControl : UserControl
 
     private async void ScanClientLogs_Button_Click(object sender, RoutedEventArgs e)
     {
-        if (appDataStore == null || !ConfirmSaveOrDiscardCharacterChanges()) return;
+        if (appDataStore == null || isCharacterOperationBusy || !ConfirmSaveOrDiscardCharacterChanges()) return;
 
         if (!WayMarkOpenDirectoryResolver.TryResolveGameCharacterRootDirectory(
             appDataStore.Settings.GameInstallDirectory,
@@ -292,25 +329,50 @@ public partial class CharacterProfilesControl : UserControl
             return;
         }
 
-        object originalContent = ScanClientLogs_Button.Content;
-        ScanClientLogs_Button.IsEnabled = false;
-        ScanClientLogs_Button.Content = "获取中...";
-        LocalGameCharacterScanResult result;
-        LocalGameCharacterScanPreparation preparation;
+        LocalGameCharacterScanPreparation? preparation = null;
+        Exception? scanFailure = null;
+        ShowCharacterBusyOverlay("正在获取本地角色...", "正在读取角色目录和客户端日志，请稍候。");
         try
         {
             preparation = await Task.Run(appDataStore.PrepareLocalGameCharacterScan);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
+        {
+            scanFailure = ex;
+        }
+        finally
+        {
+            HideCharacterBusyOverlay();
+        }
+
+        if (scanFailure != null || preparation == null)
+        {
+            AppMessageBox.Show(ownerWindow, $"获取所有本地角色失败：{scanFailure?.Message ?? "未知错误"}", "角色备注保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (!ConfirmSaveOrDiscardCharacterChanges()) return;
+
+        LocalGameCharacterScanResult? result = null;
+        Exception? applyFailure = null;
+        ShowCharacterBusyOverlay("正在更新角色备注...", "正在保存本地角色备注，请稍候。");
+        try
+        {
             result = appDataStore.ApplyLocalGameCharacterScan(preparation);
         }
         catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
         {
-            AppMessageBox.Show(ownerWindow, $"获取所有本地角色失败：{ex.Message}", "角色备注保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
+            applyFailure = ex;
         }
         finally
         {
-            ScanClientLogs_Button.Content = originalContent;
-            ScanClientLogs_Button.IsEnabled = true;
+            HideCharacterBusyOverlay();
+        }
+
+        if (applyFailure != null || result == null)
+        {
+            AppMessageBox.Show(ownerWindow, $"获取所有本地角色失败：{applyFailure?.Message ?? "未知错误"}", "角色备注保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
         }
 
         foreach (ClientLogCharacterNameScanError error in result.Errors)
@@ -413,6 +475,16 @@ public partial class CharacterProfilesControl : UserControl
         return true;
     }
 
+    private void ShowServerListUnavailableMessage()
+    {
+        AppMessageBox.Show(
+            ownerWindow ?? Window.GetWindow(this),
+            "服务器列表同步失败，当前没有可用的服务器列表。你仍然可以编辑角色名和备注，稍后可在工具设置中手动检查服务器列表。",
+            "服务器列表不可用",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+    }
+
     private void ClearCharacterDetailFields()
     {
         suppressCharacterChangeTracking = true;
@@ -433,8 +505,9 @@ public partial class CharacterProfilesControl : UserControl
 
     private void UpdateCharacterActionStates()
     {
-        bool hasSelection = Character_DataGrid.SelectedItem is CharacterProfile;
-        bool hasLoadedProfile = loadedCharacterProfile != null;
+        bool canUseActions = !isCharacterOperationBusy;
+        bool hasSelection = canUseActions && Character_DataGrid.SelectedItem is CharacterProfile;
+        bool hasLoadedProfile = canUseActions && loadedCharacterProfile != null;
         DeleteCharacter_Button.IsEnabled = CharacterDetail_ScrollViewer.Visibility == Visibility.Visible && hasLoadedProfile;
         DeleteCharacterList_Button.IsEnabled = hasSelection;
         DeleteCharacter_MenuItem.IsEnabled = hasSelection;
@@ -442,6 +515,8 @@ public partial class CharacterProfilesControl : UserControl
 
     private void SaveCharacter_Button_Click(object sender, RoutedEventArgs e)
     {
+        if (isCharacterOperationBusy) return;
+
         if (!TrySaveCharacterProfile(showSuccessMessage: true, out string savedUserID)) return;
 
         ReloadCharacterList(savedUserID);
@@ -463,7 +538,7 @@ public partial class CharacterProfilesControl : UserControl
     private bool TrySaveCharacterProfile(bool showSuccessMessage, out string savedUserID)
     {
         savedUserID = string.Empty;
-        if (appDataStore == null) return false;
+        if (appDataStore == null || isCharacterOperationBusy) return false;
 
         if (loadedCharacterProfile is not CharacterProfile profile)
         {
@@ -583,7 +658,7 @@ public partial class CharacterProfilesControl : UserControl
 
     private void DeleteCharacter_Button_Click(object sender, RoutedEventArgs e)
     {
-        if (appDataStore == null || Character_DataGrid.SelectedItem is not CharacterProfile profile) return;
+        if (appDataStore == null || isCharacterOperationBusy || Character_DataGrid.SelectedItem is not CharacterProfile profile) return;
         if (AppMessageBox.Show(ownerWindow, "确定要删除这个角色备注吗？备份文件不会被删除。", "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
         {
             return;
@@ -609,6 +684,31 @@ public partial class CharacterProfilesControl : UserControl
         ClearCharacterDetailFields();
         ReloadCharacterList(null);
         refreshBackupList();
+    }
+
+    private void ShowCharacterBusyOverlay(string title, string message)
+    {
+        isCharacterOperationBusy = true;
+        CharacterList_GroupBox.IsEnabled = false;
+        CharacterGridSplitter.IsEnabled = false;
+        CharacterDetail_GroupBox.IsEnabled = false;
+        if (Character_DataGrid.ContextMenu != null)
+        {
+            Character_DataGrid.ContextMenu.IsOpen = false;
+        }
+
+        CharacterBusyOverlay_Control.Show(title, message);
+        UpdateCharacterActionStates();
+    }
+
+    private void HideCharacterBusyOverlay()
+    {
+        CharacterBusyOverlay_Control.Hide();
+        CharacterList_GroupBox.IsEnabled = true;
+        CharacterGridSplitter.IsEnabled = true;
+        CharacterDetail_GroupBox.IsEnabled = true;
+        isCharacterOperationBusy = false;
+        UpdateCharacterActionStates();
     }
 
     private static bool IsValidUserID(string userID)
