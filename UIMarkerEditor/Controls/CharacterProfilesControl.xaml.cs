@@ -44,6 +44,11 @@ public partial class CharacterProfilesControl : UserControl
 
     public void RefreshCharacterList()
     {
+        if (!ConfirmSaveOrDiscardCharacterChanges())
+        {
+            return;
+        }
+
         string? selectedUserID = (Character_DataGrid.SelectedItem as CharacterProfile)?.UserID;
         ReloadCharacterList(selectedUserID);
     }
