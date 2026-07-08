@@ -19,16 +19,69 @@ namespace UIMarkerEditor
 
         private void Window_Closing(object? sender, CancelEventArgs e)
         {
-            if (!ConfirmSaveOrDiscardWayMarkChanges() ||
-                !WayMarkFavorites_Control.ConfirmSaveOrDiscardChanges() ||
-                !ConfirmSaveOrDiscardCharacterChanges())
+            if (!TryPrepareWindowCloseChanges(
+                    out bool shouldSaveWayMarks,
+                    out bool shouldSaveFavorite,
+                    out bool shouldSaveCharacter) ||
+                !TryApplyWindowCloseChanges(shouldSaveWayMarks, shouldSaveFavorite, shouldSaveCharacter))
             {
+                WayMarkFavorites_Control.ResumeAutoSaveIfNeeded();
                 e.Cancel = true;
                 return;
             }
 
             StopCurrentFileChangeMonitor();
             SaveLayoutSettings();
+        }
+
+        private bool TryPrepareWindowCloseChanges(
+            out bool shouldSaveWayMarks,
+            out bool shouldSaveFavorite,
+            out bool shouldSaveCharacter)
+        {
+            shouldSaveWayMarks = false;
+            shouldSaveFavorite = false;
+            shouldSaveCharacter = false;
+
+            if (!TryPrepareCloseWayMarkChanges(out shouldSaveWayMarks))
+            {
+                return false;
+            }
+
+            if (!WayMarkFavorites_Control.TryPrepareCloseChanges(out shouldSaveFavorite))
+            {
+                return false;
+            }
+
+            if (!CharacterProfiles_Control.TryPrepareCloseChanges(out shouldSaveCharacter))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TryApplyWindowCloseChanges(
+            bool shouldSaveWayMarks,
+            bool shouldSaveFavorite,
+            bool shouldSaveCharacter)
+        {
+            if (shouldSaveWayMarks && !SaveWayMarkFile(showSuccessMessage: false))
+            {
+                return false;
+            }
+
+            if (shouldSaveFavorite && !WayMarkFavorites_Control.SavePreparedCloseChanges())
+            {
+                return false;
+            }
+
+            if (shouldSaveCharacter && !CharacterProfiles_Control.SavePreparedCloseChanges())
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private void SaveLayoutSettings()

@@ -141,6 +141,59 @@ public partial class WayMarkFavoritesControl : UserControl
         return TryHandlePendingChanges();
     }
 
+    public bool TryPrepareCloseChanges(out bool shouldSave)
+    {
+        shouldSave = false;
+        if (!TryCommitPendingFavoriteEdits())
+        {
+            return false;
+        }
+
+        if (!hasUnsavedChanges)
+        {
+            return true;
+        }
+
+        if (isAutoSaveMode)
+        {
+            autoSaveTimer.Stop();
+            shouldSave = true;
+            return true;
+        }
+
+        MessageBoxResult result = AppMessageBox.Show(
+            ownerWindow,
+            "当前收藏有未保存修改。\n\n选择“是”在关闭前保存，选择“否”继续关闭并放弃这些修改，选择“取消”返回编辑。\n\n如果后续关闭被取消，当前修改会保留。",
+            "保存收藏修改",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Question);
+
+        if (result == MessageBoxResult.Cancel)
+        {
+            return false;
+        }
+
+        shouldSave = result == MessageBoxResult.Yes;
+        return true;
+    }
+
+    public bool SavePreparedCloseChanges()
+    {
+        return SaveLoadedFavorite(showSuccessMessage: false);
+    }
+
+    public void ResumeAutoSaveIfNeeded()
+    {
+        if (!isAutoSaveMode || !hasUnsavedChanges)
+        {
+            return;
+        }
+
+        SetAutoSaveStatus("保存中...", Brushes.DimGray);
+        ScheduleAutoSave();
+        UpdateButtonState();
+    }
+
     private static double ClampRatio(double value)
     {
         return double.IsFinite(value) && value > 0.05 ? value : 0.05;

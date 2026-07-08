@@ -138,6 +138,36 @@ public partial class CharacterProfilesControl : UserControl
         return true;
     }
 
+    public bool TryPrepareCloseChanges(out bool shouldSave)
+    {
+        shouldSave = false;
+        if (appDataStore == null || !isCharacterDetailDirty) return true;
+
+        MessageBoxResult result = AppMessageBox.Show(
+            ownerWindow,
+            "当前角色备注有未保存的修改。\n\n选择“是”在关闭前保存，选择“否”继续关闭并放弃这些修改，选择“取消”返回编辑。\n\n如果后续关闭被取消，当前修改会保留。",
+            "未保存的角色备注",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Warning);
+
+        if (result == MessageBoxResult.Cancel)
+        {
+            return false;
+        }
+
+        shouldSave = result == MessageBoxResult.Yes;
+        return true;
+    }
+
+    public bool SavePreparedCloseChanges()
+    {
+        if (!TrySaveCharacterProfile(showSuccessMessage: false, out string _)) return false;
+
+        Character_DataGrid.Items.Refresh();
+        refreshBackupList();
+        return true;
+    }
+
     private void DiscardCharacterDetailChanges()
     {
         if (loadedCharacterProfile == null)
