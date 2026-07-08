@@ -166,7 +166,7 @@ internal static class ClientLogCharacterNameResolver
         ClientLogCharacterNameMatch? chatSenderCandidate = null;
         int scannedEntries = 0;
 
-        foreach (string filePath in EnumerateLogFilesNewestFirst(logDirectory))
+        foreach (string filePath in EnumerateLogFilesNewestFirst(logDirectory, userID, errors))
         {
             try
             {
@@ -231,13 +231,26 @@ internal static class ClientLogCharacterNameResolver
         return chatSenderCandidate;
     }
 
-    private static IEnumerable<string> EnumerateLogFilesNewestFirst(string logDirectory)
-        => Directory
-            .EnumerateFiles(logDirectory, "*.log", SearchOption.TopDirectoryOnly)
-            .Select(static path => new FileInfo(path))
-            .OrderByDescending(static file => file.LastWriteTimeUtc)
-            .ThenByDescending(static file => file.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(static file => file.FullName);
+    internal static IReadOnlyList<string> EnumerateLogFilesNewestFirst(
+        string logDirectory,
+        string userID,
+        ICollection<ClientLogCharacterNameScanError>? errors = null)
+    {
+        try
+        {
+            return [.. Directory
+                .EnumerateFiles(logDirectory, "*.log", SearchOption.TopDirectoryOnly)
+                .Select(static path => new FileInfo(path))
+                .OrderByDescending(static file => file.LastWriteTimeUtc)
+                .ThenByDescending(static file => file.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(static file => file.FullName)];
+        }
+        catch (Exception ex) when (IsLogReadException(ex))
+        {
+            errors?.Add(new ClientLogCharacterNameScanError(userID, logDirectory, ex.Message));
+            return [];
+        }
+    }
 
     private static FileStream OpenReadOnly(string path, FileOptions options)
         => new(

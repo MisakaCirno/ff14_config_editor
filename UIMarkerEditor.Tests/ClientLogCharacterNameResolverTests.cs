@@ -230,6 +230,24 @@ public sealed class ClientLogCharacterNameResolverTests : IDisposable
         Assert.Contains("offset table 过大", error.Message);
     }
 
+    [Fact]
+    public void EnumerateLogFilesNewestFirst_WhenDirectoryCannotBeEnumerated_ReportsLogReadError()
+    {
+        string logDirectory = Path.Combine(testDirectory, "missing-log");
+        List<ClientLogCharacterNameScanError> errors = [];
+
+        IReadOnlyList<string> files = ClientLogCharacterNameResolver.EnumerateLogFilesNewestFirst(
+            logDirectory,
+            "0011223344556677",
+            errors);
+
+        Assert.Empty(files);
+        ClientLogCharacterNameScanError error = Assert.Single(errors);
+        Assert.Equal("0011223344556677", error.UserID);
+        Assert.Equal(logDirectory, error.Path);
+        Assert.NotEmpty(error.Message);
+    }
+
     private string CreateCharacterDirectory(string userID)
     {
         string characterDirectory = Path.Combine(testDirectory, $"FFXIV_CHR{userID}");
