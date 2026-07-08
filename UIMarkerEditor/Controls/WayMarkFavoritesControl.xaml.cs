@@ -79,6 +79,14 @@ public partial class WayMarkFavoritesControl : UserControl
     public void RefreshFavorites(string? preserveSelectedId = null)
     {
         if (appDataStore == null) return;
+        if (!TryHandlePendingChanges()) return;
+
+        RefreshFavoritesCore(preserveSelectedId);
+    }
+
+    private void RefreshFavoritesCore(string? preserveSelectedId = null)
+    {
+        if (appDataStore == null) return;
 
         string? selectedId = preserveSelectedId ?? loadedFavorite?.Id ?? SelectedFavorite?.Id;
         suppressSelectionChanged = true;
@@ -192,7 +200,6 @@ public partial class WayMarkFavoritesControl : UserControl
 
     private void RefreshFavorites_MenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (!TryHandlePendingChanges()) return;
         RefreshFavorites();
     }
 
@@ -204,7 +211,7 @@ public partial class WayMarkFavoritesControl : UserControl
         try
         {
             WayMarkFavorite favorite = appDataStore.AddWayMarkFavorite(CreateDefaultFavoriteSnapshot(), "新收藏");
-            RefreshFavorites(favorite.Id);
+            RefreshFavoritesCore(favorite.Id);
         }
         catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
         {
@@ -224,7 +231,7 @@ public partial class WayMarkFavoritesControl : UserControl
         string favoriteId = loadedFavorite.Id;
         autoSaveTimer.Stop();
         hasUnsavedChanges = false;
-        RefreshFavorites(favoriteId);
+        RefreshFavoritesCore(favoriteId);
     }
 
     private void DeleteFavorite_Button_Click(object sender, RoutedEventArgs e)
@@ -249,7 +256,7 @@ public partial class WayMarkFavoritesControl : UserControl
             hasUnsavedChanges = false;
             loadedFavorite = null;
             SetAutoSaveStatus("已保存", Brushes.DarkGreen);
-            RefreshFavorites();
+            RefreshFavoritesCore();
         }
         catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
         {
@@ -412,7 +419,7 @@ public partial class WayMarkFavoritesControl : UserControl
             appDataStore.UpdateWayMarkFavorite(updatedFavorite);
             hasUnsavedChanges = false;
             SetAutoSaveStatus("已保存", Brushes.DarkGreen);
-            RefreshFavorites(updatedFavorite.Id);
+            RefreshFavoritesCore(updatedFavorite.Id);
             if (showSuccessMessage)
             {
                 ToastService.ShowSuccess("收藏修改已保存。");
