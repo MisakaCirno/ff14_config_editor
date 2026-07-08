@@ -7,6 +7,7 @@ public partial class ServerPickerControl : UserControl
 {
     private readonly List<ServerGroup> serverGroups = [];
     private bool suppressSelectionChanged;
+    private bool selectedServerAvailable = true;
 
     public event EventHandler? SelectedServerChanged;
 
@@ -31,37 +32,48 @@ public partial class ServerPickerControl : UserControl
     public void SelectServer(string dataCenter, string world)
     {
         suppressSelectionChanged = true;
-        SelectedDataCenter = dataCenter;
-        SelectedWorld = world;
-
-        if (string.IsNullOrWhiteSpace(dataCenter) && string.IsNullOrWhiteSpace(world))
+        try
         {
-            ServerArea_ListBox.SelectedItem = null;
-            ServerWorld_ListBox.ItemsSource = null;
-            ServerWorld_ListBox.SelectedItem = null;
+            SelectedDataCenter = dataCenter;
+            SelectedWorld = world;
+            selectedServerAvailable = true;
+
+            if (string.IsNullOrWhiteSpace(dataCenter) && string.IsNullOrWhiteSpace(world))
+            {
+                ServerArea_ListBox.SelectedItem = null;
+                ServerWorld_ListBox.ItemsSource = null;
+                ServerWorld_ListBox.SelectedItem = null;
+                UpdateButtonText();
+                return;
+            }
+
+            ServerGroup? selectedGroup = serverGroups.FirstOrDefault(group =>
+                string.Equals(group.DataCenter, dataCenter, StringComparison.OrdinalIgnoreCase));
+            selectedGroup ??= serverGroups.FirstOrDefault(group =>
+                group.Worlds.Any(candidateWorld => string.Equals(candidateWorld, world, StringComparison.OrdinalIgnoreCase)));
+
+            string? selectedWorld = selectedGroup?.Worlds.FirstOrDefault(candidateWorld =>
+                string.Equals(candidateWorld, world, StringComparison.OrdinalIgnoreCase));
+            ServerArea_ListBox.SelectedItem = selectedGroup;
+            ServerWorld_ListBox.ItemsSource = selectedGroup?.Worlds;
+            ServerWorld_ListBox.SelectedItem = selectedWorld;
+
+            if (selectedGroup == null || selectedWorld == null)
+            {
+                selectedServerAvailable = false;
+            }
+            else
+            {
+                SelectedDataCenter = selectedGroup.DataCenter;
+                SelectedWorld = selectedWorld;
+            }
+
             UpdateButtonText();
-            suppressSelectionChanged = false;
-            return;
         }
-
-        ServerGroup? selectedGroup = serverGroups.FirstOrDefault(group =>
-            string.Equals(group.DataCenter, dataCenter, StringComparison.OrdinalIgnoreCase));
-        selectedGroup ??= serverGroups.FirstOrDefault(group =>
-            group.Worlds.Any(candidateWorld => string.Equals(candidateWorld, world, StringComparison.OrdinalIgnoreCase)));
-
-        ServerArea_ListBox.SelectedItem = selectedGroup;
-        ServerWorld_ListBox.ItemsSource = selectedGroup?.Worlds;
-        ServerWorld_ListBox.SelectedItem = selectedGroup?.Worlds.FirstOrDefault(candidateWorld =>
-            string.Equals(candidateWorld, world, StringComparison.OrdinalIgnoreCase));
-
-        if (selectedGroup == null || ServerWorld_ListBox.SelectedItem == null)
+        finally
         {
-            SelectedDataCenter = string.Empty;
-            SelectedWorld = string.Empty;
+            suppressSelectionChanged = false;
         }
-
-        UpdateButtonText();
-        suppressSelectionChanged = false;
     }
 
     public (string DataCenter, string World)? GetSelectedServer()
@@ -74,9 +86,16 @@ public partial class ServerPickerControl : UserControl
     private void UpdateButtonText()
     {
         bool hasSelectedWorld = !string.IsNullOrWhiteSpace(SelectedWorld);
+        string selectedServerText = string.Join(" / ", new[] { SelectedDataCenter, SelectedWorld }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
         ServerPicker_TextBlock.Text = hasSelectedWorld
-            ? $"{SelectedDataCenter} / {SelectedWorld}"
+            ? selectedServerAvailable
+                ? selectedServerText
+                : $"已保存：{selectedServerText}（当前列表不可用）"
             : "请选择服务器";
+        ServerPicker_TextBlock.ToolTip = hasSelectedWorld && !selectedServerAvailable
+            ? "当前服务器列表中找不到这个已保存的服务器，保存时会保留原值。"
+            : null;
         ClearServer_Button.IsEnabled = hasSelectedWorld;
     }
 
