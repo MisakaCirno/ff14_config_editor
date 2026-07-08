@@ -94,12 +94,18 @@ public sealed partial class AppDataStore
             }
 
             string csv = File.ReadAllText(UserMapDataFilePath, MapDataCsvEncoding);
-            Dictionary<ushort, string> mapNames = MapDataTableCsv.ParseSimpleMapDataCsv(csv);
+            MapDataTableCsvDiagnosticResult diagnosticResult = MapDataTableCsv.DiagnoseSimpleMapDataCsv(csv);
+            if (diagnosticResult.HasIssues)
+            {
+                return LoadUserMapDataRepairFallback(
+                    currentStage,
+                    BuildUserMapDataDiagnosticFailureReason(diagnosticResult));
+            }
+
+            Dictionary<ushort, string> mapNames = new(diagnosticResult.MapNames);
             if (mapNames.Count == 0)
             {
-                return LoadMapDataCacheFallback(
-                    UserCsvMapDataSource,
-                    string.Empty,
+                return LoadUserMapDataRepairFallback(
                     currentStage,
                     $"手动地图数据文件为空或格式不受支持。请填写至少一行 ID 和名称后重新读取：{UserMapDataFilePath}");
             }
@@ -187,6 +193,35 @@ public sealed partial class AppDataStore
                 currentStage,
                 FormatDataSyncFailureReason(ex));
         }
+    }
+
+    private MapDataLoadResult LoadUserMapDataRepairFallback(string failureStage, string failureReason)
+    {
+        return LoadMapDataCacheFallback(
+            UserCsvMapDataSource,
+            string.Empty,
+            failureStage,
+            failureReason) with
+        {
+            SourcePath = UserMapDataFilePath,
+            RequiresUserMapDataRepair = true
+        };
+    }
+
+    private static string BuildUserMapDataDiagnosticFailureReason(MapDataTableCsvDiagnosticResult diagnosticResult)
+    {
+        IEnumerable<string> messages = diagnosticResult.Issues
+            .OrderBy(static issue => issue.RowNumber)
+            .ThenByDescending(static issue => issue.Severity)
+            .Take(5)
+            .Select(static issue => $"第 {issue.RowNumber} 行：{issue.Message}");
+        string summary = string.Join("；", messages);
+        if (diagnosticResult.Issues.Count > 5)
+        {
+            summary += $"；另有 {diagnosticResult.Issues.Count - 5} 个问题";
+        }
+
+        return $"手动地图数据文件存在需要修复的问题：{summary}";
     }
 
     private async Task<MapDataLoadResult> LoadMapDataFromOnlineReferenceAsync(bool forceRefresh)

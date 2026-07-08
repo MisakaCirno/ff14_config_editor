@@ -1,8 +1,10 @@
 ﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Windows;
+using System.Windows.Controls;
 using FF14ConfigEditor;
 
 namespace UIMarkerEditor;
@@ -11,7 +13,7 @@ public partial class UserMapDataEditorDialog : Window
 {
     private static readonly Encoding CsvEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
     private readonly string filePath;
-    private readonly ObservableCollection<UserMapDataRow> rows = [];
+    private readonly ObservableCollection<UserMapDataEditorRow> rows = [];
     private readonly bool isReadOnly;
 
     public UserMapDataEditorDialog(string filePath)
@@ -56,9 +58,10 @@ public partial class UserMapDataEditorDialog : Window
 
     private void LoadRowsFromFile()
     {
-        rows.Clear();
+        ClearRows();
         if (!File.Exists(filePath))
         {
+            RefreshRowsValidation();
             return;
         }
 
@@ -70,27 +73,42 @@ public partial class UserMapDataEditorDialog : Window
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DecoderFallbackException)
         {
             AppMessageBox.Show(this, $"读取用户地图数据失败：{ex.Message}", "读取失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            RefreshRowsValidation();
             return;
         }
 
-        LoadRows(MapDataTableCsv.ParseSimpleMapDataCsv(csv));
+        LoadDiagnosticRows(MapDataTableCsv.DiagnoseSimpleMapDataCsv(csv));
     }
 
     private void LoadRows(IReadOnlyDictionary<ushort, string> mapNames)
     {
-        rows.Clear();
+        ClearRows();
         foreach (KeyValuePair<ushort, string> pair in mapNames.OrderBy(pair => pair.Key))
         {
-            rows.Add(new UserMapDataRow(pair.Key.ToString(CultureInfo.InvariantCulture), pair.Value));
+            AddRow(new UserMapDataEditorRow(pair.Key.ToString(CultureInfo.InvariantCulture), pair.Value));
         }
+
+        RefreshRowsValidation();
+    }
+
+    private void LoadDiagnosticRows(MapDataTableCsvDiagnosticResult diagnosticResult)
+    {
+        ClearRows();
+        foreach (MapDataTableCsvRow row in diagnosticResult.Rows)
+        {
+            AddRow(new UserMapDataEditorRow(row.MapIdText, row.Name));
+        }
+
+        ApplyIssues(diagnosticResult.Issues);
+        UpdateValidationStatus();
     }
 
     private void Add_Button_Click(object sender, RoutedEventArgs e)
     {
         if (isReadOnly) return;
 
-        UserMapDataRow row = new();
-        rows.Add(row);
+        UserMapDataEditorRow row = new();
+        AddRow(row);
         MapDataRows_DataGrid.SelectedItem = row;
         MapDataRows_DataGrid.ScrollIntoView(row);
         MapDataRows_DataGrid.BeginEdit();
@@ -100,19 +118,24 @@ public partial class UserMapDataEditorDialog : Window
     {
         if (isReadOnly) return;
 
-        List<UserMapDataRow> selectedRows = MapDataRows_DataGrid.SelectedItems
-            .OfType<UserMapDataRow>()
+        List<UserMapDataEditorRow> selectedRows = MapDataRows_DataGrid.SelectedItems
+            .OfType<UserMapDataEditorRow>()
             .ToList();
-        foreach (UserMapDataRow row in selectedRows)
+        foreach (UserMapDataEditorRow row in selectedRows)
         {
+            row.PropertyChanged -= UserMapDataRow_PropertyChanged;
             rows.Remove(row);
         }
+
+        RefreshRowsValidation();
     }
 
     private void Save_Button_Click(object sender, RoutedEventArgs e)
     {
         if (isReadOnly) return;
 
+        MapDataRows_DataGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+        MapDataRows_DataGrid.CommitEdit(DataGridEditingUnit.Row, true);
         if (!TryBuildMapData(out Dictionary<ushort, string> mapNames))
         {
             return;
@@ -139,36 +162,14 @@ public partial class UserMapDataEditorDialog : Window
 
     private bool TryBuildMapData(out Dictionary<ushort, string> mapNames)
     {
-        mapNames = [];
-        int rowNumber = 0;
-        foreach (UserMapDataRow row in rows)
+        MapDataTableCsvDiagnosticResult diagnosticResult = RefreshRowsValidation();
+        mapNames = new Dictionary<ushort, string>(diagnosticResult.MapNames);
+
+        if (diagnosticResult.HasErrors)
         {
-            rowNumber++;
-            string mapIdText = row.MapId.Trim();
-            string name = row.Name.Trim();
-            if (string.IsNullOrWhiteSpace(mapIdText) && string.IsNullOrWhiteSpace(name))
-            {
-                continue;
-            }
-
-            if (!ushort.TryParse(mapIdText, NumberStyles.Integer, CultureInfo.InvariantCulture, out ushort mapId) ||
-                mapId == MapData.EmptyRegionId)
-            {
-                AppMessageBox.Show(this, $"第 {rowNumber} 行的地图 ID 无效。请输入 1 到 {ushort.MaxValue} 之间的整数。", "格式错误", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                AppMessageBox.Show(this, $"第 {rowNumber} 行缺少地图名称。", "格式错误", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return false;
-            }
-
-            if (!mapNames.TryAdd(mapId, name))
-            {
-                AppMessageBox.Show(this, $"地图 ID {mapId} 重复。", "格式错误", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return false;
-            }
+            SelectFirstInvalidRow();
+            AppMessageBox.Show(this, BuildValidationErrorMessage(diagnosticResult), "格式错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
         }
 
         if (mapNames.Count == 0)
@@ -180,20 +181,166 @@ public partial class UserMapDataEditorDialog : Window
         return true;
     }
 
-    private sealed class UserMapDataRow
+    private void AddRow(UserMapDataEditorRow row)
     {
-        public UserMapDataRow()
+        row.PropertyChanged += UserMapDataRow_PropertyChanged;
+        rows.Add(row);
+    }
+
+    private void ClearRows()
+    {
+        foreach (UserMapDataEditorRow row in rows)
         {
+            row.PropertyChanged -= UserMapDataRow_PropertyChanged;
         }
 
-        public UserMapDataRow(string mapId, string name)
+        rows.Clear();
+    }
+
+    private void UserMapDataRow_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(UserMapDataEditorRow.MapId) or nameof(UserMapDataEditorRow.Name))
         {
-            MapId = mapId;
-            Name = name;
+            RefreshRowsValidation();
+        }
+    }
+
+    private MapDataTableCsvDiagnosticResult RefreshRowsValidation()
+    {
+        MapDataTableCsvDiagnosticResult diagnosticResult = MapDataTableCsv.DiagnoseSimpleMapDataRows(rows.Select((row, index) =>
+            new MapDataTableCsvRow(index + 1, row.MapId, row.Name)));
+        ApplyIssues(diagnosticResult.Issues);
+        UpdateValidationStatus();
+        return diagnosticResult;
+    }
+
+    private void ApplyIssues(IReadOnlyList<MapDataTableCsvIssue> issues)
+    {
+        foreach (UserMapDataEditorRow row in rows)
+        {
+            row.SetIssues([]);
         }
 
-        public string MapId { get; set; } = string.Empty;
+        foreach (IGrouping<int, MapDataTableCsvIssue> group in issues.GroupBy(static issue => issue.RowNumber))
+        {
+            int rowIndex = group.Key - 1;
+            if (rowIndex < 0 || rowIndex >= rows.Count)
+            {
+                continue;
+            }
 
-        public string Name { get; set; } = string.Empty;
+            rows[rowIndex].SetIssues([.. group]);
+        }
+    }
+
+    private void UpdateValidationStatus()
+    {
+        int errorCount = rows.Count(static row => row.HasError);
+        int warningCount = rows.Count(static row => row.HasWarning);
+        if (errorCount > 0)
+        {
+            ValidationStatus_TextBlock.Text = $"发现 {errorCount} 行需要修复。修复前不会保存文件。";
+            ValidationStatus_TextBlock.Visibility = Visibility.Visible;
+            return;
+        }
+
+        if (warningCount > 0)
+        {
+            ValidationStatus_TextBlock.Text = $"发现 {warningCount} 行可自动规范化的问题，保存后会写成合法 CSV。";
+            ValidationStatus_TextBlock.Visibility = Visibility.Visible;
+            return;
+        }
+
+        ValidationStatus_TextBlock.Text = string.Empty;
+        ValidationStatus_TextBlock.Visibility = Visibility.Collapsed;
+    }
+
+    private void SelectFirstInvalidRow()
+    {
+        UserMapDataEditorRow? firstInvalidRow = rows.FirstOrDefault(static row => row.HasError);
+        if (firstInvalidRow == null)
+        {
+            return;
+        }
+
+        MapDataRows_DataGrid.SelectedItem = firstInvalidRow;
+        MapDataRows_DataGrid.ScrollIntoView(firstInvalidRow);
+    }
+
+    private static string BuildValidationErrorMessage(MapDataTableCsvDiagnosticResult diagnosticResult)
+    {
+        IEnumerable<string> messages = diagnosticResult.Issues
+            .Where(static issue => issue.Severity == MapDataTableCsvIssueSeverity.Error)
+            .OrderBy(static issue => issue.RowNumber)
+            .Take(5)
+            .Select(static issue => $"第 {issue.RowNumber} 行：{issue.Message}");
+        string message = string.Join(Environment.NewLine, messages);
+        int extraCount = diagnosticResult.Issues.Count(static issue => issue.Severity == MapDataTableCsvIssueSeverity.Error) - 5;
+        if (extraCount > 0)
+        {
+            message += $"{Environment.NewLine}另有 {extraCount} 个问题。";
+        }
+
+        return message;
+    }
+}
+
+internal sealed class UserMapDataEditorRow : INotifyPropertyChanged
+{
+    private string mapId = string.Empty;
+    private string name = string.Empty;
+    private IReadOnlyList<MapDataTableCsvIssue> issues = [];
+
+    public UserMapDataEditorRow()
+    {
+    }
+
+    public UserMapDataEditorRow(string mapId, string name)
+    {
+        this.mapId = mapId;
+        this.name = name;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string MapId
+    {
+        get => mapId;
+        set
+        {
+            if (mapId == value) return;
+            mapId = value;
+            OnPropertyChanged(nameof(MapId));
+        }
+    }
+
+    public string Name
+    {
+        get => name;
+        set
+        {
+            if (name == value) return;
+            name = value;
+            OnPropertyChanged(nameof(Name));
+        }
+    }
+
+    public string IssueText => string.Join(Environment.NewLine, issues.Select(static issue => issue.Message));
+
+    public bool HasError => issues.Any(static issue => issue.Severity == MapDataTableCsvIssueSeverity.Error);
+
+    public bool HasWarning => !HasError && issues.Any(static issue => issue.Severity == MapDataTableCsvIssueSeverity.Warning);
+
+    public void SetIssues(IReadOnlyList<MapDataTableCsvIssue> nextIssues)
+    {
+        issues = nextIssues;
+        OnPropertyChanged(nameof(IssueText));
+        OnPropertyChanged(nameof(HasError));
+        OnPropertyChanged(nameof(HasWarning));
+    }
+
+    private void OnPropertyChanged(string propertyName)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

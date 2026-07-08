@@ -1074,6 +1074,11 @@ public partial class ToolSettingsControl : UserControl
             MapDataLoadResult result = await appDataStore.ForceRefreshMapDataAsync();
             RefreshStatusFields();
             RecordMapDataManualRefreshAttemptIfNeeded(recordManualAttempt, result);
+            if (await PromptToRepairUserMapDataAsync(result))
+            {
+                return;
+            }
+
             if (!result.Success)
             {
                 refreshMapDataConsumers();
@@ -1114,6 +1119,36 @@ public partial class ToolSettingsControl : UserControl
             SetManualRefreshButtonsEnabled(true);
             RefreshStatusFields();
         }
+    }
+
+    private async Task<bool> PromptToRepairUserMapDataAsync(MapDataLoadResult result)
+    {
+        if (!result.RequiresUserMapDataRepair)
+        {
+            return false;
+        }
+
+        refreshMapDataConsumers();
+        if (AppMessageBox.Show(
+            ownerWindow,
+            UserMapDataRepairPrompt.BuildMessage(result),
+            "用户地图数据需要修复",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes)
+        {
+            try
+            {
+                await openUserMapDataEditor();
+                RefreshStatusFields();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning(AppLogCategory.UI, "打开用户地图数据修复编辑器失败", ex);
+                AppMessageBox.Show(ownerWindow, $"打开用户地图数据编辑器失败：{ex.Message}", "用户地图数据需要修复", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        return true;
     }
 
     private async void RefreshServerList_Button_Click(object sender, RoutedEventArgs e)

@@ -15,7 +15,8 @@ public sealed record MapDataLoadResult(
     bool CacheAvailable = false,
     string FailureStage = "",
     string FailureReason = "",
-    string SourcePath = "");
+    string SourcePath = "",
+    bool RequiresUserMapDataRepair = false);
 
 public sealed record ServerListLoadResult(
     bool Success,

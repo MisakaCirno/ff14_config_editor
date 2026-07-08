@@ -56,6 +56,100 @@ internal static class MapDataTableCsv
         return mapNames;
     }
 
+    public static MapDataTableCsvDiagnosticResult DiagnoseSimpleMapDataCsv(string csv)
+    {
+        List<List<string>> records = ReadRecords(csv);
+        List<MapDataTableCsvRow> rows = [];
+        int visibleRowNumber = 0;
+        for (int i = HasSimpleMapDataHeader(records) ? 1 : 0; i < records.Count; i++)
+        {
+            List<string> fields = records[i];
+            string mapIdText = fields.Count > 0
+                ? NormalizeHeaderName(fields[0])
+                : string.Empty;
+            string name = fields.Count > 1
+                ? string.Join(",", fields.Skip(1))
+                : string.Empty;
+            if (string.IsNullOrWhiteSpace(mapIdText) && string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            rows.Add(new MapDataTableCsvRow(
+                ++visibleRowNumber,
+                mapIdText,
+                name,
+                HasExtraColumns: fields.Count > 2));
+        }
+
+        return DiagnoseSimpleMapDataRows(rows);
+    }
+
+    public static MapDataTableCsvDiagnosticResult DiagnoseSimpleMapDataRows(IEnumerable<MapDataTableCsvRow> rows)
+    {
+        List<MapDataTableCsvRow> normalizedRows = [.. rows
+            .Where(static row => !string.IsNullOrWhiteSpace(row.MapIdText) || !string.IsNullOrWhiteSpace(row.Name))];
+        List<MapDataTableCsvIssue> issues = [];
+        List<(MapDataTableCsvRow Row, ushort MapId, string Name)> validRows = [];
+
+        foreach (MapDataTableCsvRow row in normalizedRows)
+        {
+            if (row.HasExtraColumns)
+            {
+                issues.Add(new MapDataTableCsvIssue(
+                    row.RowNumber,
+                    MapDataTableCsvIssueSeverity.Warning,
+                    "这一行有多余列，已临时合并到名称；保存后会写成合法 CSV。"));
+            }
+
+            string mapIdText = row.MapIdText.Trim().TrimStart('\uFEFF');
+            if (!ushort.TryParse(mapIdText, NumberStyles.Integer, CultureInfo.InvariantCulture, out ushort mapId) ||
+                mapId == MapData.EmptyRegionId)
+            {
+                issues.Add(new MapDataTableCsvIssue(
+                    row.RowNumber,
+                    MapDataTableCsvIssueSeverity.Error,
+                    $"地图 ID 无效。请输入 1 到 {ushort.MaxValue} 之间的整数。"));
+                continue;
+            }
+
+            string name = row.Name.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                issues.Add(new MapDataTableCsvIssue(
+                    row.RowNumber,
+                    MapDataTableCsvIssueSeverity.Error,
+                    "缺少地图名称。"));
+                continue;
+            }
+
+            validRows.Add((row, mapId, name));
+        }
+
+        foreach (IGrouping<ushort, (MapDataTableCsvRow Row, ushort MapId, string Name)> duplicateGroup in
+            validRows.GroupBy(static item => item.MapId).Where(static group => group.Count() > 1))
+        {
+            foreach ((MapDataTableCsvRow row, ushort _, string _) in duplicateGroup)
+            {
+                issues.Add(new MapDataTableCsvIssue(
+                    row.RowNumber,
+                    MapDataTableCsvIssueSeverity.Error,
+                    $"地图 ID {duplicateGroup.Key} 重复。"));
+            }
+        }
+
+        Dictionary<ushort, string> mapNames = [];
+        if (!issues.Any(static issue => issue.Severity == MapDataTableCsvIssueSeverity.Error))
+        {
+            foreach ((_, ushort mapId, string name) in validRows.OrderBy(static item => item.MapId))
+            {
+                mapNames[mapId] = name;
+            }
+        }
+
+        return new MapDataTableCsvDiagnosticResult(normalizedRows, issues, mapNames);
+    }
+
     public static List<List<string>> ReadRecords(string csv)
     {
         List<List<string>> records = [];
@@ -144,4 +238,31 @@ internal static class MapDataTableCsv
         builder.Append(value.Replace("\"", "\"\"", StringComparison.Ordinal));
         builder.Append('"');
     }
+}
+
+internal sealed record MapDataTableCsvRow(
+    int RowNumber,
+    string MapIdText,
+    string Name,
+    bool HasExtraColumns = false);
+
+internal sealed record MapDataTableCsvIssue(
+    int RowNumber,
+    MapDataTableCsvIssueSeverity Severity,
+    string Message);
+
+internal enum MapDataTableCsvIssueSeverity
+{
+    Warning,
+    Error
+}
+
+internal sealed record MapDataTableCsvDiagnosticResult(
+    IReadOnlyList<MapDataTableCsvRow> Rows,
+    IReadOnlyList<MapDataTableCsvIssue> Issues,
+    IReadOnlyDictionary<ushort, string> MapNames)
+{
+    public bool HasIssues => Issues.Count > 0;
+
+    public bool HasErrors => Issues.Any(static issue => issue.Severity == MapDataTableCsvIssueSeverity.Error);
 }

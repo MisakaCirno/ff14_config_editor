@@ -58,10 +58,14 @@ namespace UIMarkerEditor
 
         private readonly AppDataStore appDataStore;
         private readonly ObservableCollection<ToastNotification> toastNotifications = [];
+        private MapDataLoadResult? pendingUserMapDataRepairPrompt;
 
-        public MainWindow(AppDataStore appDataStore)
+        public MainWindow(AppDataStore appDataStore, MapDataLoadResult? startupMapDataLoadResult = null)
         {
             this.appDataStore = appDataStore;
+            pendingUserMapDataRepairPrompt = startupMapDataLoadResult?.RequiresUserMapDataRepair == true
+                ? startupMapDataLoadResult
+                : null;
             wayMarkChangeTracker = new(WayMarkModel_PropertyChanged);
             InitializeComponent();
             ToastItems_Control.ItemsSource = toastNotifications;
@@ -147,9 +151,22 @@ namespace UIMarkerEditor
             RefreshCharacterList();
             ShowDataLoadWarnings();
             ShowMigrationReports();
+            PromptForPendingUserMapDataRepair();
             ScheduleStartupWayMarkAction();
             RefreshLocalCharacterSelectionAvailability();
             _ = AutoDetectGameInstallDirectoryAndScanLocalCharactersAsync();
+        }
+
+        private void PromptForPendingUserMapDataRepair()
+        {
+            MapDataLoadResult? result = pendingUserMapDataRepairPrompt;
+            pendingUserMapDataRepairPrompt = null;
+            if (result == null)
+            {
+                return;
+            }
+
+            _ = PromptToRepairUserMapDataAsync(result);
         }
 
         private async Task AutoDetectGameInstallDirectoryAndScanLocalCharactersAsync()

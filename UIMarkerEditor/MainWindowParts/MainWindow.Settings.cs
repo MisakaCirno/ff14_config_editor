@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Windows;
+using FF14ConfigEditor;
 
 namespace UIMarkerEditor
 {
@@ -120,6 +121,11 @@ namespace UIMarkerEditor
                     RefreshMapDataConsumers();
                     ToolSettings_Control.RefreshOnlineDataStatus();
 
+                    if (await PromptToRepairUserMapDataAsync(result))
+                    {
+                        return;
+                    }
+
                     if (!result.Success)
                     {
                         HideMapDataSourceSwitchOverlay();
@@ -208,6 +214,11 @@ namespace UIMarkerEditor
                 MapDataLoadResult result = await appDataStore.ForceRefreshMapDataAsync();
                 RefreshMapDataConsumers();
                 ToolSettings_Control.RefreshOnlineDataStatus();
+                if (await PromptToRepairUserMapDataAsync(result))
+                {
+                    return;
+                }
+
                 if (!result.Success)
                 {
                     AppMessageBox.Show(
@@ -309,6 +320,17 @@ namespace UIMarkerEditor
                 MapDataLoadResult result = await appDataStore.ForceRefreshMapDataAsync();
                 RefreshMapDataConsumers();
                 ToolSettings_Control.RefreshOnlineDataStatus();
+                if (result.RequiresUserMapDataRepair)
+                {
+                    AppMessageBox.Show(
+                        this,
+                        BuildMapDataSourceMenuRefreshFailureMessage(result),
+                        "地图数据",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
                 if (!result.Success)
                 {
                     AppMessageBox.Show(
@@ -329,6 +351,35 @@ namespace UIMarkerEditor
             {
                 HideMapDataSourceSwitchOverlay();
             }
+        }
+
+        internal async Task<bool> PromptToRepairUserMapDataAsync(MapDataLoadResult result)
+        {
+            if (!result.RequiresUserMapDataRepair)
+            {
+                return false;
+            }
+
+            try
+            {
+                HideMapDataSourceSwitchOverlay();
+                if (AppMessageBox.Show(
+                    this,
+                    UserMapDataRepairPrompt.BuildMessage(result),
+                    "用户地图数据需要修复",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                {
+                    await OpenUserMapDataEditorAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning(AppLogCategory.UI, "打开用户地图数据修复编辑器失败", ex);
+                AppMessageBox.Show(this, $"打开用户地图数据编辑器失败：{ex.Message}", "用户地图数据需要修复", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+
+            return true;
         }
 
         private void RefreshMapDataSourceMenu()

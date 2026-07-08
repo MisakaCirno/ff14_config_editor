@@ -2054,6 +2054,27 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenManualCsvHasInvalidRows_RequiresRepairWithoutApplyingPartialRows()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+        EnableMapDataManualTable(store);
+        WriteRawUserMapDataCsv(store, "ID,Name\r\n321,有效行\r\nbad,坏 ID\r\n");
+        MapData.Clear();
+
+        MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
+
+        Assert.False(result.Success);
+        Assert.True(result.RequiresUserMapDataRepair);
+        Assert.Equal(store.UserMapDataFilePath, result.SourcePath);
+        Assert.Contains("需要修复", result.FailureReason);
+        Assert.Contains("第 2 行", result.FailureReason);
+        Assert.False(MapData.HasData);
+        Assert.Empty(networkClient.Requests);
+    }
+
+    [Fact]
     public async Task EnsureMapDataAvailableAsync_WhenManualCsvInvalidAndCacheExists_UsesCache()
     {
         DateTime successfulSyncAt = new(2026, 7, 6, 9, 0, 0);
@@ -2077,6 +2098,8 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(result.Updated);
         Assert.True(result.UsedCache);
         Assert.True(result.CacheAvailable);
+        Assert.True(result.RequiresUserMapDataRepair);
+        Assert.Equal(store.UserMapDataFilePath, result.SourcePath);
         Assert.Equal("读取手动地图数据", result.FailureStage);
         Assert.Contains("为空或格式不受支持", result.FailureReason);
         Assert.Equal("manual-cache-version", result.Version);

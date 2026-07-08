@@ -108,7 +108,7 @@ public partial class App : Application
             startupLoadingWindow.SetStatus("正在加载主窗口...");
             await YieldForStartupLoadingWindowAsync();
 
-            MainWindow mainWindow = new(appDataStore);
+            MainWindow mainWindow = new(appDataStore, mapDataLoadResult);
             MainWindow = mainWindow;
             mainWindow.Show();
             ShutdownMode = ShutdownMode.OnMainWindowClose;
