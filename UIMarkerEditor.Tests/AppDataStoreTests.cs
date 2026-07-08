@@ -2109,6 +2109,44 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenManualCsvInvalidAndCacheFingerprintMatches_StillRequiresRepair()
+    {
+        DateTime successfulSyncAt = new(2026, 7, 6, 9, 0, 0);
+        FakeAppDataNetworkClient networkClient = new();
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+        EnableMapDataManualTable(store);
+        WriteRawUserMapDataCsv(store, "ID,Name\r\n321,有效行\r\nbad,坏 ID\r\n");
+        FileInfo userMapDataFileInfo = new(store.UserMapDataFilePath);
+        string matchingVersion = $"{MapDataSourceParsers.FormatSnapshotTimestamp(userMapDataFileInfo.LastWriteTime)}-cached";
+        string matchingFingerprint = FormattableString.Invariant(
+            $"user-csv:{userMapDataFileInfo.LastWriteTimeUtc.Ticks}:{userMapDataFileInfo.Length}");
+        WriteMapDataCache(
+            321,
+            "缓存手动副本",
+            matchingVersion,
+            successfulSyncAt,
+            store.UserMapDataFilePath,
+            sourceKey: "user-csv",
+            sourceFingerprint: matchingFingerprint);
+        MapData.Clear();
+
+        MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
+
+        Assert.True(result.Success);
+        Assert.False(result.Updated);
+        Assert.True(result.UsedCache);
+        Assert.True(result.CacheAvailable);
+        Assert.True(result.RequiresUserMapDataRepair);
+        Assert.Equal(store.UserMapDataFilePath, result.SourcePath);
+        Assert.Contains("第 2 行", result.FailureReason);
+        Assert.Equal(matchingVersion, result.Version);
+        Assert.Equal("缓存手动副本", MapData.GetName(321));
+        Assert.Equal(successfulSyncAt, store.MapDataLastSuccessfulSyncAt);
+        Assert.Empty(networkClient.Requests);
+    }
+
+    [Fact]
     public async Task EnsureMapDataAvailableAsync_WhenManualCsvMissing_CreatesDefaultCsvAndLoadsIt()
     {
         FakeAppDataNetworkClient networkClient = new();

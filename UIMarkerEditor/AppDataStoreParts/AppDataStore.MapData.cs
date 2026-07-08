@@ -79,20 +79,6 @@ public sealed partial class AppDataStore
             DateTime userMapDataLastWriteTime = userMapDataFileInfo.LastWriteTime;
             string userMapDataFingerprint = CreateFileMetadataFingerprint(UserCsvMapDataSource, userMapDataFileInfo);
             string userMapDataVersionPrefix = $"{MapDataSourceParsers.FormatSnapshotTimestamp(userMapDataLastWriteTime)}-";
-            if (!forceRefresh && TryUseCachedMapDataSnapshot(
-                UserCsvMapDataSource,
-                cache =>
-                    cache.Version.StartsWith(userMapDataVersionPrefix, StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(cache.SourceFingerprint, userMapDataFingerprint, StringComparison.OrdinalIgnoreCase),
-                UserMapDataFilePath,
-                DateTime.Now,
-                currentStage,
-                "手动地图数据缓存为空或格式不受支持。",
-                out MapDataLoadResult? cachedUserResult))
-            {
-                return cachedUserResult!;
-            }
-
             string csv = File.ReadAllText(UserMapDataFilePath, MapDataCsvEncoding);
             MapDataTableCsvDiagnosticResult diagnosticResult = MapDataTableCsv.DiagnoseSimpleMapDataCsv(csv);
             if (diagnosticResult.HasIssues)
@@ -108,6 +94,20 @@ public sealed partial class AppDataStore
                 return LoadUserMapDataRepairFallback(
                     currentStage,
                     $"手动地图数据文件为空或格式不受支持。请填写至少一行 ID 和名称后重新读取：{UserMapDataFilePath}");
+            }
+
+            if (!forceRefresh && TryUseCachedMapDataSnapshot(
+                UserCsvMapDataSource,
+                cache =>
+                    cache.Version.StartsWith(userMapDataVersionPrefix, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(cache.SourceFingerprint, userMapDataFingerprint, StringComparison.OrdinalIgnoreCase),
+                UserMapDataFilePath,
+                DateTime.Now,
+                currentStage,
+                "手动地图数据缓存为空或格式不受支持。",
+                out MapDataLoadResult? cachedUserResult))
+            {
+                return cachedUserResult!;
             }
 
             string version = MapDataSourceParsers.CreateTimestampedContentHashVersion(userMapDataLastWriteTime, csv);
