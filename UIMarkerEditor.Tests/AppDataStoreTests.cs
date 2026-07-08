@@ -387,6 +387,7 @@ public sealed class AppDataStoreTests : IDisposable
         string customDirectory = Path.Combine(testDirectory, "Manual", "OpenHere");
         Directory.CreateDirectory(Path.GetDirectoryName(manualGameExecutablePath)!);
         File.WriteAllText(manualGameExecutablePath, string.Empty);
+        Directory.CreateDirectory(customDirectory);
         int detectCount = 0;
         AppDataStore store = CreateStore(() =>
         {
@@ -606,6 +607,59 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Contains("游戏安装目录无效", exception.Message);
         Assert.Equal(37, store.Settings.MaxBackupCount);
         Assert.Equal(Path.GetFullPath(validGameInstallDirectory), store.Settings.GameInstallDirectory);
+    }
+
+    [Fact]
+    public void SaveSettings_WhenCustomDirectoryModeDirectoryInvalid_ThrowsAndDoesNotReplaceCurrentSettings()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string validCustomDirectory = Path.Combine(testDirectory, "ValidCustom");
+        Directory.CreateDirectory(validCustomDirectory);
+        store.SaveSettings(new AppSettings
+        {
+            MaxBackupCount = 37,
+            WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.CustomDirectory,
+            WayMarkCustomDirectory = validCustomDirectory
+        });
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            store.SaveSettings(new AppSettings
+            {
+                MaxBackupCount = 7,
+                WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.CustomDirectory,
+                WayMarkCustomDirectory = Path.Combine(testDirectory, "MissingCustom")
+            }));
+
+        Assert.Contains("自定义目录无效", exception.Message);
+        Assert.Equal(37, store.Settings.MaxBackupCount);
+        Assert.Equal(WayMarkOpenDirectoryMode.CustomDirectory, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.Equal(Path.GetFullPath(validCustomDirectory), store.Settings.WayMarkCustomDirectory);
+    }
+
+    [Fact]
+    public void Initialize_WhenCustomDirectoryModeDirectoryMissing_FallsBackToDefaultWithWarning()
+    {
+        AppDataStore store = CreateStore();
+        string missingCustomDirectory = Path.Combine(testDirectory, "MissingCustom");
+        Directory.CreateDirectory(Path.GetDirectoryName(store.SettingsFilePath)!);
+        File.WriteAllText(
+            store.SettingsFilePath,
+            JsonSerializer.Serialize(new AppSettings
+            {
+                WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.CustomDirectory,
+                WayMarkOpenDirectoryModeInitialized = true,
+                WayMarkCustomDirectory = missingCustomDirectory
+            }));
+
+        store.Initialize();
+
+        Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
+        Assert.False(store.Settings.WayMarkOpenDirectoryModeInitialized);
+        Assert.Equal(Path.GetFullPath(missingCustomDirectory), store.Settings.WayMarkCustomDirectory);
+        Assert.Contains(store.ConsumeDataLoadWarnings(), warning =>
+            warning.Contains("自定义目录无法使用") &&
+            warning.Contains(missingCustomDirectory));
     }
 
     [Fact]

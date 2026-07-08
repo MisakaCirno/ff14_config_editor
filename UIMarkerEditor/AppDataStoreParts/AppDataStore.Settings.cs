@@ -52,7 +52,7 @@ public sealed partial class AppDataStore
         NormalizeSettingsForLoad(Settings);
     }
 
-    private static void NormalizeSettingsForLoad(AppSettings settings)
+    private void NormalizeSettingsForLoad(AppSettings settings)
     {
         NormalizeSettingsReferences(settings);
         settings.GameInstallDirectory = NormalizeOptionalPath(settings.GameInstallDirectory);
@@ -102,6 +102,7 @@ public sealed partial class AppDataStore
         }
 
         NormalizeWayMarkOpenDirectoryModeInitialized(settings);
+        FallBackUnavailableCustomOpenDirectoryForLoad(settings);
         NormalizeMapDataSourceInitialized(settings);
         NormalizeMapDataTableModeInitialized(settings);
 
@@ -242,6 +243,31 @@ public sealed partial class AppDataStore
         {
             settings.WayMarkOpenDirectoryModeInitialized = true;
         }
+    }
+
+    private void FallBackUnavailableCustomOpenDirectoryForLoad(AppSettings settings)
+    {
+        if (settings.WayMarkOpenDirectoryMode != WayMarkOpenDirectoryMode.CustomDirectory)
+        {
+            return;
+        }
+
+        if (WayMarkOpenDirectoryResolver.TryNormalizeExistingDirectory(
+            settings.WayMarkCustomDirectory,
+            out string? normalizedCustomDirectory))
+        {
+            settings.WayMarkCustomDirectory = normalizedCustomDirectory;
+            return;
+        }
+
+        string configuredCustomDirectory = settings.WayMarkCustomDirectory;
+        settings.WayMarkOpenDirectoryMode = WayMarkOpenDirectoryMode.Default;
+        settings.WayMarkOpenDirectoryModeInitialized = false;
+        AddDataLoadWarning(
+            $"waymark-custom-directory-unavailable:{configuredCustomDirectory}",
+            $"标点文件打开目录设置中的自定义目录无法使用，已改用默认打开目录。{Environment.NewLine}" +
+            $"自定义目录：{configuredCustomDirectory}{Environment.NewLine}" +
+            "如需继续使用自定义目录，请在设置中重新选择可用目录。");
     }
 
     private static void InitializeWayMarkOpenDirectoryModeForGameInstallDirectory(
@@ -459,6 +485,12 @@ public sealed partial class AppDataStore
         if (!Enum.IsDefined(settings.WayMarkOpenDirectoryMode))
         {
             throw new InvalidOperationException("标点文件打开目录设置不是有效选项。");
+        }
+
+        if (settings.WayMarkOpenDirectoryMode == WayMarkOpenDirectoryMode.CustomDirectory &&
+            !WayMarkOpenDirectoryResolver.TryNormalizeExistingDirectory(settings.WayMarkCustomDirectory, out _))
+        {
+            throw new InvalidOperationException("自定义目录无效。请选择或输入一个已存在的目录。");
         }
 
         if (!string.IsNullOrWhiteSpace(settings.GameInstallDirectory) &&
