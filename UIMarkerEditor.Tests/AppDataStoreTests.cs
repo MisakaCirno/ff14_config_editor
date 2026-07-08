@@ -158,6 +158,31 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public void Initialize_WhenConfiguredDataDirectoryCannotBePrepared_FallsBackWithWarning()
+    {
+        Directory.CreateDirectory(testDirectory);
+        string configuredDataDirectory = Path.Combine(testDirectory, "BrokenData");
+        Directory.CreateDirectory(configuredDataDirectory);
+        File.WriteAllText(Path.Combine(configuredDataDirectory, "configs"), "不是目录");
+        File.WriteAllText(
+            Path.Combine(testDirectory, "bootstrap.json"),
+            JsonSerializer.Serialize(new BootstrapSettings { DataDirectory = configuredDataDirectory }));
+        AppDataStore store = CreateStore();
+
+        store.Initialize();
+
+        Assert.Equal(Path.Combine(testDirectory, "Data"), store.DataDirectory);
+        Assert.True(File.Exists(store.SettingsFilePath));
+        Assert.Equal(
+            store.DataDirectory,
+            JsonSerializer.Deserialize<BootstrapSettings>(File.ReadAllText(store.BootstrapFilePath))!.DataDirectory);
+        Assert.Contains(store.ConsumeDataLoadWarnings(), warning =>
+            warning.Contains("启动配置指向的数据目录无法使用") &&
+            warning.Contains(configuredDataDirectory) &&
+            warning.Contains(store.DefaultDataDirectory));
+    }
+
+    [Fact]
     public void SaveSettings_WhenDataDirectoryCannotBePrepared_ThrowsAppDataStoreException()
     {
         AppDataStore store = CreateStore();

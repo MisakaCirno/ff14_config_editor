@@ -159,10 +159,18 @@ public sealed partial class AppDataStore
         {
             EnsureDataDirectory();
         }
-        catch when (!string.Equals(DataDirectory, DefaultDataDirectory, StringComparison.OrdinalIgnoreCase))
+        catch (Exception ex) when (!string.Equals(DataDirectory, DefaultDataDirectory, StringComparison.OrdinalIgnoreCase))
         {
+            string configuredDataDirectory = DataDirectory;
             DataDirectory = DefaultDataDirectory;
             EnsureDataDirectory();
+            AddDataLoadWarning(
+                $"data-directory-unavailable:{configuredDataDirectory}",
+                $"启动配置指向的数据目录无法使用，已改用默认数据目录。{Environment.NewLine}" +
+                $"配置的数据目录：{configuredDataDirectory}{Environment.NewLine}" +
+                $"默认数据目录：{DefaultDataDirectory}{Environment.NewLine}" +
+                $"原因：{ex.Message}{Environment.NewLine}" +
+                "如需继续使用原数据，请在设置中重新选择可用目录。");
         }
 
         SaveBootstrap();
