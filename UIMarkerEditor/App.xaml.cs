@@ -79,17 +79,20 @@ public partial class App : Application
             await YieldForStartupLoadingWindowAsync();
 
             MapDataLoadResult mapDataLoadResult = await appDataStore.EnsureMapDataAvailableAsync();
-            if (!mapDataLoadResult.Success)
+            if (ShouldAddStartupMapDataLoadWarning(mapDataLoadResult))
             {
-                appDataStore.AddDataLoadWarning(
-                    "map-data-unavailable",
-                    BuildMapDataUnavailableWarningMessage(mapDataLoadResult));
-            }
-            else if (mapDataLoadResult.UsedCache)
-            {
-                appDataStore.AddDataLoadWarning(
-                    "map-data-cache-fallback",
-                    BuildMapDataCacheFallbackWarningMessage(mapDataLoadResult));
+                if (!mapDataLoadResult.Success)
+                {
+                    appDataStore.AddDataLoadWarning(
+                        "map-data-unavailable",
+                        BuildMapDataUnavailableWarningMessage(mapDataLoadResult));
+                }
+                else if (mapDataLoadResult.UsedCache)
+                {
+                    appDataStore.AddDataLoadWarning(
+                        "map-data-cache-fallback",
+                        BuildMapDataCacheFallbackWarningMessage(mapDataLoadResult));
+                }
             }
 
             if (mapDataLoadResult.Updated)
@@ -251,6 +254,12 @@ public partial class App : Application
             "无法加载地图数据，工具已继续启动。\n\n" +
             $"原因：{BuildMapDataFailureReasonText(result)}\n\n" +
             "当前没有可用地图区域快照，区域选择和剪贴板导入校验会受限。可在设置中重新读取地图数据，或开启“允许未知地图 ID”后自行确认地图 ID。";
+    }
+
+    internal static bool ShouldAddStartupMapDataLoadWarning(MapDataLoadResult result)
+    {
+        return !result.RequiresUserMapDataRepair &&
+            (!result.Success || result.UsedCache);
     }
 
     private static string BuildMapDataCacheFallbackWarningMessage(MapDataLoadResult result)
