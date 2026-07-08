@@ -41,8 +41,19 @@ public partial class WayMarkFavoritePickerDialog : Window
             return;
         }
 
-        Width = Math.Max(layout.WayMarkFavoritePickerWidth, MinWidth);
-        Height = Math.Max(layout.WayMarkFavoritePickerHeight, MinHeight);
+        Rect savedBounds = new(
+            layout.WayMarkFavoritePickerLeft,
+            layout.WayMarkFavoritePickerTop,
+            Math.Max(layout.WayMarkFavoritePickerWidth, MinWidth),
+            Math.Max(layout.WayMarkFavoritePickerHeight, MinHeight));
+        Width = savedBounds.Width;
+        Height = savedBounds.Height;
+        if (IsUsableWindowBounds(savedBounds))
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            Left = savedBounds.Left;
+            Top = savedBounds.Top;
+        }
     }
 
     public void CaptureLayoutSettings(WindowLayoutSettings layout)
@@ -73,6 +84,26 @@ public partial class WayMarkFavoritePickerDialog : Window
         return double.IsFinite(value) && value > 0;
     }
 
+    private static bool IsUsableWindowBounds(Rect bounds)
+    {
+        if (!double.IsFinite(bounds.Left) || !double.IsFinite(bounds.Top)) return false;
+
+        Rect virtualScreen = new(
+            SystemParameters.VirtualScreenLeft,
+            SystemParameters.VirtualScreenTop,
+            SystemParameters.VirtualScreenWidth,
+            SystemParameters.VirtualScreenHeight);
+        Rect visibleBounds = Rect.Intersect(virtualScreen, bounds);
+        if (visibleBounds.IsEmpty)
+        {
+            return false;
+        }
+
+        double requiredVisibleWidth = Math.Min(200, bounds.Width * 0.25);
+        double requiredVisibleHeight = Math.Min(120, bounds.Height * 0.25);
+        return visibleBounds.Width >= requiredVisibleWidth &&
+            visibleBounds.Height >= requiredVisibleHeight;
+    }
 
     private void Favorites_DataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
