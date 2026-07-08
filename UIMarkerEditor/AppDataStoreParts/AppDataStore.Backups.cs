@@ -113,6 +113,8 @@ public sealed partial class AppDataStore
             throw new FileNotFoundException("找不到备份文件。", backup.BackupFilePath);
         }
 
+        ValidateBackupFileForRestore(backup);
+
         string? targetDirectory = Path.GetDirectoryName(targetFilePath);
         if (!string.IsNullOrWhiteSpace(targetDirectory))
         {
@@ -120,6 +122,29 @@ public sealed partial class AppDataStore
         }
 
         SafeFileWriter.Copy(backup.BackupFilePath, targetFilePath);
+    }
+
+    private void ValidateBackupFileForRestore(BackupMetadata backup)
+    {
+        FileInfo backupFileInfo = new(backup.BackupFilePath);
+        if (backup.SourceFileSize > 0 &&
+            backupFileInfo.Length != backup.SourceFileSize)
+        {
+            throw new InvalidDataException(
+                $"备份文件与元数据不匹配，已取消还原。备份创建时大小为 {backup.SourceFileSize:N0} 字节，当前大小为 {backupFileInfo.Length:N0} 字节。");
+        }
+
+        if (string.IsNullOrWhiteSpace(backup.SourceFileSha256))
+        {
+            return;
+        }
+
+        string actualSha256 = ComputeSha256(backup.BackupFilePath);
+        if (!string.Equals(actualSha256, backup.SourceFileSha256.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException(
+                $"备份文件与元数据不匹配，已取消还原。备份创建时 SHA256 为 {backup.SourceFileSha256.Trim()}，当前 SHA256 为 {actualSha256}。");
+        }
     }
 
     public void CleanupBackups(params string[] preservedBackupDirectories)

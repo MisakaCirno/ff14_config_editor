@@ -1307,6 +1307,30 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public void RestoreBackup_WhenBackupFileHashDiffers_ThrowsAndLeavesTargetUntouched()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string sourceDirectory = Path.Combine(testDirectory, "FFXIV_CHR0123456789ABCDEF");
+        Directory.CreateDirectory(sourceDirectory);
+        string sourceFilePath = Path.Combine(sourceDirectory, "UISAVE.DAT");
+        File.WriteAllBytes(sourceFilePath, CreateMinimalUISaveFile(regionId: 123));
+        BackupMetadata backup = store.CreateBackup(sourceFilePath, cleanupAfterCreate: false);
+        File.WriteAllBytes(backup.BackupFilePath, CreateMinimalUISaveFile(regionId: 456));
+        string targetDirectory = Path.Combine(testDirectory, "Target");
+        Directory.CreateDirectory(targetDirectory);
+        string targetFilePath = Path.Combine(targetDirectory, "UISAVE.DAT");
+        byte[] targetBytes = CreateMinimalUISaveFile(regionId: 789);
+        File.WriteAllBytes(targetFilePath, targetBytes);
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            store.RestoreBackup(backup, targetFilePath));
+
+        Assert.Contains("SHA256", exception.Message);
+        Assert.Equal(targetBytes, File.ReadAllBytes(targetFilePath));
+    }
+
+    [Fact]
     public void CreateBackup_WhenSourceIsTrustedCharacterFolder_UsesFolderUserIdAsEffectiveUserId()
     {
         string gameInstallDirectory = Path.Combine(testDirectory, "GameInstall");
