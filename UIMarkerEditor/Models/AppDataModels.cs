@@ -240,6 +240,7 @@ public static class BackupCreationTriggers
     public const string BeforeSave = "BeforeSave";
     public const string AfterLoad = "AfterLoad";
     public const string BeforeRestore = "BeforeRestore";
+    public const string AfterDeletedFileRecreate = "AfterDeletedFileRecreate";
 
     public static string ToDisplayText(string? creationTrigger)
     {
@@ -248,6 +249,7 @@ public static class BackupCreationTriggers
             BeforeSave => "保存前自动备份",
             AfterLoad => "读取后自动备份",
             BeforeRestore => "还原前安全备份",
+            AfterDeletedFileRecreate => "已删除文件重建后备份",
             _ => "未记录"
         };
     }

@@ -139,7 +139,7 @@
 
                         <TextBlock Text="创建原因："
                                    Style="{StaticResource BackupFieldLabelStyle}"
-                                   ToolTip="记录这个备份是由保存前、读取后，还是还原前安全保护自动创建。"/>
+                                   ToolTip="记录这个备份是由保存前、读取后、还原前安全保护，还是删除文件重建后自动创建。"/>
                         <TextBox x:Name="BackupDetail_CreationTrigger_TextBox"
                                  Style="{StaticResource BackupReadOnlyTextBoxStyle}"/>
 

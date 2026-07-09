@@ -1338,6 +1338,16 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public void BackupCreationTriggers_ToDisplayText_MapsKnownTriggers()
+    {
+        Assert.Equal("保存前自动备份", BackupCreationTriggers.ToDisplayText(BackupCreationTriggers.BeforeSave));
+        Assert.Equal("读取后自动备份", BackupCreationTriggers.ToDisplayText(BackupCreationTriggers.AfterLoad));
+        Assert.Equal("还原前安全备份", BackupCreationTriggers.ToDisplayText(BackupCreationTriggers.BeforeRestore));
+        Assert.Equal("已删除文件重建后备份", BackupCreationTriggers.ToDisplayText(BackupCreationTriggers.AfterDeletedFileRecreate));
+        Assert.Equal("未记录", BackupCreationTriggers.ToDisplayText(string.Empty));
+    }
+
+    [Fact]
     public void RestoreBackup_WhenBackupFileHashDiffers_ThrowsAndLeavesTargetUntouched()
     {
         AppDataStore store = CreateStore();
