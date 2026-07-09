@@ -104,6 +104,20 @@ namespace UIMarkerEditor
 
         private bool TryPrepareCloseWayMarkChanges(out bool shouldSave)
         {
+            return TryPrepareCloseWayMarkChanges(
+                "当前标点文件有未保存的修改。\n\n选择“是”在关闭前保存，选择“否”继续关闭并放弃这些修改，选择“取消”返回编辑。\n\n如果后续关闭被取消，当前修改会保留。",
+                out shouldSave);
+        }
+
+        private bool TryPrepareCloseWayMarkFileChanges(out bool shouldSave)
+        {
+            return TryPrepareCloseWayMarkChanges(
+                "当前标点文件有未保存的修改。\n\n选择“是”保存后关闭当前文件，选择“否”关闭当前文件并放弃这些修改，选择“取消”返回编辑。",
+                out shouldSave);
+        }
+
+        private bool TryPrepareCloseWayMarkChanges(string message, out bool shouldSave)
+        {
             shouldSave = false;
             if (!TryCommitPendingWayMarkEdits())
             {
@@ -117,7 +131,7 @@ namespace UIMarkerEditor
 
             MessageBoxResult result = AppMessageBox.Show(
                 this,
-                "当前标点文件有未保存的修改。\n\n选择“是”在关闭前保存，选择“否”继续关闭并放弃这些修改，选择“取消”返回编辑。\n\n如果后续关闭被取消，当前修改会保留。",
+                message,
                 "未保存的标点修改",
                 MessageBoxButton.YesNoCancel,
                 MessageBoxImage.Warning);

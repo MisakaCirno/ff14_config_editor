@@ -75,6 +75,11 @@ namespace UIMarkerEditor
             SaveWayMarkFile();
         }
 
+        private void CloseWayMarkFileCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            CloseWayMarkFile();
+        }
+
         private void CurrentWayMarkFileCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
             e.CanExecute = HasLoadedWayMarkFile() && !isWayMarkFileLoading;
@@ -175,6 +180,67 @@ namespace UIMarkerEditor
             {
                 AppMessageBox.Show("请先加载一个UISAVE.DAT文件。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return false;
+            }
+        }
+
+        private bool CloseWayMarkFile(bool showSuccessMessage = true)
+        {
+            if (isWayMarkFileLoading)
+            {
+                return false;
+            }
+
+            if (!HasLoadedWayMarkFile())
+            {
+                AppMessageBox.Show("请先加载一个UISAVE.DAT文件。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return false;
+            }
+
+            if (!TryPrepareCloseWayMarkFileChanges(out bool shouldSave))
+            {
+                return false;
+            }
+
+            if (shouldSave && !SaveWayMarkFile(showSuccessMessage: false))
+            {
+                return false;
+            }
+
+            CloseCurrentWayMarkFile();
+            if (showSuccessMessage)
+            {
+                ToastService.ShowSuccess("当前文件已关闭。");
+            }
+
+            return true;
+        }
+
+        private void CloseCurrentWayMarkFile()
+        {
+            string closedFilePath = currentFilePath;
+            StopCurrentFileChangeMonitor();
+
+            try
+            {
+                suppressWayMarkDirtyTracking = true;
+                WayMarkEditor_Control.ClearWayMarks();
+                wayMarkChangeTracker.Clear();
+            }
+            finally
+            {
+                suppressWayMarkDirtyTracking = false;
+            }
+
+            currentFilePath = string.Empty;
+            configUISave = null;
+            SetWayMarkDirty(false);
+            ResetCurrentFileStatus();
+            UpdateWindowTitle();
+            CommandManager.InvalidateRequerySuggested();
+
+            if (!string.IsNullOrWhiteSpace(closedFilePath))
+            {
+                AppLogger.Info(AppLogCategory.UI, $"已关闭当前 UISAVE.DAT：{closedFilePath}");
             }
         }
 

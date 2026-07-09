@@ -42,6 +42,12 @@ namespace UIMarkerEditor
             typeof(MainWindow),
             [new KeyGesture(Key.S, ModifierKeys.Control)]);
 
+        public static readonly RoutedUICommand CloseWayMarkFileCommand = new(
+            "关闭当前文件",
+            nameof(CloseWayMarkFileCommand),
+            typeof(MainWindow),
+            [new KeyGesture(Key.W, ModifierKeys.Control)]);
+
         private const string DefaultWindowTitle = "FF14 标点预设编辑工具";
         private static readonly IReadOnlyDictionary<string, string> DataCenterAbbreviations =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)

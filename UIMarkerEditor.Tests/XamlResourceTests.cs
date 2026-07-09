@@ -2,6 +2,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using UIMarkerEditor;
 using UIMarkerEditor.Controls;
@@ -27,6 +28,7 @@ public sealed class XamlResourceTests
             try
             {
                 MainWindow window = new(new AppDataStore(testDirectory));
+                AssertMainWindowCloseFileCommand(window);
                 AssertMainWindowMapDataOperationOverlayCanShowAndHide(window);
                 AssertBackupRestoreOverlayCanShowAndHide(window);
                 window.Close();
@@ -39,6 +41,19 @@ public sealed class XamlResourceTests
         });
 
         Assert.Null(exception);
+    }
+
+    private static void AssertMainWindowCloseFileCommand(MainWindow window)
+    {
+        Assert.Contains(
+            window.CommandBindings.Cast<CommandBinding>(),
+            binding => ReferenceEquals(binding.Command, MainWindow.CloseWayMarkFileCommand));
+
+        MenuItem fileMenuItem = Assert.IsType<MenuItem>(window.FindName("File_MenuItem"));
+        Assert.Contains(
+            fileMenuItem.Items.OfType<MenuItem>(),
+            menuItem => string.Equals(menuItem.Header as string, "关闭当前文件", StringComparison.Ordinal) &&
+                        ReferenceEquals(menuItem.Command, MainWindow.CloseWayMarkFileCommand));
     }
 
     [Fact]

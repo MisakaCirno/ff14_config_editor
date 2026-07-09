@@ -25,6 +25,9 @@
         <CommandBinding Command="{x:Static local:MainWindow.SaveWayMarkFileCommand}"
                         Executed="SaveWayMarkFileCommand_Executed"
                         CanExecute="CurrentWayMarkFileCommand_CanExecute"/>
+        <CommandBinding Command="{x:Static local:MainWindow.CloseWayMarkFileCommand}"
+                        Executed="CloseWayMarkFileCommand_Executed"
+                        CanExecute="CurrentWayMarkFileCommand_CanExecute"/>
     </Window.CommandBindings>
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="38"
@@ -411,10 +414,15 @@
                                           CommandTarget="{Binding ElementName=RootWindow}"
                                           InputGestureText="Ctrl+S"/>
                             <MenuItem Header="重新加载"
+                                           Style="{StaticResource TitleBarSubMenuItemStyle}"
+                                           Command="{x:Static local:MainWindow.ReloadWayMarkFileCommand}"
+                                           CommandTarget="{Binding ElementName=RootWindow}"
+                                           InputGestureText="Ctrl+R"/>
+                            <MenuItem Header="关闭当前文件"
                                           Style="{StaticResource TitleBarSubMenuItemStyle}"
-                                          Command="{x:Static local:MainWindow.ReloadWayMarkFileCommand}"
+                                          Command="{x:Static local:MainWindow.CloseWayMarkFileCommand}"
                                           CommandTarget="{Binding ElementName=RootWindow}"
-                                          InputGestureText="Ctrl+R"/>
+                                          InputGestureText="Ctrl+W"/>
                             <Separator/>
                             <MenuItem Header="退出"
                                           Style="{StaticResource TitleBarSubMenuItemStyle}"
