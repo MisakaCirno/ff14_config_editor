@@ -24,16 +24,19 @@ internal sealed record LocalGameCharacterScanResult(
     int ImportedCharacterNameCount,
     int UnchangedProfileCount,
     IReadOnlyList<ClientLogCharacterNameScanError> Errors,
-    bool SkippedBecauseGameInstallDirectoryChanged = false)
+    bool SkippedBecauseGameInstallDirectoryChanged = false,
+    bool SkippedBecauseCharactersChanged = false)
 {
     public bool Changed => !SkippedBecauseGameInstallDirectoryChanged &&
+        !SkippedBecauseCharactersChanged &&
         (CreatedProfileCount > 0 || ImportedCharacterNameCount > 0);
 }
 
 internal sealed record LocalGameCharacterScanPreparation(
     string GameCharacterRootDirectory,
     IReadOnlyList<LocalGameCharacterScanItem> Items,
-    IReadOnlyList<ClientLogCharacterNameScanError> Errors);
+    IReadOnlyList<ClientLogCharacterNameScanError> Errors,
+    int CharactersRevision);
 
 internal sealed record LocalGameCharacterScanItem(
     string UserID,

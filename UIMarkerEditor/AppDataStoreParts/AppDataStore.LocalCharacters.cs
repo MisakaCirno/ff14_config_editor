@@ -37,11 +37,12 @@ public sealed partial class AppDataStore
 
     internal LocalGameCharacterScanPreparation PrepareLocalGameCharacterScan()
     {
+        int preparationCharactersRevision = GetCharactersRevision();
         if (!WayMarkOpenDirectoryResolver.TryResolveGameCharacterRootDirectory(
             Settings.GameInstallDirectory,
             out string? gameCharacterRootDirectory))
         {
-            return new LocalGameCharacterScanPreparation(string.Empty, [], []);
+            return new LocalGameCharacterScanPreparation(string.Empty, [], [], preparationCharactersRevision);
         }
 
         List<LocalGameCharacterFile> characterFiles = [.. EnumerateLocalGameCharacterFiles(gameCharacterRootDirectory)];
@@ -60,7 +61,11 @@ public sealed partial class AppDataStore
                 logNameMatch?.CharacterName ?? string.Empty));
         }
 
-        return new LocalGameCharacterScanPreparation(gameCharacterRootDirectory, items, errors);
+        return new LocalGameCharacterScanPreparation(
+            gameCharacterRootDirectory,
+            items,
+            errors,
+            preparationCharactersRevision);
     }
 
     internal LocalGameCharacterScanResult ApplyLocalGameCharacterScan(LocalGameCharacterScanPreparation preparation)
@@ -76,6 +81,17 @@ public sealed partial class AppDataStore
                 0,
                 preparation.Errors,
                 SkippedBecauseGameInstallDirectoryChanged: true);
+        }
+
+        if (preparation.CharactersRevision != GetCharactersRevision())
+        {
+            return new LocalGameCharacterScanResult(
+                preparation.Items.Count,
+                0,
+                0,
+                0,
+                preparation.Errors,
+                SkippedBecauseCharactersChanged: true);
         }
 
         List<CharacterProfile> snapshot = CloneCharacterProfilesForLocalScan();

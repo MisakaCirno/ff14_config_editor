@@ -6,6 +6,16 @@ namespace UIMarkerEditor;
 
 public sealed partial class AppDataStore
 {
+    private int GetCharactersRevision()
+    {
+        return System.Threading.Volatile.Read(ref charactersRevision);
+    }
+
+    private void AdvanceCharactersRevision()
+    {
+        System.Threading.Interlocked.Increment(ref charactersRevision);
+    }
+
     public void SaveCharacters()
     {
         if (charactersFileInvalid)
@@ -20,6 +30,7 @@ public sealed partial class AppDataStore
                 .Select(NormalizeCharacterProfile)
                 .OrderBy(c => c.UserID, StringComparer.OrdinalIgnoreCase)
                 .ToList());
+        AdvanceCharactersRevision();
     }
 
     public CharacterProfile GetOrCreateCharacter(string? userID)
@@ -60,6 +71,7 @@ public sealed partial class AppDataStore
                 CharactersFilePath,
                 "角色备注无法读取，列表已留空。为避免覆盖损坏文件，本次运行会阻止保存角色备注。",
                 charactersResult.Error);
+            AdvanceCharactersRevision();
             return;
         }
 
@@ -67,6 +79,8 @@ public sealed partial class AppDataStore
         {
             Characters.Add(profile);
         }
+
+        AdvanceCharactersRevision();
     }
 
     private static List<CharacterProfile> NormalizeCharacterProfiles(IEnumerable<CharacterProfile?> profiles)

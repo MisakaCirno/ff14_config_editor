@@ -1261,6 +1261,31 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public void ApplyLocalGameCharacterScan_WhenCharactersChangedAfterPreparation_SkipsStaleResult()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string gameInstallDirectory = CreateGameInstallDirectory("StaleLocalCharactersGame");
+        CreateLocalCharacterSaveFile(gameInstallDirectory, "0011223344556677");
+        store.SaveSettings(new AppSettings
+        {
+            GameInstallDirectory = gameInstallDirectory
+        });
+        CharacterProfile profile = store.GetOrCreateCharacter("0011223344556677");
+        profile.CharacterName = "Existing Character";
+        store.SaveCharacters();
+        LocalGameCharacterScanPreparation preparation = store.PrepareLocalGameCharacterScan();
+        store.Characters.Remove(profile);
+        store.SaveCharacters();
+
+        LocalGameCharacterScanResult result = store.ApplyLocalGameCharacterScan(preparation);
+
+        Assert.True(result.SkippedBecauseCharactersChanged);
+        Assert.False(result.Changed);
+        Assert.Empty(store.Characters);
+    }
+
+    [Fact]
     public void AddRecentFile_DeduplicatesLimitsAndPersistsRecentFiles()
     {
         AppDataStore store = CreateStore();

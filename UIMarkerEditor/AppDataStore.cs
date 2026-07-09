@@ -47,6 +47,7 @@ public sealed partial class AppDataStore
     private bool charactersFileInvalid;
     private bool wayMarkFavoritesFileInvalid;
     private bool migrationCleanupPending;
+    private int charactersRevision;
 
     public string BootstrapDirectory { get; }
     public string BootstrapFilePath => Path.Combine(BootstrapDirectory, BootstrapFileName);

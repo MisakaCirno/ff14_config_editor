@@ -425,6 +425,18 @@ public partial class CharacterProfilesControl : UserControl
             return;
         }
 
+        if (result.SkippedBecauseCharactersChanged)
+        {
+            refreshLocalCharacterSelectionAvailability();
+            AppMessageBox.Show(
+                ownerWindow,
+                "角色备注已在扫描期间变化，本次本地角色扫描结果已跳过。请重新获取所有本地角色。",
+                "获取所有本地角色",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
         ReloadCharacterList(null);
         refreshBackupList();
         refreshLocalCharacterSelectionAvailability();

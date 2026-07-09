@@ -17,7 +17,8 @@ namespace UIMarkerEditor
                     AppLogger.Warning(AppLogCategory.IO, $"启动本地角色扫描跳过：{error.Path}；{error.Message}");
                 }
 
-                if (result.SkippedBecauseGameInstallDirectoryChanged)
+                if (result.SkippedBecauseGameInstallDirectoryChanged ||
+                    result.SkippedBecauseCharactersChanged)
                 {
                     return;
                 }
