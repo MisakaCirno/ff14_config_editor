@@ -522,7 +522,7 @@
                 <controls:WayMarkEditorControl x:Name="WayMarkEditor_Control"/>
             </TabItem>
 
-            <TabItem Header="标点收藏">
+            <TabItem x:Name="WayMarkFavorites_TabItem" Header="标点收藏">
                 <controls:WayMarkFavoritesControl x:Name="WayMarkFavorites_Control"/>
             </TabItem>
 
@@ -534,7 +534,7 @@
                 <controls:CharacterProfilesControl x:Name="CharacterProfiles_Control"/>
             </TabItem>
 
-            <TabItem Header="工具设置">
+            <TabItem x:Name="ToolSettings_TabItem" Header="工具设置">
                 <controls:ToolSettingsControl x:Name="ToolSettings_Control"/>
             </TabItem>
 

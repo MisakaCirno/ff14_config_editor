@@ -55,6 +55,11 @@ namespace UIMarkerEditor
             shouldSaveFavorite = false;
             shouldSaveCharacter = false;
 
+            if (!ToolSettings_Control.CommitPendingSettingsEdits())
+            {
+                return false;
+            }
+
             if (!TryPrepareCloseWayMarkChanges(out shouldSaveWayMarks))
             {
                 return false;

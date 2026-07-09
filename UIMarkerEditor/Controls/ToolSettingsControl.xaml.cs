@@ -22,7 +22,8 @@ public partial class ToolSettingsControl : UserControl
     private bool isLoadingSettingsIntoUi;
     private Action refreshBackupList = () => { };
     private Action refreshCharacterList = () => { };
-    private Func<bool> confirmSaveOrDiscardCharacterChanges = () => true;
+    private Func<string, string, bool> prepareDataDirectoryMigration = (_, _) => true;
+    private Action<string, string, DataDirectoryMigrationResult?> finishDataDirectoryMigration = (_, _, _) => { };
     private Action refreshServerListConsumers = () => { };
     private Action refreshMapDataConsumers = () => { };
     private Action refreshAppearance = () => { };
@@ -44,7 +45,8 @@ public partial class ToolSettingsControl : UserControl
         Window ownerWindow,
         Action refreshBackupList,
         Action refreshCharacterList,
-        Func<bool> confirmSaveOrDiscardCharacterChanges,
+        Func<string, string, bool> prepareDataDirectoryMigration,
+        Action<string, string, DataDirectoryMigrationResult?> finishDataDirectoryMigration,
         Action refreshServerListConsumers,
         Action refreshMapDataConsumers,
         Action refreshAppearance,
@@ -59,7 +61,8 @@ public partial class ToolSettingsControl : UserControl
         this.ownerWindow = ownerWindow;
         this.refreshBackupList = refreshBackupList;
         this.refreshCharacterList = refreshCharacterList;
-        this.confirmSaveOrDiscardCharacterChanges = confirmSaveOrDiscardCharacterChanges;
+        this.prepareDataDirectoryMigration = prepareDataDirectoryMigration;
+        this.finishDataDirectoryMigration = finishDataDirectoryMigration;
         this.refreshServerListConsumers = refreshServerListConsumers;
         this.refreshMapDataConsumers = refreshMapDataConsumers;
         this.refreshAppearance = refreshAppearance;
@@ -129,6 +132,60 @@ public partial class ToolSettingsControl : UserControl
     {
         RefreshStatusFields();
         SetManualRefreshButtonsEnabled(true);
+    }
+
+    public bool CommitPendingSettingsEdits()
+    {
+        if (appDataStore == null || isLoadingSettingsIntoUi)
+        {
+            return true;
+        }
+
+        return CommitGameInstallDirectory() &&
+            CommitWayMarkOpenDirectorySettings() &&
+            CommitIntegerSetting(
+                MaxBackupCount_TextBox,
+                "最多保留备份数量",
+                AppSettings.MinBackupCount,
+                AppSettings.MaxBackupCountLimit,
+                settings => settings.MaxBackupCount,
+                (settings, value) => settings.MaxBackupCount = value,
+                "保存备份数量设置",
+                CleanupBackupsIfEnabled) &&
+            CommitIntegerSetting(
+                MaxBackupCountPerUser_TextBox,
+                "每个玩家最多保留备份数量",
+                AppSettings.MinBackupCount,
+                AppSettings.MaxBackupCountLimit,
+                settings => settings.MaxBackupCountPerUser,
+                (settings, value) => settings.MaxBackupCountPerUser = value,
+                "保存单个玩家备份数量设置",
+                CleanupBackupsIfEnabled) &&
+            CommitIntegerSetting(
+                MaxBackupDays_TextBox,
+                "最多保留备份天数",
+                AppSettings.MinBackupDays,
+                AppSettings.MaxBackupDaysLimit,
+                settings => settings.MaxBackupDays,
+                (settings, value) => settings.MaxBackupDays = value,
+                "保存备份时间设置",
+                CleanupBackupsIfEnabled) &&
+            CommitIntegerSetting(
+                MaxLogFileSizeMb_TextBox,
+                "日志文件大小",
+                AppSettings.MinLogFileSizeMb,
+                AppSettings.MaxLogFileSizeMbLimit,
+                settings => settings.MaxLogFileSizeMb,
+                (settings, value) => settings.MaxLogFileSizeMb = value,
+                "保存日志大小设置") &&
+            CommitIntegerSetting(
+                MaxLogFileCount_TextBox,
+                "日志文件最多保存数量",
+                AppSettings.MinLogFileCount,
+                AppSettings.MaxLogFileCountLimit,
+                settings => settings.MaxLogFileCount,
+                (settings, value) => settings.MaxLogFileCount = value,
+                "保存日志数量设置");
     }
 
     public void RefreshGameInstallDirectoryFromSettings()
@@ -929,13 +986,14 @@ public partial class ToolSettingsControl : UserControl
             return;
         }
 
-        if (!confirmSaveOrDiscardCharacterChanges())
+        if (!prepareDataDirectoryMigration(currentFullPath, requestedFullPath))
         {
             LoadSettingsIntoUi();
             return;
         }
 
         bool migrationDialogCreated = false;
+        bool migrationFinishedNotified = false;
         try
         {
             DataDirectoryMigrationReportDialog migrationDialog = new(currentFullPath, requestedFullPath);
@@ -945,6 +1003,8 @@ public partial class ToolSettingsControl : UserControl
                 appDataStore.ChangeDataDirectoryAsync(targetDirectory, progress));
             if (result == null)
             {
+                migrationFinishedNotified = true;
+                finishDataDirectoryMigration(currentFullPath, requestedFullPath, null);
                 LoadSettingsIntoUi();
                 return;
             }
@@ -955,9 +1015,16 @@ public partial class ToolSettingsControl : UserControl
             refreshCharacterList();
             refreshServerListConsumers();
             refreshMapDataConsumers();
+            migrationFinishedNotified = true;
+            finishDataDirectoryMigration(currentFullPath, requestedFullPath, result);
         }
         catch (Exception ex)
         {
+            if (!migrationFinishedNotified)
+            {
+                finishDataDirectoryMigration(currentFullPath, requestedFullPath, null);
+            }
+
             LoadSettingsIntoUi();
             if (!migrationDialogCreated)
             {
@@ -1593,6 +1660,37 @@ public partial class ToolSettingsControl : UserControl
         }
 
         return SaveGameInstallDirectory(normalizedGameInstallDirectory);
+    }
+
+    private bool CommitWayMarkOpenDirectorySettings()
+    {
+        if (appDataStore == null || isLoadingSettingsIntoUi) return false;
+
+        WayMarkOpenDirectoryMode nextMode = ReadWayMarkOpenDirectoryModeFromUi();
+        if (nextMode == WayMarkOpenDirectoryMode.CustomDirectory)
+        {
+            return CommitWayMarkCustomDirectory();
+        }
+
+        if (appDataStore.Settings.WayMarkOpenDirectoryMode == nextMode)
+        {
+            RestoreWayMarkOpenDirectorySettingsUi();
+            return true;
+        }
+
+        bool saved = SaveSettingsMutation(
+            settings =>
+            {
+                settings.WayMarkOpenDirectoryMode = nextMode;
+                settings.WayMarkOpenDirectoryModeInitialized = true;
+            },
+            "保存文件打开设置");
+        if (saved)
+        {
+            RestoreWayMarkOpenDirectorySettingsUi();
+        }
+
+        return saved;
     }
 
     private bool SaveGameInstallDirectory(string gameInstallDirectory)

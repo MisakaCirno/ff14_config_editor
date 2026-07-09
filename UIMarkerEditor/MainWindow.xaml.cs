@@ -59,6 +59,8 @@ namespace UIMarkerEditor
         private readonly AppDataStore appDataStore;
         private readonly ObservableCollection<ToastNotification> toastNotifications = [];
         private MapDataLoadResult? pendingUserMapDataRepairPrompt;
+        private bool isRestoringMainTabSelection;
+        private string? dataDirectoryMigrationPausedCurrentFilePath;
 
         public MainWindow(AppDataStore appDataStore, MapDataLoadResult? startupMapDataLoadResult = null)
         {
@@ -139,7 +141,8 @@ namespace UIMarkerEditor
                 this,
                 RefreshBackupList,
                 RefreshCharacterList,
-                ConfirmSaveOrDiscardCharacterChanges,
+                PrepareDataDirectoryMigration,
+                FinishDataDirectoryMigration,
                 RefreshServerListConsumers,
                 RefreshMapDataConsumers,
                 RefreshAppearanceSettings,
