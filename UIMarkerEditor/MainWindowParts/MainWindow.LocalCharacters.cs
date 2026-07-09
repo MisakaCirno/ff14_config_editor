@@ -24,7 +24,7 @@ namespace UIMarkerEditor
 
                 if (result.Changed)
                 {
-                    RefreshCharacterList();
+                    RefreshCharacterListFromExternalChange();
                     RefreshBackupList();
                 }
             }

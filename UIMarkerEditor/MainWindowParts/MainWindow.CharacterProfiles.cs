@@ -8,6 +8,12 @@
             RefreshLocalCharacterSelectionAvailability();
         }
 
+        private void RefreshCharacterListFromExternalChange()
+        {
+            CharacterProfiles_Control.TryRefreshCharacterListFromExternalChange();
+            RefreshLocalCharacterSelectionAvailability();
+        }
+
         private async Task<ServerListLoadResult?> SyncServerListIfNeededAsync(bool showFailureMessage = false)
         {
             ServerListLoadResult? result = await CharacterProfiles_Control.SyncServerListIfNeededAsync(showFailureMessage);

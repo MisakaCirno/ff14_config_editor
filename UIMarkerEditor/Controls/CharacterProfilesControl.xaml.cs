@@ -56,6 +56,18 @@ public partial class CharacterProfilesControl : UserControl
         ReloadCharacterList(selectedUserID);
     }
 
+    public bool TryRefreshCharacterListFromExternalChange()
+    {
+        if (isCharacterOperationBusy || isCharacterDetailDirty)
+        {
+            return false;
+        }
+
+        string? selectedUserID = (Character_DataGrid.SelectedItem as CharacterProfile)?.UserID;
+        ReloadCharacterList(selectedUserID);
+        return true;
+    }
+
     public void ApplyLayoutSettings(WindowLayoutSettings layout)
     {
         double listRatio = ClampRatio(layout.CharacterListRatio);
