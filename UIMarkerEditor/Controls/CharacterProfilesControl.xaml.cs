@@ -19,6 +19,8 @@ public partial class CharacterProfilesControl : UserControl
     private string selectedCharacterWorld = string.Empty;
     private bool isCharacterDetailDirty;
     private bool isCharacterOperationBusy;
+    private bool hasPendingExternalCharacterRefresh;
+    private bool isHandlingCharacterSelectionChange;
     private bool suppressCharacterSelectionChanged;
     private bool suppressCharacterChangeTracking;
     private Task<ServerListLoadResult?>? serverListSyncTask;
@@ -60,11 +62,11 @@ public partial class CharacterProfilesControl : UserControl
     {
         if (isCharacterOperationBusy || isCharacterDetailDirty)
         {
+            hasPendingExternalCharacterRefresh = true;
             return false;
         }
 
-        string? selectedUserID = (Character_DataGrid.SelectedItem as CharacterProfile)?.UserID;
-        ReloadCharacterList(selectedUserID);
+        ReloadCharacterList(GetPreferredRefreshUserID());
         return true;
     }
 
@@ -149,12 +151,13 @@ public partial class CharacterProfilesControl : UserControl
         if (result == MessageBoxResult.No)
         {
             DiscardCharacterDetailChanges();
+            TryApplyPendingExternalCharacterRefresh();
             return true;
         }
 
-        if (!TrySaveCharacterProfile(showSuccessMessage: false, out string _)) return false;
+        if (!TrySaveCharacterProfile(showSuccessMessage: false, out string savedUserID)) return false;
 
-        Character_DataGrid.Items.Refresh();
+        RefreshCharacterListAfterCharacterChange(savedUserID);
         refreshBackupList();
         return true;
     }
@@ -193,9 +196,9 @@ public partial class CharacterProfilesControl : UserControl
 
     public bool SavePreparedCloseChanges()
     {
-        if (!TrySaveCharacterProfile(showSuccessMessage: false, out string _)) return false;
+        if (!TrySaveCharacterProfile(showSuccessMessage: false, out string savedUserID)) return false;
 
-        Character_DataGrid.Items.Refresh();
+        RefreshCharacterListAfterCharacterChange(savedUserID);
         refreshBackupList();
         return true;
     }
@@ -209,7 +212,15 @@ public partial class CharacterProfilesControl : UserControl
             return;
         }
 
-        LoadCharacterProfileIntoDetail(loadedCharacterProfile);
+        CharacterProfile? currentProfile = FindCharacterProfile(loadedCharacterProfile.UserID);
+        if (currentProfile == null)
+        {
+            ClearCharacterDetailFields();
+            UpdateCharacterDetailVisibility(showDetail: false);
+            return;
+        }
+
+        LoadCharacterProfileIntoDetail(currentProfile);
     }
 
     public void RefreshServerPicker()
@@ -254,19 +265,29 @@ public partial class CharacterProfilesControl : UserControl
     {
         if (suppressCharacterSelectionChanged) return;
 
-        CharacterProfile? selectedProfile = Character_DataGrid.SelectedItem as CharacterProfile;
-        CharacterProfile? previousProfile = e.RemovedItems.OfType<CharacterProfile>().FirstOrDefault();
-        if (isCharacterDetailDirty && !ConfirmSaveOrDiscardCharacterChanges())
+        isHandlingCharacterSelectionChange = true;
+        try
         {
-            SetCharacterSelection(previousProfile);
-            return;
+            CharacterProfile? selectedProfile = Character_DataGrid.SelectedItem as CharacterProfile;
+            CharacterProfile? previousProfile = e.RemovedItems.OfType<CharacterProfile>().FirstOrDefault();
+            if (isCharacterDetailDirty && !ConfirmSaveOrDiscardCharacterChanges())
+            {
+                SetCharacterSelection(previousProfile);
+                return;
+            }
+
+            LoadCharacterProfileIntoDetail(selectedProfile);
+            if (selectedProfile != null)
+            {
+                await SyncServerListIfNeededAsync(showFailureMessage: false);
+            }
+        }
+        finally
+        {
+            isHandlingCharacterSelectionChange = false;
         }
 
-        LoadCharacterProfileIntoDetail(selectedProfile);
-        if (selectedProfile != null)
-        {
-            await SyncServerListIfNeededAsync(showFailureMessage: false);
-        }
+        TryApplyPendingExternalCharacterRefresh(GetPreferredRefreshUserID());
     }
 
     private void Character_DataGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
@@ -500,6 +521,7 @@ public partial class CharacterProfilesControl : UserControl
     private void ClearCharacterDetailFields()
     {
         suppressCharacterChangeTracking = true;
+        loadedCharacterProfile = null;
         CharacterUserID_TextBox.Text = string.Empty;
         CharacterName_TextBox.Text = string.Empty;
         CharacterNote_TextBox.Text = string.Empty;
@@ -552,17 +574,24 @@ public partial class CharacterProfilesControl : UserControl
         savedUserID = string.Empty;
         if (appDataStore == null || isCharacterOperationBusy) return false;
 
-        if (loadedCharacterProfile is not CharacterProfile profile)
+        if (loadedCharacterProfile is not CharacterProfile draftProfile)
         {
             AppMessageBox.Show(ownerWindow, "请先选择一个要修改的角色备注。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             return false;
         }
 
-        string userID = profile.UserID.Trim().ToUpperInvariant();
+        string userID = draftProfile.UserID.Trim().ToUpperInvariant();
         savedUserID = userID;
         if (!IsValidUserID(userID))
         {
             AppMessageBox.Show(ownerWindow, "当前角色备注的 User ID 无效。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        CharacterProfile? profile = FindCharacterProfile(userID);
+        if (profile == null)
+        {
+            AppMessageBox.Show(ownerWindow, "当前角色备注已经不在列表中。请刷新角色备注后再继续编辑。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
 
@@ -603,6 +632,7 @@ public partial class CharacterProfilesControl : UserControl
         }
 
         isCharacterDetailDirty = false;
+        loadedCharacterProfile = CloneCharacterProfile(profile);
 
         if (showSuccessMessage)
         {
@@ -616,6 +646,7 @@ public partial class CharacterProfilesControl : UserControl
     {
         if (appDataStore == null) return;
 
+        hasPendingExternalCharacterRefresh = false;
         suppressCharacterSelectionChanged = true;
         try
         {
@@ -649,7 +680,7 @@ public partial class CharacterProfilesControl : UserControl
     private void LoadCharacterProfileIntoDetail(CharacterProfile? profile)
     {
         suppressCharacterChangeTracking = true;
-        loadedCharacterProfile = profile;
+        loadedCharacterProfile = profile == null ? null : CloneCharacterProfile(profile);
         if (profile == null)
         {
             ClearCharacterDetailFields();
@@ -666,6 +697,55 @@ public partial class CharacterProfilesControl : UserControl
         UpdateCharacterDetailVisibility(showDetail: true);
         suppressCharacterChangeTracking = false;
         isCharacterDetailDirty = false;
+    }
+
+    private void RefreshCharacterListAfterCharacterChange(string? preferredUserID)
+    {
+        if (TryApplyPendingExternalCharacterRefresh(preferredUserID))
+        {
+            return;
+        }
+
+        Character_DataGrid.Items.Refresh();
+    }
+
+    private bool TryApplyPendingExternalCharacterRefresh(string? preferredUserID = null)
+    {
+        if (!hasPendingExternalCharacterRefresh ||
+            isCharacterOperationBusy ||
+            isCharacterDetailDirty ||
+            isHandlingCharacterSelectionChange)
+        {
+            return false;
+        }
+
+        ReloadCharacterList(preferredUserID ?? GetPreferredRefreshUserID());
+        return true;
+    }
+
+    private string? GetPreferredRefreshUserID()
+    {
+        return (Character_DataGrid.SelectedItem as CharacterProfile)?.UserID ??
+            loadedCharacterProfile?.UserID;
+    }
+
+    private CharacterProfile? FindCharacterProfile(string userID)
+    {
+        return appDataStore?.Characters.FirstOrDefault(character =>
+            string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static CharacterProfile CloneCharacterProfile(CharacterProfile profile)
+    {
+        return new CharacterProfile
+        {
+            UserID = profile.UserID,
+            CharacterName = profile.CharacterName,
+            DataCenter = profile.DataCenter,
+            World = profile.World,
+            Note = profile.Note,
+            UpdatedAt = profile.UpdatedAt
+        };
     }
 
     private void DeleteCharacter_Button_Click(object sender, RoutedEventArgs e)

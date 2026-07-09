@@ -22,7 +22,7 @@ namespace UIMarkerEditor
         private void RefreshServerListConsumers()
         {
             CharacterProfiles_Control.RefreshServerPicker();
-            RefreshCharacterList();
+            RefreshCharacterListFromExternalChange();
         }
 
         private void RefreshMapDataConsumers()

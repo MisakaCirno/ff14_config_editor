@@ -139,6 +139,7 @@ namespace UIMarkerEditor
                 this,
                 RefreshBackupList,
                 RefreshCharacterList,
+                ConfirmSaveOrDiscardCharacterChanges,
                 RefreshServerListConsumers,
                 RefreshMapDataConsumers,
                 RefreshAppearanceSettings,

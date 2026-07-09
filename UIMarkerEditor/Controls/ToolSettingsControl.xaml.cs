@@ -22,6 +22,7 @@ public partial class ToolSettingsControl : UserControl
     private bool isLoadingSettingsIntoUi;
     private Action refreshBackupList = () => { };
     private Action refreshCharacterList = () => { };
+    private Func<bool> confirmSaveOrDiscardCharacterChanges = () => true;
     private Action refreshServerListConsumers = () => { };
     private Action refreshMapDataConsumers = () => { };
     private Action refreshAppearance = () => { };
@@ -43,6 +44,7 @@ public partial class ToolSettingsControl : UserControl
         Window ownerWindow,
         Action refreshBackupList,
         Action refreshCharacterList,
+        Func<bool> confirmSaveOrDiscardCharacterChanges,
         Action refreshServerListConsumers,
         Action refreshMapDataConsumers,
         Action refreshAppearance,
@@ -57,6 +59,7 @@ public partial class ToolSettingsControl : UserControl
         this.ownerWindow = ownerWindow;
         this.refreshBackupList = refreshBackupList;
         this.refreshCharacterList = refreshCharacterList;
+        this.confirmSaveOrDiscardCharacterChanges = confirmSaveOrDiscardCharacterChanges;
         this.refreshServerListConsumers = refreshServerListConsumers;
         this.refreshMapDataConsumers = refreshMapDataConsumers;
         this.refreshAppearance = refreshAppearance;
@@ -921,6 +924,12 @@ public partial class ToolSettingsControl : UserControl
         }
 
         if (string.Equals(requestedFullPath, currentFullPath, StringComparison.OrdinalIgnoreCase))
+        {
+            LoadSettingsIntoUi();
+            return;
+        }
+
+        if (!confirmSaveOrDiscardCharacterChanges())
         {
             LoadSettingsIntoUi();
             return;
