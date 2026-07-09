@@ -143,6 +143,14 @@ namespace UIMarkerEditor.Controls
             return true;
         }
 
+        private void ClearCoordinateEditState()
+        {
+            coordinateEditContexts.Clear();
+            coordinateAcceptedTexts.Clear();
+            coordinateTextChangeGuards.Clear();
+            CloseActiveCoordinateInputTip();
+        }
+
         private bool TryCommitCoordinateText(
             TextBox textBox,
             CoordinateEditContext context,

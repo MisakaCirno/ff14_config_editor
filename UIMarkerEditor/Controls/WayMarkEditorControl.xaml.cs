@@ -27,6 +27,7 @@ public partial class WayMarkEditorControl : UserControl
     private bool suppressWayMarkListDragUntilLeftButtonReleased;
     private bool isWayMarkContextMenuOpen;
     private bool isWatchingWayMarkListDragSuppressionRelease;
+    private bool isRestoringWayMarkSelection;
     private List<WayMark>? wayMarks;
     private bool canSelectLocalCharacter;
     public event EventHandler? WayMarksChanged;

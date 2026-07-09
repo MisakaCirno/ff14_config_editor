@@ -34,6 +34,26 @@ public partial class WayMarkEditorControl
         return TryApplySnapshotToWayMark(selectedMark, snapshot, showFailureMessage: false);
     }
 
+    private bool TryCommitPendingWayMarkEdits(bool showValidationMessage = true)
+    {
+        if (WayMarkEditPanel_Control.CommitPendingEdits())
+        {
+            return true;
+        }
+
+        if (showValidationMessage)
+        {
+            AppMessageBox.Show(
+                ownerWindow ?? Window.GetWindow(this),
+                "当前坐标输入不完整或超出可保存范围，请修正后再继续。",
+                "坐标输入无效",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+
+        return false;
+    }
+
     private void WayMark_ListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left)
@@ -47,6 +67,11 @@ public partial class WayMarkEditorControl
         }
 
         WayMark_ListBox.SelectedItem = wayMark;
+        if (!ReferenceEquals(SelectedWayMark, wayMark))
+        {
+            return;
+        }
+
         ImportWayMarkFromFavorites();
     }
     private void WayMark_ListBox_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
@@ -151,6 +176,11 @@ public partial class WayMarkEditorControl
             return;
         }
 
+        if (!TryCommitPendingWayMarkEdits(showMessage))
+        {
+            return;
+        }
+
         toolClipboardSnapshot = WayMarkSnapshotConverter.CreateSnapshot(selectedMark);
         if (showMessage)
         {
@@ -191,6 +221,11 @@ public partial class WayMarkEditorControl
             return;
         }
 
+        if (!TryCommitPendingWayMarkEdits())
+        {
+            return;
+        }
+
         WayMarkSnapshot snapshot = WayMarkSnapshotConverter.CreateSnapshot(selectedMark);
         string regionDisplayName = MapData.GetDisplayName(snapshot.RegionID);
         WayMarkFavoriteNameDialog dialog = new(regionDisplayName, MapData.GetName(snapshot.RegionID))
@@ -225,6 +260,11 @@ public partial class WayMarkEditorControl
         if (favorites.Count == 0)
         {
             AppMessageBox.Show(ownerWindow, "当前还没有标点收藏。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (!TryCommitPendingWayMarkEdits())
+        {
             return;
         }
 
@@ -265,6 +305,11 @@ public partial class WayMarkEditorControl
 
     private bool TryApplySnapshotToWayMark(WayMark targetMark, WayMarkSnapshot snapshot, bool showFailureMessage)
     {
+        if (!TryCommitPendingWayMarkEdits(showFailureMessage))
+        {
+            return false;
+        }
+
         if (!CanImportSnapshot(snapshot, out string errorMessage))
         {
             if (showFailureMessage)

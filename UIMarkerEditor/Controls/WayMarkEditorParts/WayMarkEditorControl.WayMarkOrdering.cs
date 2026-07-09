@@ -44,6 +44,8 @@ namespace UIMarkerEditor.Controls
 
             int currentIndex = wayMarks.IndexOf(selectedMark);
             int targetIndex = currentIndex + offset;
+            if (currentIndex < 0 || targetIndex < 0 || targetIndex >= wayMarks.Count) return;
+            if (!TryCommitPendingWayMarkEdits()) return;
             MoveWayMark(currentIndex, targetIndex);
         }
 
@@ -75,6 +77,7 @@ namespace UIMarkerEditor.Controls
                 UpdateMoveButtonState();
                 return;
             }
+            if (!TryCommitPendingWayMarkEdits()) return;
 
             marks.Clear();
             marks.AddRange(sortedMarks);

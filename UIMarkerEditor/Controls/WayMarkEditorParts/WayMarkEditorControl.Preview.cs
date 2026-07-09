@@ -25,17 +25,43 @@ namespace UIMarkerEditor.Controls
 
         private void WayMark_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (WayMark_ListBox.SelectedItem is WayMark selectedMark)
+            if (isRestoringWayMarkSelection)
             {
-                currentWayMark = selectedMark;
-                WayMarkEditPanel_Control.SetWayMark(currentWayMark, GetLoadedRegionIds());
-                WayMarkPreview_Control.SetWayMark(currentWayMark);
+                UpdateMoveButtonState();
+                return;
             }
-            else
+
+            WayMark? selectedMark = WayMark_ListBox.SelectedItem as WayMark;
+            WayMark? previousMark = currentWayMark;
+            if (!ReferenceEquals(previousMark, selectedMark) &&
+                previousMark != null &&
+                !TryCommitPendingWayMarkEdits())
             {
-                currentWayMark = null;
-                WayMarkEditPanel_Control.SetWayMark(null);
-                WayMarkPreview_Control.SetWayMark(null);
+                RestoreWayMarkSelection(previousMark);
+                return;
+            }
+
+            ApplySelectedWayMark(selectedMark);
+            UpdateMoveButtonState();
+        }
+
+        private void ApplySelectedWayMark(WayMark? selectedMark)
+        {
+            currentWayMark = selectedMark;
+            WayMarkEditPanel_Control.SetWayMark(currentWayMark, GetLoadedRegionIds());
+            WayMarkPreview_Control.SetWayMark(currentWayMark);
+        }
+
+        private void RestoreWayMarkSelection(WayMark previousMark)
+        {
+            isRestoringWayMarkSelection = true;
+            try
+            {
+                WayMark_ListBox.SelectedItem = previousMark;
+            }
+            finally
+            {
+                isRestoringWayMarkSelection = false;
             }
 
             UpdateMoveButtonState();

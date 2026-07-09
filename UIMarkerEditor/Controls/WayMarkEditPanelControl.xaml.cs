@@ -95,6 +95,7 @@ public partial class WayMarkEditPanelControl : UserControl, INotifyPropertyChang
     public void SetWayMark(WayMark? wayMark, IEnumerable<ushort>? extraRegionIds = null)
     {
         observedRegionIds = extraRegionIds?.ToHashSet() ?? [];
+        ClearCoordinateEditState();
         suppressWayMarkChanged = true;
         try
         {
