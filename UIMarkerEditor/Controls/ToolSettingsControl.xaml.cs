@@ -1265,6 +1265,9 @@ public partial class ToolSettingsControl : UserControl
         }
 
         SetManualRefreshButtonsEnabled(false);
+        showMapDataOperationOverlay(
+            "正在检查服务器列表...",
+            "正在获取服务器列表数据，请稍候。");
         try
         {
             ServerListLoadResult result = await appDataStore.RefreshServerListAsync();
@@ -1292,6 +1295,7 @@ public partial class ToolSettingsControl : UserControl
         }
         finally
         {
+            hideMapDataOperationOverlay();
             SetManualRefreshButtonsEnabled(true);
             RefreshStatusFields();
         }

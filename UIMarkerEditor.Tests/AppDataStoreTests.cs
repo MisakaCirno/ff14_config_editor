@@ -2525,6 +2525,54 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task RefreshServerListAsync_WhenDataDirectoryMigrationIsInProgress_SkipsWritingServerCache()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        TaskCompletionSource<string> serverResponse = networkClient.AddPendingResponse(ServerStatusApiUrl);
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+        Task<ServerListLoadResult> refreshTask = store.RefreshServerListAsync();
+        BlockingMigrationProgress progress = new("准备迁移");
+        string targetDirectory = Path.Combine(testDirectory, "ServerListMigrationTarget");
+        Task<DataDirectoryMigrationResult> migrationTask = Task.Run(() =>
+            store.ChangeDataDirectoryAsync(targetDirectory, progress));
+        await progress.WaitUntilBlockedAsync();
+
+        serverResponse.SetResult(
+            """
+            {
+              "IsSuccess": true,
+              "Data": [
+                {
+                  "AreaName": "测试大区",
+                  "Group": [
+                    { "name": "测试服务器" }
+                  ]
+                }
+              ]
+            }
+            """);
+        ServerListLoadResult result;
+        try
+        {
+            result = await refreshTask;
+        }
+        finally
+        {
+            progress.Release();
+        }
+
+        await migrationTask;
+
+        Assert.False(result.Success);
+        Assert.False(result.Updated);
+        Assert.Equal("保存服务器列表", result.FailureStage);
+        Assert.Contains("数据目录正在迁移", result.FailureReason);
+        Assert.Empty(store.ServerList.Groups);
+        Assert.False(File.Exists(store.ServersFilePath));
+    }
+
+    [Fact]
     public async Task RefreshServerListAsync_WhenRemoteGroupsMatchCache_ReturnsLatestWithoutUpdatingContent()
     {
         DateTime originalUpdatedAt = new(2026, 6, 18, 8, 0, 0);
@@ -2886,6 +2934,40 @@ public sealed class AppDataStoreTests : IDisposable
             Events.Add(value);
         }
     }
+
+    private sealed class BlockingMigrationProgress(string blockedStageName) : IProgress<DataDirectoryMigrationProgress>
+    {
+        private readonly TaskCompletionSource blockedSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource releaseSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private bool isBlocked;
+
+        public List<DataDirectoryMigrationProgress> Events { get; } = [];
+
+        public async Task WaitUntilBlockedAsync()
+        {
+            await blockedSource.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+
+        public void Release()
+        {
+            releaseSource.TrySetResult();
+        }
+
+        public void Report(DataDirectoryMigrationProgress value)
+        {
+            Events.Add(value);
+            if (isBlocked ||
+                !string.Equals(value.StageName, blockedStageName, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            isBlocked = true;
+            blockedSource.TrySetResult();
+            releaseSource.Task.GetAwaiter().GetResult();
+        }
+    }
+
     private AppDataStore CreateStore()
     {
         return CreateStore(() => null);

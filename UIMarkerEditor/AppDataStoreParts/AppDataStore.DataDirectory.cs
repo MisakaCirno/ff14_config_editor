@@ -45,6 +45,7 @@ public sealed partial class AppDataStore
             };
         }
 
+        using IDisposable migrationWriteBlock = EnterDataDirectoryMigrationWriteBlock();
         AppDataStateSnapshot previousState = CreateAppDataStateSnapshot();
         DataDirectoryMigrationState? migrationState = null;
         try
@@ -119,6 +120,7 @@ public sealed partial class AppDataStore
             };
         }
 
+        using IDisposable migrationWriteBlock = EnterDataDirectoryMigrationWriteBlock();
         AppDataStateSnapshot previousState = CreateAppDataStateSnapshot();
         DataDirectoryMigrationState? migrationState = null;
         int completedSteps = 0;
@@ -183,6 +185,46 @@ public sealed partial class AppDataStore
         ReportMigrationProgress(progress, "迁移完成", completionMessage, totalSteps, totalSteps);
         return result;
     }
+
+    private IDisposable EnterDataDirectoryMigrationWriteBlock()
+    {
+        lock (dataDirectoryManagedFileWriteGate)
+        {
+            dataDirectoryMigrationWriteBlockCount++;
+        }
+
+        return new DataDirectoryMigrationWriteBlock(this);
+    }
+
+    private bool IsDataDirectoryMigrationWriteBlocked()
+    {
+        return System.Threading.Volatile.Read(ref dataDirectoryMigrationWriteBlockCount) > 0;
+    }
+
+    private void ExitDataDirectoryMigrationWriteBlock()
+    {
+        lock (dataDirectoryManagedFileWriteGate)
+        {
+            dataDirectoryMigrationWriteBlockCount = Math.Max(0, dataDirectoryMigrationWriteBlockCount - 1);
+        }
+    }
+
+    private sealed class DataDirectoryMigrationWriteBlock(AppDataStore owner) : IDisposable
+    {
+        private bool disposed;
+
+        public void Dispose()
+        {
+            if (disposed)
+            {
+                return;
+            }
+
+            disposed = true;
+            owner.ExitDataDirectoryMigrationWriteBlock();
+        }
+    }
+
     private void RecoverInterruptedDataDirectoryMigration()
     {
         JsonFileReadResult<DataDirectoryMigrationState> stateResult = ReadJsonFile<DataDirectoryMigrationState>(MigrationStateFilePath);

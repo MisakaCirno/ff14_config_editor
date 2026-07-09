@@ -39,6 +39,7 @@ public sealed partial class AppDataStore
     private readonly IAppDataNetworkClient networkClient;
     private readonly Func<string?> gameInstallDirectoryDetector;
     private readonly ILocalGameMapDataProvider localGameMapDataProvider;
+    private readonly object dataDirectoryManagedFileWriteGate = new();
     private readonly List<string> dataLoadWarnings = [];
     private readonly HashSet<string> dataLoadWarningKeys = [];
     private readonly List<DataDirectoryMigrationResult> migrationReports = [];
@@ -48,6 +49,7 @@ public sealed partial class AppDataStore
     private bool wayMarkFavoritesFileInvalid;
     private bool migrationCleanupPending;
     private int charactersRevision;
+    private int dataDirectoryMigrationWriteBlockCount;
 
     public string BootstrapDirectory { get; }
     public string BootstrapFilePath => Path.Combine(BootstrapDirectory, BootstrapFileName);

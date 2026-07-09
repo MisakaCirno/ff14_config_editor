@@ -105,7 +105,11 @@ public sealed partial class AppDataStore
                     LastSuccessfulSyncAt = successfulSyncTime,
                     Groups = CloneServerGroups(ServerList.Groups)
                 };
-                SaveServerList(checkedServerList);
+                if (!TrySaveServerList(checkedServerList, out ServerListLoadResult? blockedResult))
+                {
+                    return blockedResult!;
+                }
+
                 ServerList = checkedServerList;
                 return new ServerListLoadResult(true, false, CacheAvailable: true);
             }
@@ -117,7 +121,11 @@ public sealed partial class AppDataStore
                 LastSuccessfulSyncAt = successfulSyncTime,
                 Groups = groups
             };
-            SaveServerList(nextServerList);
+            if (!TrySaveServerList(nextServerList, out ServerListLoadResult? nextBlockedResult))
+            {
+                return nextBlockedResult!;
+            }
+
             ServerList = nextServerList;
             return new ServerListLoadResult(true, true, CacheAvailable: true);
         }
@@ -159,6 +167,26 @@ public sealed partial class AppDataStore
     private void SaveServerList(ServerListCache serverList)
     {
         WriteJson(ServersFilePath, serverList);
+    }
+
+    private bool TrySaveServerList(
+        ServerListCache serverList,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(false)] out ServerListLoadResult? blockedResult)
+    {
+        blockedResult = null;
+        lock (dataDirectoryManagedFileWriteGate)
+        {
+            if (IsDataDirectoryMigrationWriteBlocked())
+            {
+                blockedResult = CreateServerListSyncFailureResult(
+                    "保存服务器列表",
+                    "工具数据目录正在迁移，本次服务器列表同步结果已跳过。请在迁移完成后重新检查服务器列表。");
+                return false;
+            }
+
+            SaveServerList(serverList);
+            return true;
+        }
     }
 
     private ServerListLoadResult CreateServerListSyncFailureResult(string failureStage, string failureReason)
