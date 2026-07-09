@@ -389,8 +389,9 @@ public partial class BackupRestoreControl : UserControl
             return;
         }
 
+        bool targetExists = File.Exists(backup.OriginalFilePath);
         bool willCreateSafetyBackup = ShouldCreateSafetyBackupBeforeRestore(backup.OriginalFilePath);
-        string warning = BuildRestoreWarning(backup, backup.OriginalFilePath, willCreateSafetyBackup);
+        string warning = BuildRestoreWarning(backup, backup.OriginalFilePath, targetExists, willCreateSafetyBackup);
         if (AppMessageBox.Show(ownerWindow, warning, "确认还原备份", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
         {
             return;
@@ -644,9 +645,10 @@ public partial class BackupRestoreControl : UserControl
             !string.IsNullOrWhiteSpace(profile.Note);
     }
 
-    private static string BuildRestoreWarning(
+    internal static string BuildRestoreWarning(
         BackupMetadata backup,
         string targetFilePath,
+        bool targetExists,
         bool willCreateSafetyBackup)
     {
         string? targetFolderUserID = AppDataStore.GetUserIDFromCharacterFolder(targetFilePath);
@@ -655,12 +657,17 @@ public partial class BackupRestoreControl : UserControl
             !string.Equals(targetFolderUserID, backup.EffectiveUserID, StringComparison.OrdinalIgnoreCase)
                 ? $"\n\n警告：目标目录 User ID 为 {targetFolderUserID}，备份归属 User ID 为 {backup.EffectiveUserID}。"
                 : string.Empty;
-        string safetyBackupText = willCreateSafetyBackup
-            ? "覆盖前会自动备份当前目标文件。"
-            : "当前不会创建还原前安全备份，覆盖后目标文件当前状态将无法从工具备份中恢复。";
+        string actionText = targetExists
+            ? "将把下面的备份文件还原到原文件路径，并覆盖目标文件。"
+            : "将把下面的备份文件还原到原文件路径，并创建目标文件。";
+        string safetyBackupText = targetExists
+            ? willCreateSafetyBackup
+                ? "覆盖前会自动备份当前目标文件。"
+                : "当前不会创建还原前安全备份，覆盖后目标文件当前状态将无法从工具备份中恢复。"
+            : "目标文件当前不存在，不需要创建还原前安全备份。";
 
         return
-            "将把下面的备份文件还原到原文件路径，并覆盖目标文件。\n\n" +
+            $"{actionText}\n\n" +
             $"备份时间：{backup.BackupTime:yyyy-MM-dd HH:mm:ss}\n" +
             $"角色备注：{DisplayOptionalText(backup.CharacterDisplayName)}\n" +
             $"目录 User ID：{DisplayOptionalText(backup.FolderUserID)}\n" +

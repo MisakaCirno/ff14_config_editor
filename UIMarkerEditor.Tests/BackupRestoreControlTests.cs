@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using UIMarkerEditor;
 using UIMarkerEditor.Controls;
 
 namespace UIMarkerEditor.Tests;
@@ -31,5 +32,50 @@ public sealed class BackupRestoreControlTests
     public void IsSameFilePath_WhenPathIsInvalid_ReturnsFalse()
     {
         Assert.False(BackupRestoreControl.IsSameFilePath("C:\\valid\\UISAVE.DAT", "\0"));
+    }
+
+    [Fact]
+    public void BuildRestoreWarning_WhenOriginalTargetExists_WarnsAboutOverwrite()
+    {
+        BackupMetadata backup = CreateBackupMetadata();
+
+        string warning = BackupRestoreControl.BuildRestoreWarning(
+            backup,
+            "C:\\game\\FFXIV_CHR1234\\UISAVE.DAT",
+            targetExists: true,
+            willCreateSafetyBackup: false);
+
+        Assert.Contains("覆盖目标文件", warning);
+        Assert.Contains("当前不会创建还原前安全备份", warning);
+        Assert.Contains("覆盖后目标文件当前状态将无法从工具备份中恢复", warning);
+    }
+
+    [Fact]
+    public void BuildRestoreWarning_WhenOriginalTargetIsMissing_WarnsAboutCreate()
+    {
+        BackupMetadata backup = CreateBackupMetadata();
+
+        string warning = BackupRestoreControl.BuildRestoreWarning(
+            backup,
+            "C:\\game\\FFXIV_CHR1234\\UISAVE.DAT",
+            targetExists: false,
+            willCreateSafetyBackup: false);
+
+        Assert.Contains("创建目标文件", warning);
+        Assert.Contains("目标文件当前不存在", warning);
+        Assert.DoesNotContain("覆盖目标文件", warning);
+        Assert.DoesNotContain("覆盖后目标文件当前状态将无法从工具备份中恢复", warning);
+    }
+
+    private static BackupMetadata CreateBackupMetadata()
+    {
+        return new BackupMetadata
+        {
+            BackupTime = new DateTime(2026, 7, 9, 12, 34, 56),
+            CharacterDisplayName = "测试角色",
+            FolderUserID = "FFXIV_CHR1234",
+            FileUserID = "FFXIV_CHR1234",
+            BackupFilePath = "C:\\tool-data\\backups\\backup\\UISAVE.DAT"
+        };
     }
 }
