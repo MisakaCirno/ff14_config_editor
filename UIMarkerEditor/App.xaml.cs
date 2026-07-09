@@ -210,14 +210,41 @@ public partial class App : Application
     {
         Dispatcher.Invoke(() =>
         {
-            if (MainWindow == null)
+            Window? activationTarget = SelectActivationTarget(MainWindow, Current.Windows);
+            if (activationTarget == null)
             {
                 activateMainWindowWhenReady = true;
                 return;
             }
 
-            ActivateWindow(MainWindow);
+            ActivateWindow(activationTarget);
         });
+    }
+
+    internal static Window? SelectActivationTarget(Window? mainWindow, System.Collections.IEnumerable windows)
+    {
+        if (mainWindow != null)
+        {
+            return mainWindow;
+        }
+
+        Window? fallbackWindow = null;
+        foreach (object? item in windows)
+        {
+            if (item is not Window window || !window.IsVisible)
+            {
+                continue;
+            }
+
+            if (window.IsActive)
+            {
+                return window;
+            }
+
+            fallbackWindow ??= window;
+        }
+
+        return fallbackWindow;
     }
 
     private static void ActivateWindow(Window window)
