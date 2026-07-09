@@ -52,6 +52,43 @@ public sealed class WayMarkEditPanelControlTests
     }
 
     [Fact]
+    public void TryCommitPendingWayMarkActionEdits_WhenCoordinateTextIsValid_UpdatesWayMark()
+    {
+        Exception? exception = WpfTestHost.Run(() =>
+        {
+            WayMark wayMark = new();
+            WayMarkEditPanelControl control = CreateControl(wayMark);
+            TextBox textBox = GetCoordinateTextBox(control, "A_X_TextBox");
+
+            textBox.Text = "123.456";
+
+            Assert.True(control.TryCommitPendingWayMarkActionEdits(showValidationMessage: false));
+            Assert.Equal(123456, wayMark.A.X);
+        });
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void TryCommitPendingWayMarkActionEdits_WhenCoordinateTextIsIncomplete_ReturnsFalseWithoutRestoringText()
+    {
+        Exception? exception = WpfTestHost.Run(() =>
+        {
+            WayMark wayMark = new();
+            WayMarkEditPanelControl control = CreateControl(wayMark);
+            TextBox textBox = GetCoordinateTextBox(control, "A_X_TextBox");
+
+            textBox.Text = "-";
+
+            Assert.False(control.TryCommitPendingWayMarkActionEdits(showValidationMessage: false));
+            Assert.Equal(0, wayMark.A.X);
+            Assert.Equal("-", textBox.Text);
+        });
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
     public void FavoriteConfirmSaveOrDiscardChanges_WhenAutoSaveMode_CommitsPendingCoordinateBeforeSaving()
     {
         string testDirectory = Path.Combine(

@@ -25,6 +25,11 @@ namespace UIMarkerEditor.Controls
         {
             try
             {
+                if (!TryCommitPendingWayMarkActionEdits())
+                {
+                    return;
+                }
+
                 if (currentWayMark is not WayMark currentMark)
                 {
                     AppMessageBox.Show("请先选择一个要导入到的标点槽位。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -98,6 +103,11 @@ namespace UIMarkerEditor.Controls
         {
             try
             {
+                if (!TryCommitPendingWayMarkActionEdits())
+                {
+                    return;
+                }
+
                 if (currentWayMark is not WayMark currentMark)
                 {
                     AppMessageBox.Show("请先选择一个要导出的标点。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -124,6 +134,39 @@ namespace UIMarkerEditor.Controls
             {
                 AppMessageBox.Show($"导出失败!\n{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void WayMarkAction_Button_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton != MouseButton.Left)
+            {
+                return;
+            }
+
+            if (!TryCommitPendingWayMarkActionEdits())
+            {
+                e.Handled = true;
+            }
+        }
+
+        internal bool TryCommitPendingWayMarkActionEdits(bool showValidationMessage = true)
+        {
+            if (CommitPendingEdits())
+            {
+                return true;
+            }
+
+            if (showValidationMessage)
+            {
+                AppMessageBox.Show(
+                    Window.GetWindow(this),
+                    "当前坐标输入不完整或超出可保存范围，请修正后再继续。",
+                    "坐标输入无效",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+
+            return false;
         }
 
     }

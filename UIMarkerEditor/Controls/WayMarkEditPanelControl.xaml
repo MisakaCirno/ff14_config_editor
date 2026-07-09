@@ -345,6 +345,7 @@
 
                         <Button x:Name="SetShapePos_Button"
                                 Content="设置点位置"
+                                PreviewMouseDown="WayMarkAction_Button_PreviewMouseDown"
                                 Click="SetShapePos_Button_Click"
                                 Style="{StaticResource PrimaryButtonStyle}"
                                 Margin="4,4,4,0"/>
@@ -359,7 +360,10 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Button x:Name="Import_Button" Grid.Column="0" Click="Import_Button_Click">
+            <Button x:Name="Import_Button"
+                    Grid.Column="0"
+                    PreviewMouseDown="WayMarkAction_Button_PreviewMouseDown"
+                    Click="Import_Button_Click">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                     <Viewbox Width="16" Height="16" Margin="0,0,6,0">
                         <Canvas Width="24" Height="24">
@@ -376,7 +380,10 @@
                 </StackPanel>
             </Button>
 
-            <Button x:Name="Export_Button" Grid.Column="1" Click="Export_Button_Click">
+            <Button x:Name="Export_Button"
+                    Grid.Column="1"
+                    PreviewMouseDown="WayMarkAction_Button_PreviewMouseDown"
+                    Click="Export_Button_Click">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                     <Viewbox Width="16" Height="16" Margin="0,0,6,0">
                         <Canvas Width="24" Height="24">

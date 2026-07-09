@@ -30,6 +30,11 @@ namespace UIMarkerEditor.Controls
 
         private void SetShapePos_Button_Click(object sender, RoutedEventArgs e)
         {
+            if (!TryCommitPendingWayMarkActionEdits())
+            {
+                return;
+            }
+
             if (currentWayMark == null)
             {
                 AppMessageBox.Show("请先选择一个要设置的标点槽位。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
