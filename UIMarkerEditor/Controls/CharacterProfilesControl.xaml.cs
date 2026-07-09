@@ -272,7 +272,7 @@ public partial class CharacterProfilesControl : UserControl
             CharacterProfile? previousProfile = e.RemovedItems.OfType<CharacterProfile>().FirstOrDefault();
             if (isCharacterDetailDirty && !ConfirmSaveOrDiscardCharacterChanges())
             {
-                SetCharacterSelection(previousProfile);
+                RestoreCharacterSelectionWithoutReload(previousProfile);
                 return;
             }
 
@@ -681,12 +681,17 @@ public partial class CharacterProfilesControl : UserControl
         LoadCharacterProfileIntoDetail(Character_DataGrid.SelectedItem as CharacterProfile);
     }
 
-    private void SetCharacterSelection(CharacterProfile? profile)
+    private void RestoreCharacterSelectionWithoutReload(CharacterProfile? profile)
     {
         suppressCharacterSelectionChanged = true;
-        Character_DataGrid.SelectedItem = profile;
-        suppressCharacterSelectionChanged = false;
-        LoadCharacterProfileIntoDetail(profile);
+        try
+        {
+            Character_DataGrid.SelectedItem = profile;
+        }
+        finally
+        {
+            suppressCharacterSelectionChanged = false;
+        }
     }
 
     private void LoadCharacterProfileIntoDetail(CharacterProfile? profile)

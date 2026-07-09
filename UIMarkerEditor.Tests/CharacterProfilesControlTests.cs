@@ -183,6 +183,76 @@ public sealed class CharacterProfilesControlTests
         Assert.Null(exception);
     }
 
+    [Fact]
+    public void RestoreCharacterSelectionWithoutReload_PreservesDraftFields()
+    {
+        Exception? exception = WpfTestHost.Run(() =>
+        {
+            WpfTestHost.EnsureApplicationResources();
+            string testDirectory = Path.Combine(
+                Path.GetTempPath(),
+                "UIMarkerEditor.CharacterProfilesTests",
+                Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(testDirectory);
+            try
+            {
+                AppDataStore store = new(testDirectory);
+                store.Initialize();
+                CharacterProfile firstProfile = new()
+                {
+                    UserID = "0011223344556677",
+                    CharacterName = "初始角色"
+                };
+                CharacterProfile secondProfile = new()
+                {
+                    UserID = "8899AABBCCDDEEFF",
+                    CharacterName = "其他角色"
+                };
+                store.Characters.Add(firstProfile);
+                store.Characters.Add(secondProfile);
+
+                CharacterProfilesControl control = new();
+                Window ownerWindow = new();
+                try
+                {
+                    control.Initialize(store, ownerWindow, () => { }, () => { });
+                    control.RefreshCharacterList();
+                    LoadCharacterProfileIntoDetail(control, firstProfile);
+
+                    DataGrid characterGrid = Assert.IsType<DataGrid>(control.FindName("Character_DataGrid"));
+                    TextBox characterNameTextBox = Assert.IsType<TextBox>(control.FindName("CharacterName_TextBox"));
+                    characterNameTextBox.Text = "草稿角色";
+
+                    SetPrivateBoolean(control, "suppressCharacterSelectionChanged", true);
+                    try
+                    {
+                        characterGrid.SelectedItem = secondProfile;
+                    }
+                    finally
+                    {
+                        SetPrivateBoolean(control, "suppressCharacterSelectionChanged", false);
+                    }
+
+                    InvokeRestoreCharacterSelectionWithoutReload(control, firstProfile);
+
+                    Assert.Same(firstProfile, characterGrid.SelectedItem);
+                    Assert.Equal("草稿角色", characterNameTextBox.Text);
+                    Assert.Equal("初始角色", firstProfile.CharacterName);
+                }
+                finally
+                {
+                    ownerWindow.Close();
+                }
+            }
+            finally
+            {
+                Directory.Delete(testDirectory, recursive: true);
+            }
+        });
+
+        Assert.Null(exception);
+    }
+
     private static void SetPrivateBoolean(object target, string fieldName, bool value)
     {
         FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
@@ -215,5 +285,14 @@ public sealed class CharacterProfilesControlTests
         MethodInfo method = typeof(CharacterProfilesControl).GetMethod("SaveCharacter_Button_Click", BindingFlags.Instance | BindingFlags.NonPublic)
             ?? throw new InvalidOperationException("Method not found: SaveCharacter_Button_Click");
         method.Invoke(control, [control, new RoutedEventArgs()]);
+    }
+
+    private static void InvokeRestoreCharacterSelectionWithoutReload(
+        CharacterProfilesControl control,
+        CharacterProfile profile)
+    {
+        MethodInfo method = typeof(CharacterProfilesControl).GetMethod("RestoreCharacterSelectionWithoutReload", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("Method not found: RestoreCharacterSelectionWithoutReload");
+        method.Invoke(control, [profile]);
     }
 }
