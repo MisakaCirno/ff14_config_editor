@@ -155,6 +155,7 @@ namespace UIMarkerEditor
             loadedFileSnapshot = TryCreateCurrentFileSnapshot(currentFilePath);
             promptedExternalFileSnapshot = null;
             hasPromptedCurrentFileMissing = false;
+            ClearCurrentFileMissingStatusIfNeeded();
         }
 
         private void CurrentFileWatcher_FileChanged(object sender, FileSystemEventArgs e)
@@ -199,24 +200,31 @@ namespace UIMarkerEditor
             CheckCurrentFileExternalChange(showPrompt: true);
         }
 
-        private bool ConfirmOverwriteExternallyChangedWayMarkFile()
+        private CurrentFileSaveDecision ResolveCurrentFileSaveDecision(bool allowMissingFileRecreate)
         {
-            CurrentFileExternalChangeState state = CheckCurrentFileExternalChange(showPrompt: false);
+            CurrentFileExternalChangeState state = allowMissingFileRecreate
+                ? GetCurrentFileExternalChangeState(out _)
+                : CheckCurrentFileExternalChange(showPrompt: false);
             if (state == CurrentFileExternalChangeState.Unchanged)
             {
-                return true;
+                return CurrentFileSaveDecision.Save;
             }
 
-            string message = state == CurrentFileExternalChangeState.Missing
-                ? "当前 UISAVE.DAT 已被外部删除或暂时无法读取。\n\n继续保存会尝试重新写入这个文件，是否继续？"
-                : "当前 UISAVE.DAT 已被外部更新。\n\n继续保存会用本窗口内容覆盖磁盘上的外部更新，是否继续？";
+            if (state == CurrentFileExternalChangeState.Missing)
+            {
+                return allowMissingFileRecreate
+                    ? CurrentFileSaveDecision.RecreateMissingFile
+                    : PromptForMissingCurrentFileBeforeSave();
+            }
 
             return AppMessageBox.Show(
                 this,
-                message,
+                "当前 UISAVE.DAT 已被外部更新。\n\n继续保存会用本窗口内容覆盖磁盘上的外部更新，是否继续？",
                 "确认覆盖外部更新",
                 MessageBoxButton.YesNo,
-                MessageBoxImage.Warning) == MessageBoxResult.Yes;
+                MessageBoxImage.Warning) == MessageBoxResult.Yes
+                    ? CurrentFileSaveDecision.Save
+                    : CurrentFileSaveDecision.Cancel;
         }
 
         private CurrentFileExternalChangeState CheckCurrentFileExternalChange(bool showPrompt)
@@ -239,11 +247,7 @@ namespace UIMarkerEditor
                     return state;
                 }
 
-                if (PromptForCurrentFileExternalChange(state))
-                {
-                    hasPromptedCurrentFileMissing = true;
-                }
-
+                PromptForCurrentFileExternalChange(state);
                 return state;
             }
             else if (currentSnapshot != null)
@@ -283,6 +287,7 @@ namespace UIMarkerEditor
 
             if (currentMetadata.Equals(loadedSnapshot.Metadata))
             {
+                ClearCurrentFileMissingStatusIfNeeded();
                 promptedExternalFileSnapshot = null;
                 hasPromptedCurrentFileMissing = false;
                 return CurrentFileExternalChangeState.Unchanged;
@@ -295,6 +300,8 @@ namespace UIMarkerEditor
             {
                 return CurrentFileExternalChangeState.Missing;
             }
+
+            ClearCurrentFileMissingStatusIfNeeded();
 
             if (string.Equals(currentSnapshot.Hash, loadedSnapshot.Hash, StringComparison.Ordinal))
             {
@@ -317,12 +324,8 @@ namespace UIMarkerEditor
             {
                 if (state == CurrentFileExternalChangeState.Missing)
                 {
-                    AppMessageBox.Show(
-                        this,
-                        "当前 UISAVE.DAT 已被外部删除或暂时无法读取。\n\n请确认文件状态后再继续编辑或保存。",
-                        "当前文件不可读取",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
+                    HandleMissingCurrentFileDialogResult(
+                        ShowCurrentFileMissingDialog());
                     return true;
                 }
 
@@ -347,6 +350,66 @@ namespace UIMarkerEditor
             {
                 isHandlingCurrentFileExternalChange = false;
             }
+        }
+
+        private CurrentFileSaveDecision PromptForMissingCurrentFileBeforeSave()
+        {
+            return ShowCurrentFileMissingDialog() switch
+            {
+                CurrentFileMissingDialogResult.SaveToOriginalPath => CurrentFileSaveDecision.RecreateMissingFile,
+                CurrentFileMissingDialogResult.CloseCurrentFile => CloseMissingCurrentFileAndCancelSave(),
+                _ => AcknowledgeMissingCurrentFileAndCancelSave()
+            };
+        }
+
+        private CurrentFileSaveDecision CloseMissingCurrentFileAndCancelSave()
+        {
+            CloseCurrentWayMarkFile();
+            return CurrentFileSaveDecision.Cancel;
+        }
+
+        private CurrentFileSaveDecision AcknowledgeMissingCurrentFileAndCancelSave()
+        {
+            AcknowledgeMissingCurrentFile();
+            return CurrentFileSaveDecision.Cancel;
+        }
+
+        private void HandleMissingCurrentFileDialogResult(CurrentFileMissingDialogResult result)
+        {
+            switch (result)
+            {
+                case CurrentFileMissingDialogResult.SaveToOriginalPath:
+                    if (!SaveWayMarkFile(showSuccessMessage: true, allowMissingFileRecreate: true))
+                    {
+                        AcknowledgeMissingCurrentFile();
+                    }
+                    break;
+                case CurrentFileMissingDialogResult.CloseCurrentFile:
+                    CloseCurrentWayMarkFile();
+                    break;
+                default:
+                    AcknowledgeMissingCurrentFile();
+                    break;
+            }
+        }
+
+        private CurrentFileMissingDialogResult ShowCurrentFileMissingDialog()
+        {
+            CurrentFileMissingDialog dialog = new(currentFilePath);
+            DialogOwnerHelper.ConfigureOwnedDialog(dialog, this);
+            dialog.ShowDialog();
+            return dialog.Result;
+        }
+
+        private void AcknowledgeMissingCurrentFile()
+        {
+            if (!HasLoadedWayMarkFile())
+            {
+                return;
+            }
+
+            hasPromptedCurrentFileMissing = true;
+            UpdateCurrentFileMissingStatus(currentFilePath);
         }
 
         private string BuildCurrentFileUpdatedMessage(bool hasInvalidPendingWayMarkEdits)
@@ -452,6 +515,13 @@ namespace UIMarkerEditor
             Unchanged,
             Updated,
             Missing
+        }
+
+        private enum CurrentFileSaveDecision
+        {
+            Save,
+            RecreateMissingFile,
+            Cancel
         }
 
         private sealed record CurrentFileMetadata(

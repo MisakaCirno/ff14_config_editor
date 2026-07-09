@@ -1,0 +1,96 @@
+﻿<Window x:Class="UIMarkerEditor.CurrentFileMissingDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="当前文件不可读取"
+        Style="{StaticResource AppDialogWindowStyle}"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="18" MinWidth="560" MaxWidth="680">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="当前 UISAVE.DAT 已被外部删除或暂时无法读取。"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       TextWrapping="Wrap"/>
+            <TextBlock Text="请确认要如何处理当前编辑器中的标点数据。"
+                       Margin="0,8,0,0"
+                       TextWrapping="Wrap"/>
+
+            <TextBlock Text="文件路径："
+                       Foreground="{DynamicResource AppMutedTextBrush}"
+                       Margin="0,14,0,4"/>
+            <TextBox x:Name="FilePath_TextBox"
+                     IsReadOnly="True"
+                     TextWrapping="Wrap"
+                     MinHeight="34"
+                     MaxHeight="78"
+                     VerticalScrollBarVisibility="Auto"/>
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,16,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="8"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="8"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="126"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="保存到原位置"
+                       FontWeight="SemiBold"/>
+            <TextBlock Grid.Column="1"
+                       Text="使用当前窗口内容重新创建这个文件；保存成功后创建“已删除文件重建后备份”。"
+                       TextWrapping="Wrap"/>
+
+            <TextBlock Grid.Row="2"
+                       Text="关闭当前文件"
+                       FontWeight="SemiBold"/>
+            <TextBlock Grid.Row="2"
+                       Grid.Column="1"
+                       Text="不写回原路径，并放弃当前窗口中的标点数据，回到未加载文件状态。"
+                       TextWrapping="Wrap"/>
+
+            <TextBlock Grid.Row="4"
+                       Text="继续编辑"
+                       FontWeight="SemiBold"/>
+            <TextBlock Grid.Row="4"
+                       Grid.Column="1"
+                       Text="暂不处理；文件监控不会反复弹窗，但下次保存时会再次询问。"
+                       TextWrapping="Wrap"/>
+        </Grid>
+
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,18,0,0">
+            <Button Content="保存到原位置"
+                    Width="124"
+                    Height="32"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    IsDefault="True"
+                    Click="SaveToOriginal_Button_Click"/>
+            <Button Content="关闭当前文件"
+                    Width="124"
+                    Height="32"
+                    Margin="8,0,0,0"
+                    Style="{StaticResource DangerButtonStyle}"
+                    Click="CloseFile_Button_Click"/>
+            <Button Content="继续编辑"
+                    Width="96"
+                    Height="32"
+                    Margin="8,0,0,0"
+                    IsCancel="True"
+                    Click="ContinueEditing_Button_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

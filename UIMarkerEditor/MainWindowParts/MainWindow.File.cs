@@ -109,7 +109,7 @@ namespace UIMarkerEditor
             }
         }
 
-        private bool SaveWayMarkFile(bool showSuccessMessage = true)
+        private bool SaveWayMarkFile(bool showSuccessMessage = true, bool allowMissingFileRecreate = false)
         {
             if (isWayMarkFileLoading)
             {
@@ -124,12 +124,14 @@ namespace UIMarkerEditor
             // 保存修改后的UISAVE.DAT文件
             if (configUISave != null)
             {
-                if (!ConfirmOverwriteExternallyChangedWayMarkFile())
+                CurrentFileSaveDecision saveDecision = ResolveCurrentFileSaveDecision(allowMissingFileRecreate);
+                if (saveDecision == CurrentFileSaveDecision.Cancel)
                 {
                     return false;
                 }
 
-                if (appDataStore.Settings.AutoBackupBeforeSave)
+                bool recreateMissingFile = saveDecision == CurrentFileSaveDecision.RecreateMissingFile;
+                if (!recreateMissingFile && appDataStore.Settings.AutoBackupBeforeSave)
                 {
                     if (appDataStore.IsTrustedGameCharacterSaveFile(configUISave.FilePath))
                     {
@@ -154,6 +156,10 @@ namespace UIMarkerEditor
                 {
                     configUISave.Save();
                     RefreshLoadedFileSnapshot();
+                    if (recreateMissingFile)
+                    {
+                        CreateBackupAfterDeletedFileRecreate(configUISave.FilePath);
+                    }
                 }
                 catch (UISaveFormatException ex)
                 {
@@ -241,6 +247,27 @@ namespace UIMarkerEditor
             if (!string.IsNullOrWhiteSpace(closedFilePath))
             {
                 AppLogger.Info(AppLogCategory.UI, $"已关闭当前 UISAVE.DAT：{closedFilePath}");
+            }
+        }
+
+        private void CreateBackupAfterDeletedFileRecreate(string filePath)
+        {
+            try
+            {
+                appDataStore.CreateBackup(
+                    filePath,
+                    creationTrigger: BackupCreationTriggers.AfterDeletedFileRecreate);
+                RefreshBackupList();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning(AppLogCategory.IO, $"删除后重建备份失败：{filePath}", ex);
+                AppMessageBox.Show(
+                    this,
+                    $"已成功保存 UISAVE.DAT，但删除后重建备份失败。\n\n文件：{filePath}\n\n原因：{ex.Message}",
+                    "重建后备份失败",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
             }
         }
 

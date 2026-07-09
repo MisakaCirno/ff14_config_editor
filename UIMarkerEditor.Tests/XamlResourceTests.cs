@@ -32,6 +32,7 @@ public sealed class XamlResourceTests
                 AssertMainWindowMapDataOperationOverlayCanShowAndHide(window);
                 AssertBackupRestoreOverlayCanShowAndHide(window);
                 window.Close();
+                AssertCurrentFileMissingDialogCanInitialize();
                 AssertDataDirectoryMigrationReportDialogCanInitialize(testDirectory);
             }
             finally
@@ -41,6 +42,23 @@ public sealed class XamlResourceTests
         });
 
         Assert.Null(exception);
+    }
+
+    private static void AssertCurrentFileMissingDialogCanInitialize()
+    {
+        const string filePath = "C:\\game\\FFXIV_CHR0123456789ABCDEF\\UISAVE.DAT";
+        CurrentFileMissingDialog dialog = new(filePath);
+        try
+        {
+            TextBox filePathTextBox = Assert.IsType<TextBox>(dialog.FindName("FilePath_TextBox"));
+
+            Assert.Equal(CurrentFileMissingDialogResult.ContinueEditing, dialog.Result);
+            Assert.Equal(filePath, filePathTextBox.Text);
+        }
+        finally
+        {
+            dialog.Close();
+        }
     }
 
     private static void AssertMainWindowCloseFileCommand(MainWindow window)

@@ -7,8 +7,11 @@ namespace UIMarkerEditor
 {
     public partial class MainWindow
     {
+        private bool isCurrentFileMissingStatusActive;
+
         private void UpdateCurrentFileStatus(string filePath)
         {
+            isCurrentFileMissingStatusActive = false;
             string fullPath = System.IO.Path.GetFullPath(filePath);
             string displayText = BuildFileDisplayText(fullPath);
             CurrentFileStatus_TextBlock.Text = displayText;
@@ -17,9 +20,36 @@ namespace UIMarkerEditor
 
         private void ResetCurrentFileStatus()
         {
+            isCurrentFileMissingStatusActive = false;
             const string displayText = "未加载 UISAVE 文件";
             CurrentFileStatus_TextBlock.Text = displayText;
             CurrentFileStatus_TextBlock.ToolTip = displayText;
+        }
+
+        private void UpdateCurrentFileMissingStatus(string filePath)
+        {
+            isCurrentFileMissingStatusActive = true;
+            string fullPath = System.IO.Path.GetFullPath(filePath);
+            string displayText = $"文件不可读取，等待处理：{BuildFileDisplayText(fullPath)}";
+            CurrentFileStatus_TextBlock.Text = displayText;
+            CurrentFileStatus_TextBlock.ToolTip = displayText;
+        }
+
+        private void ClearCurrentFileMissingStatusIfNeeded()
+        {
+            if (!isCurrentFileMissingStatusActive)
+            {
+                return;
+            }
+
+            if (HasLoadedWayMarkFile())
+            {
+                UpdateCurrentFileStatus(currentFilePath);
+            }
+            else
+            {
+                ResetCurrentFileStatus();
+            }
         }
 
         private string BuildFileDisplayText(string filePath)
