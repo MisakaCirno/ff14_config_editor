@@ -29,6 +29,8 @@ public partial class ToolSettingsControl : UserControl
     private Func<MapDataTableMode, MapDataSource, Task> changeMapDataSelection = (_, _) => Task.CompletedTask;
     private Func<MapDataOnlineSourceKind, Task> changeMapDataOnlineSource = _ => Task.CompletedTask;
     private Func<Task> openUserMapDataEditor = () => Task.CompletedTask;
+    private Action<string, string> showMapDataOperationOverlay = (_, _) => { };
+    private Action hideMapDataOperationOverlay = () => { };
 
     public ToolSettingsControl()
     {
@@ -47,7 +49,9 @@ public partial class ToolSettingsControl : UserControl
         Action scanLocalCharacters,
         Func<MapDataTableMode, MapDataSource, Task> changeMapDataSelection,
         Func<MapDataOnlineSourceKind, Task> changeMapDataOnlineSource,
-        Func<Task> openUserMapDataEditor)
+        Func<Task> openUserMapDataEditor,
+        Action<string, string> showMapDataOperationOverlay,
+        Action hideMapDataOperationOverlay)
     {
         this.appDataStore = appDataStore;
         this.ownerWindow = ownerWindow;
@@ -60,6 +64,8 @@ public partial class ToolSettingsControl : UserControl
         this.changeMapDataSelection = changeMapDataSelection;
         this.changeMapDataOnlineSource = changeMapDataOnlineSource;
         this.openUserMapDataEditor = openUserMapDataEditor;
+        this.showMapDataOperationOverlay = showMapDataOperationOverlay;
+        this.hideMapDataOperationOverlay = hideMapDataOperationOverlay;
     }
 
     public void LoadSettingsIntoUi()
@@ -1068,57 +1074,61 @@ public partial class ToolSettingsControl : UserControl
     {
         if (appDataStore == null) return;
 
+        MapDataLoadResult result;
         SetManualRefreshButtonsEnabled(false);
+        ShowMapDataRefreshOverlay();
         try
         {
-            MapDataLoadResult result = await appDataStore.ForceRefreshMapDataAsync();
+            result = await appDataStore.ForceRefreshMapDataAsync();
             RefreshStatusFields();
             RecordMapDataManualRefreshAttemptIfNeeded(recordManualAttempt, result);
-            if (await PromptToRepairUserMapDataAsync(result))
-            {
-                return;
-            }
-
-            if (!result.Success)
-            {
-                refreshMapDataConsumers();
-                AppMessageBox.Show(
-                    ownerWindow,
-                    BuildMapDataRefreshFailureMessage(result),
-                    "地图数据",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
-            string versionText = string.IsNullOrWhiteSpace(result.Version) ? "未知版本" : result.Version;
-            if (result.UsedCache)
-            {
-                refreshMapDataConsumers();
-                AppMessageBox.Show(
-                    ownerWindow,
-                    BuildMapDataCacheFallbackMessage(result),
-                    "地图数据",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
-            if (result.Updated)
-            {
-                refreshMapDataConsumers();
-                ToastService.ShowSuccess($"地图快照已更新到：{versionText}");
-                return;
-            }
-
-            refreshMapDataConsumers();
-            ToastService.ShowSuccess($"地图快照目前已是最新。当前快照标识：{versionText}");
         }
         finally
         {
+            hideMapDataOperationOverlay();
             SetManualRefreshButtonsEnabled(true);
             RefreshStatusFields();
         }
+
+        if (await PromptToRepairUserMapDataAsync(result))
+        {
+            return;
+        }
+
+        if (!result.Success)
+        {
+            refreshMapDataConsumers();
+            AppMessageBox.Show(
+                ownerWindow,
+                BuildMapDataRefreshFailureMessage(result),
+                "地图数据",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        string versionText = string.IsNullOrWhiteSpace(result.Version) ? "未知版本" : result.Version;
+        if (result.UsedCache)
+        {
+            refreshMapDataConsumers();
+            AppMessageBox.Show(
+                ownerWindow,
+                BuildMapDataCacheFallbackMessage(result),
+                "地图数据",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        if (result.Updated)
+        {
+            refreshMapDataConsumers();
+            ToastService.ShowSuccess($"地图快照已更新到：{versionText}");
+            return;
+        }
+
+        refreshMapDataConsumers();
+        ToastService.ShowSuccess($"地图快照目前已是最新。当前快照标识：{versionText}");
     }
 
     private async Task<bool> PromptToRepairUserMapDataAsync(MapDataLoadResult result)
@@ -1396,6 +1406,32 @@ public partial class ToolSettingsControl : UserControl
             "检查过于频繁",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
+    }
+
+    private void ShowMapDataRefreshOverlay()
+    {
+        if (appDataStore == null) return;
+
+        AppSettings settings = appDataStore.Settings;
+        if (settings.MapDataTableMode == MapDataTableMode.Manual)
+        {
+            showMapDataOperationOverlay(
+                "正在重新读取用户填写数据...",
+                "正在读取用户填写数据 mapdata_user.csv，请稍候。");
+            return;
+        }
+
+        if (settings.MapDataSource == MapDataSource.LocalGame)
+        {
+            showMapDataOperationOverlay(
+                "正在重新读取本地游戏数据...",
+                "正在读取本地游戏 sqpack 并刷新地图数据，请稍候。");
+            return;
+        }
+
+        showMapDataOperationOverlay(
+            "正在重新检查在线地图数据...",
+            "正在获取在线数据，请稍候。");
     }
 
     private void SetManualRefreshButtonsEnabled(bool isEnabled)

@@ -145,7 +145,9 @@ namespace UIMarkerEditor
                 StartLocalCharacterScan,
                 ChangeMapDataSelectionAsync,
                 ChangeMapDataOnlineSourceAsync,
-                OpenUserMapDataEditorAsync);
+                OpenUserMapDataEditorAsync,
+                ShowMapDataOperationOverlay,
+                HideMapDataOperationOverlay);
             LoadSettingsIntoUi();
             RefreshBackupList();
             RefreshCharacterList();

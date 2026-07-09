@@ -488,19 +488,28 @@ namespace UIMarkerEditor
 
         private void ShowMapDataSourceSwitchOverlay(MapDataTableMode nextTableMode, MapDataSource nextSource)
         {
-            MapDataSourceSwitchOverlayTitle_TextBlock.Text = $"正在切换到{GetMapDataSelectionDisplayText(nextTableMode, nextSource)}...";
-            MapDataSourceSwitchOverlayMessage_TextBlock.Text = nextTableMode == MapDataTableMode.Manual
+            string title = $"正在切换到{GetMapDataSelectionDisplayText(nextTableMode, nextSource)}...";
+            string message = nextTableMode == MapDataTableMode.Manual
                 ? "正在读取用户填写数据 mapdata_user.csv，请稍候。"
                 : nextSource == MapDataSource.LocalGame
                     ? "正在读取本地游戏 sqpack 并刷新地图数据，请稍候。"
                     : "正在获取在线数据，请稍候。";
-            MapDataSourceSwitchOverlay_Grid.Visibility = Visibility.Visible;
-            MapDataSourceSwitchOverlay_Grid.Focus();
+            ShowMapDataOperationOverlay(title, message);
         }
 
         private void HideMapDataSourceSwitchOverlay()
         {
-            MapDataSourceSwitchOverlay_Grid.Visibility = Visibility.Collapsed;
+            HideMapDataOperationOverlay();
+        }
+
+        private void ShowMapDataOperationOverlay(string title, string message)
+        {
+            MapDataOperationOverlay_Control.Show(title, message);
+        }
+
+        private void HideMapDataOperationOverlay()
+        {
+            MapDataOperationOverlay_Control.Hide();
         }
 
         private static string BuildMapDataSourceMenuRefreshFailureMessage(MapDataLoadResult result)

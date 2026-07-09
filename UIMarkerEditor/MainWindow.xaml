@@ -613,42 +613,8 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <Grid x:Name="MapDataSourceSwitchOverlay_Grid"
-              Grid.RowSpan="3"
-              Background="#99000000"
-              Panel.ZIndex="200"
-              Focusable="True"
-              Visibility="Collapsed">
-            <Border Width="360"
-                    Background="#F8FFFFFF"
-                    BorderBrush="{StaticResource AppBorderStrongBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    Padding="20"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="18"
-                                      ShadowDepth="3"
-                                      Opacity="0.22"/>
-                </Border.Effect>
-                <StackPanel>
-                    <TextBlock x:Name="MapDataSourceSwitchOverlayTitle_TextBlock"
-                               Text="正在切换地图数据来源..."
-                               Foreground="{StaticResource AppTextBrush}"
-                               FontSize="16"
-                               FontWeight="SemiBold"
-                               TextAlignment="Center"/>
-                    <TextBlock x:Name="MapDataSourceSwitchOverlayMessage_TextBlock"
-                               Text="请稍候。"
-                               Foreground="{StaticResource AppMutedTextBrush}"
-                               TextAlignment="Center"
-                               TextWrapping="Wrap"
-                               Margin="0,8,0,14"/>
-                    <ProgressBar Height="6"
-                                 IsIndeterminate="True"/>
-                </StackPanel>
-            </Border>
-        </Grid>
+        <controls:BusyOverlayControl x:Name="MapDataOperationOverlay_Control"
+                                     Grid.RowSpan="3"
+                                     Panel.ZIndex="200"/>
     </Grid>
 </Window>

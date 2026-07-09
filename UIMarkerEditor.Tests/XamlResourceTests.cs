@@ -27,6 +27,7 @@ public sealed class XamlResourceTests
             try
             {
                 MainWindow window = new(new AppDataStore(testDirectory));
+                AssertMainWindowMapDataOperationOverlayCanShowAndHide(window);
                 window.Close();
                 AssertDataDirectoryMigrationReportDialogCanInitialize(testDirectory);
             }
@@ -87,6 +88,25 @@ public sealed class XamlResourceTests
             MigrationStateFilePath = Path.Combine(testDirectory, "migration-state.json")
         });
         reportDialog.Close();
+    }
+
+    private static void AssertMainWindowMapDataOperationOverlayCanShowAndHide(MainWindow window)
+    {
+        BusyOverlayControl overlay = Assert.IsType<BusyOverlayControl>(
+            window.FindName("MapDataOperationOverlay_Control"));
+
+        Assert.Equal(Visibility.Collapsed, overlay.Visibility);
+
+        overlay.Show("正在测试地图数据...", "请等待测试完成。");
+        overlay.Measure(new Size(420, 240));
+        overlay.Arrange(new Rect(0, 0, 420, 240));
+        overlay.UpdateLayout();
+
+        Assert.Equal(Visibility.Visible, overlay.Visibility);
+
+        overlay.Hide();
+
+        Assert.Equal(Visibility.Collapsed, overlay.Visibility);
     }
 
     private static void AssertColoredButtonForegroundPassesIntoTemplate()
