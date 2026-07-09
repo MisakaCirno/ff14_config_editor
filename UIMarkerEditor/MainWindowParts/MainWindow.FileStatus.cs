@@ -66,6 +66,7 @@ namespace UIMarkerEditor
             string previousCharacterName = profile.CharacterName;
             DateTime previousUpdatedAt = profile.UpdatedAt;
             bool filledCharacterNameFromLog = false;
+            bool savedCharacterProfile = false;
             if (string.IsNullOrWhiteSpace(profile.CharacterName))
             {
                 ClientLogCharacterNameMatch? logNameMatch = ClientLogCharacterNameResolver.FindLatestFromSaveFile(
@@ -84,6 +85,7 @@ namespace UIMarkerEditor
                 try
                 {
                     appDataStore.SaveCharacters();
+                    savedCharacterProfile = true;
                     if (filledCharacterNameFromLog)
                     {
                         ToastService.ShowSuccess($"已从客户端日志识别角色昵称：{profile.CharacterName}");
@@ -105,7 +107,10 @@ namespace UIMarkerEditor
                 }
             }
 
-            RefreshCharacterList();
+            if (savedCharacterProfile)
+            {
+                RefreshCharacterListFromExternalChange();
+            }
         }
 
     }
