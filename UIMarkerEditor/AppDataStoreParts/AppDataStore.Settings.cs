@@ -69,6 +69,11 @@ public sealed partial class AppDataStore
             settings.StartupWayMarkAction = StartupWayMarkAction.None;
         }
 
+        if (!Enum.IsDefined(settings.StartupLocalCharacterScanMode))
+        {
+            settings.StartupLocalCharacterScanMode = StartupLocalCharacterScanMode.EveryStartup;
+        }
+
         if (!Enum.IsDefined(settings.WayMarkFavoriteSaveMode))
         {
             settings.WayMarkFavoriteSaveMode = WayMarkFavoriteSaveMode.Manual;
@@ -457,6 +462,11 @@ public sealed partial class AppDataStore
             throw new InvalidOperationException("启动行为设置不是有效选项。");
         }
 
+        if (!Enum.IsDefined(settings.StartupLocalCharacterScanMode))
+        {
+            throw new InvalidOperationException("启动本地角色扫描设置不是有效选项。");
+        }
+
         if (!Enum.IsDefined(settings.WayMarkFavoriteSaveMode))
         {
             throw new InvalidOperationException("标点收藏保存方式不是有效选项。");
@@ -525,6 +535,8 @@ public sealed partial class AppDataStore
             MaxLogFileCount = settings.MaxLogFileCount,
             UseWayMarkImageLabels = settings.UseWayMarkImageLabels,
             StartupWayMarkAction = settings.StartupWayMarkAction,
+            StartupLocalCharacterScanMode = settings.StartupLocalCharacterScanMode,
+            StartupLocalCharacterScanCompleted = settings.StartupLocalCharacterScanCompleted,
             WayMarkFavoriteSaveMode = settings.WayMarkFavoriteSaveMode,
             MapDataTableMode = settings.MapDataTableMode,
             MapDataTableModeInitialized = settings.MapDataTableModeInitialized,

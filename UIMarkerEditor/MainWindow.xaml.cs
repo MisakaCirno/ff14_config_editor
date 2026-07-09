@@ -173,6 +173,11 @@ namespace UIMarkerEditor
 
         private async Task AutoDetectGameInstallDirectoryAndScanLocalCharactersAsync()
         {
+            if (!StartupLocalCharacterScanPolicy.ShouldRun(appDataStore.Settings))
+            {
+                return;
+            }
+
             try
             {
                 GameInstallDirectoryUpdateResult result = await appDataStore.AutoDetectGameInstallDirectoryAsync();
@@ -196,6 +201,29 @@ namespace UIMarkerEditor
             catch (Exception ex)
             {
                 AppLogger.Warning(AppLogCategory.IO, "自动检测游戏安装目录失败", ex);
+            }
+            finally
+            {
+                MarkStartupLocalCharacterScanCompletedIfNeeded();
+            }
+        }
+
+        private void MarkStartupLocalCharacterScanCompletedIfNeeded()
+        {
+            if (!StartupLocalCharacterScanPolicy.ShouldMarkCompleted(appDataStore.Settings))
+            {
+                return;
+            }
+
+            AppSettings settings = appDataStore.CreateSettingsSnapshot();
+            settings.StartupLocalCharacterScanCompleted = true;
+            try
+            {
+                appDataStore.SaveSettings(settings);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException or IOException or UnauthorizedAccessException)
+            {
+                AppLogger.Warning(AppLogCategory.IO, "保存启动本地角色扫描完成状态失败", ex);
             }
         }
     }

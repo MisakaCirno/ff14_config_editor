@@ -111,6 +111,7 @@ public partial class ToolSettingsControl : UserControl
             LimitBackupCountPerUser_CheckBox.IsChecked = appDataStore.Settings.LimitBackupCountPerUser;
             LimitBackupDays_CheckBox.IsChecked = appDataStore.Settings.LimitBackupDays;
             ApplyStartupWayMarkActionToUi(appDataStore.Settings.StartupWayMarkAction);
+            ApplyStartupLocalCharacterScanModeToUi(appDataStore.Settings.StartupLocalCharacterScanMode);
             GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
             WayMarkCustomDirectory_TextBox.Text = appDataStore.Settings.WayMarkCustomDirectory;
             ApplyWayMarkOpenDirectoryModeToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
@@ -698,6 +699,23 @@ public partial class ToolSettingsControl : UserControl
                 settings.StartupWayMarkAction = ReadStartupWayMarkActionFromUi();
             },
             "保存启动行为设置");
+    }
+
+    private void StartupLocalCharacterScanMode_SegmentedSwitch_SelectionChanged(object sender, RoutedEventArgs e)
+    {
+        if (isLoadingSettingsIntoUi) return;
+
+        StartupLocalCharacterScanMode mode = ReadStartupLocalCharacterScanModeFromUi();
+        SaveSettingsMutation(
+            settings =>
+            {
+                settings.StartupLocalCharacterScanMode = mode;
+                if (mode == StartupLocalCharacterScanMode.FirstInitializationOnly)
+                {
+                    settings.StartupLocalCharacterScanCompleted = true;
+                }
+            },
+            "保存启动本地角色扫描设置");
     }
 
     private void MaxBackupCount_TextBox_LostFocus(object sender, RoutedEventArgs e)
@@ -1922,6 +1940,19 @@ public partial class ToolSettingsControl : UserControl
         }
 
         return StartupWayMarkAction.None;
+    }
+
+    private void ApplyStartupLocalCharacterScanModeToUi(StartupLocalCharacterScanMode mode)
+    {
+        StartupLocalCharacterScanMode_SegmentedSwitch.IsLeftSelected =
+            mode == StartupLocalCharacterScanMode.EveryStartup;
+    }
+
+    private StartupLocalCharacterScanMode ReadStartupLocalCharacterScanModeFromUi()
+    {
+        return StartupLocalCharacterScanMode_SegmentedSwitch.IsLeftSelected
+            ? StartupLocalCharacterScanMode.EveryStartup
+            : StartupLocalCharacterScanMode.FirstInitializationOnly;
     }
 
     private static string FormatOptionalTime(DateTime value, string emptyText)

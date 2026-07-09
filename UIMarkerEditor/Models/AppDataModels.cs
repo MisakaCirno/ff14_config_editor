@@ -125,6 +125,12 @@ public enum StartupWayMarkAction
     OpenFileDialog = 2
 }
 
+public enum StartupLocalCharacterScanMode
+{
+    EveryStartup = 0,
+    FirstInitializationOnly = 1
+}
+
 public enum WayMarkFavoriteSaveMode
 {
     Manual = 0,
@@ -205,6 +211,8 @@ public sealed class AppSettings
     public int MaxLogFileCount { get; set; } = DefaultMaxLogFileCount;
     public bool UseWayMarkImageLabels { get; set; } = true;
     public StartupWayMarkAction StartupWayMarkAction { get; set; } = StartupWayMarkAction.None;
+    public StartupLocalCharacterScanMode StartupLocalCharacterScanMode { get; set; } = StartupLocalCharacterScanMode.EveryStartup;
+    public bool StartupLocalCharacterScanCompleted { get; set; }
     public WayMarkFavoriteSaveMode WayMarkFavoriteSaveMode { get; set; } = WayMarkFavoriteSaveMode.Manual;
     public MapDataTableMode MapDataTableMode { get; set; } = MapDataTableMode.Automatic;
     public bool MapDataTableModeInitialized { get; set; }

@@ -381,6 +381,30 @@
                                          GroupName="StartupWayMarkAction"
                                          Content="启动时不做任何操作"
                                          Checked="StartupWayMarkAction_RadioButton_Checked"/>
+
+                            <Separator Margin="0,12,0,12"/>
+                            <TextBlock Text="本地角色扫描"
+                                       Style="{StaticResource SettingsSubsectionTitleStyle}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="启动时扫描"
+                                           Style="{StaticResource SettingsFormLabelStyle}"/>
+                                <StackPanel Grid.Column="1">
+                                    <controls:SegmentedSwitchControl x:Name="StartupLocalCharacterScanMode_SegmentedSwitch"
+                                                                     LeftText="每次启动"
+                                                                     LeftToolTip="每次启动工具时都自动检测游戏目录并扫描本地角色。"
+                                                                     RightText="仅首次初始化"
+                                                                     RightToolTip="只在第一次初始化时自动检测并扫描；之后请手动获取本地角色。"
+                                                                     VerticalAlignment="Center"
+                                                                     SelectionChanged="StartupLocalCharacterScanMode_SegmentedSwitch_SelectionChanged"/>
+                                    <TextBlock Text="此设置只影响工具启动时的后台扫描；读取文件、修改游戏目录、手动获取本地角色仍由你主动触发。"
+                                               Style="{StaticResource SettingsMutedTextStyle}"
+                                               Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
                     </GroupBox>
 

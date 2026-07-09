@@ -60,6 +60,8 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal(MapDataOnlineSourceKind.ContentFinderConditionCsv, store.Settings.MapDataOnlineSource);
         Assert.Equal(UnknownMapIdPolicy.RejectUnknown, store.Settings.UnknownMapIdPolicy);
         Assert.True(store.Settings.ShowAllowUnknownMapIdPolicyWarning);
+        Assert.Equal(StartupLocalCharacterScanMode.EveryStartup, store.Settings.StartupLocalCharacterScanMode);
+        Assert.False(store.Settings.StartupLocalCharacterScanCompleted);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
         Assert.False(store.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(string.Empty, store.Settings.GameInstallDirectory);
@@ -686,6 +688,8 @@ public sealed class AppDataStoreTests : IDisposable
         {
             UseWayMarkImageLabels = false,
             StartupWayMarkAction = StartupWayMarkAction.LoadMostRecentFile,
+            StartupLocalCharacterScanMode = StartupLocalCharacterScanMode.FirstInitializationOnly,
+            StartupLocalCharacterScanCompleted = true,
             WayMarkFavoriteSaveMode = WayMarkFavoriteSaveMode.Auto,
             MapDataTableMode = MapDataTableMode.Automatic,
             MapDataTableModeInitialized = true,
@@ -721,6 +725,8 @@ public sealed class AppDataStoreTests : IDisposable
         reloadedStore.Initialize();
         Assert.False(reloadedStore.Settings.UseWayMarkImageLabels);
         Assert.Equal(StartupWayMarkAction.LoadMostRecentFile, reloadedStore.Settings.StartupWayMarkAction);
+        Assert.Equal(StartupLocalCharacterScanMode.FirstInitializationOnly, reloadedStore.Settings.StartupLocalCharacterScanMode);
+        Assert.True(reloadedStore.Settings.StartupLocalCharacterScanCompleted);
         Assert.Equal(WayMarkFavoriteSaveMode.Auto, reloadedStore.Settings.WayMarkFavoriteSaveMode);
         Assert.Equal(MapDataTableMode.Automatic, reloadedStore.Settings.MapDataTableMode);
         Assert.True(reloadedStore.Settings.MapDataTableModeInitialized);
