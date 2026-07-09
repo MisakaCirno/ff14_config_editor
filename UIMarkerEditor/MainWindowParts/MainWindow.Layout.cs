@@ -19,6 +19,18 @@ namespace UIMarkerEditor
 
         private void Window_Closing(object? sender, CancelEventArgs e)
         {
+            if (isWayMarkFileLoading)
+            {
+                AppMessageBox.Show(
+                    this,
+                    "标点文件正在读取中，请稍候完成后再关闭工具。",
+                    "正在读取标点文件",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                e.Cancel = true;
+                return;
+            }
+
             if (!TryPrepareWindowCloseChanges(
                     out bool shouldSaveWayMarks,
                     out bool shouldSaveFavorite,
