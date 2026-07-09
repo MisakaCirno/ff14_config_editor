@@ -134,14 +134,14 @@ public partial class ToolSettingsControl : UserControl
         SetManualRefreshButtonsEnabled(true);
     }
 
-    public bool CommitPendingSettingsEdits()
+    public bool CommitPendingSettingsEdits(bool scanLocalCharactersAfterGameInstallDirectorySave = true)
     {
         if (appDataStore == null || isLoadingSettingsIntoUi)
         {
             return true;
         }
 
-        return CommitGameInstallDirectory() &&
+        return CommitGameInstallDirectory(scanLocalCharactersAfterGameInstallDirectorySave) &&
             CommitWayMarkOpenDirectorySettings() &&
             CommitIntegerSetting(
                 MaxBackupCount_TextBox,
@@ -1630,7 +1630,7 @@ public partial class ToolSettingsControl : UserControl
         return saved;
     }
 
-    private bool CommitGameInstallDirectory()
+    private bool CommitGameInstallDirectory(bool scanLocalCharactersAfterSave = true)
     {
         if (appDataStore == null || isLoadingSettingsIntoUi) return false;
 
@@ -1659,7 +1659,7 @@ public partial class ToolSettingsControl : UserControl
             normalizedGameInstallDirectory = normalizedDirectory;
         }
 
-        return SaveGameInstallDirectory(normalizedGameInstallDirectory);
+        return SaveGameInstallDirectory(normalizedGameInstallDirectory, scanLocalCharactersAfterSave);
     }
 
     private bool CommitWayMarkOpenDirectorySettings()
@@ -1693,7 +1693,7 @@ public partial class ToolSettingsControl : UserControl
         return saved;
     }
 
-    private bool SaveGameInstallDirectory(string gameInstallDirectory)
+    private bool SaveGameInstallDirectory(string gameInstallDirectory, bool scanLocalCharactersAfterSave = true)
     {
         if (appDataStore == null) return false;
 
@@ -1709,7 +1709,7 @@ public partial class ToolSettingsControl : UserControl
             ApplyWayMarkOpenDirectoryModeSelectionToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
         });
         UpdateGameCharacterDirectoryState(persistFallbackToDefault: true);
-        if (saved)
+        if (saved && scanLocalCharactersAfterSave)
         {
             scanLocalCharacters();
         }

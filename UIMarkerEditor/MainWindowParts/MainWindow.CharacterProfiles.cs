@@ -81,7 +81,7 @@ namespace UIMarkerEditor
 
         private bool PrepareDataDirectoryMigration(string currentDataDirectory, string targetDataDirectory)
         {
-            if (!ToolSettings_Control.CommitPendingSettingsEdits())
+            if (!ToolSettings_Control.CommitPendingSettingsEdits(scanLocalCharactersAfterGameInstallDirectorySave: false))
             {
                 return false;
             }
@@ -117,6 +117,7 @@ namespace UIMarkerEditor
             if (result != null)
             {
                 WayMarkFavorites_Control.RefreshFavorites();
+                StartLocalCharacterScan();
                 if (TryReloadRelocatedCurrentFile(pausedFilePath ?? currentFilePath, currentDataDirectory, targetDataDirectory))
                 {
                     return;
