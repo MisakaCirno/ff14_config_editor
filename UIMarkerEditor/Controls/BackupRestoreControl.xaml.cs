@@ -17,8 +17,9 @@ public partial class BackupRestoreControl : UserControl
     private Action<string> loadConfigFile = _ => { };
     private Func<bool> confirmSaveOrDiscardWayMarkChanges = () => true;
     private Func<bool> confirmSaveOrDiscardCharacterChanges = () => true;
-    private Func<Task> syncServerListForCharacterEditing = () => Task.CompletedTask;
+    private Func<Task<ServerListLoadResult?>> syncServerListForCharacterEditing = () => Task.FromResult<ServerListLoadResult?>(null);
     private Action refreshCharacterList = () => { };
+    private bool isBackupOperationBusy;
 
     public BackupRestoreControl()
     {
@@ -34,7 +35,7 @@ public partial class BackupRestoreControl : UserControl
         Action<string> loadConfigFile,
         Func<bool> confirmSaveOrDiscardWayMarkChanges,
         Func<bool> confirmSaveOrDiscardCharacterChanges,
-        Func<Task> syncServerListForCharacterEditing,
+        Func<Task<ServerListLoadResult?>> syncServerListForCharacterEditing,
         Action refreshCharacterList)
     {
         this.appDataStore = appDataStore;
@@ -49,7 +50,7 @@ public partial class BackupRestoreControl : UserControl
 
     public void RefreshBackupList()
     {
-        if (appDataStore == null) return;
+        if (appDataStore == null || isBackupOperationBusy) return;
 
         backupEntries.Clear();
         foreach (BackupMetadata backup in appDataStore.LoadBackups())
@@ -105,6 +106,12 @@ public partial class BackupRestoreControl : UserControl
 
     private void Backup_DataGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (isBackupOperationBusy)
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject) is DataGridRow row)
         {
             row.IsSelected = true;
@@ -117,6 +124,12 @@ public partial class BackupRestoreControl : UserControl
 
     private async void Backup_DataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
+        if (isBackupOperationBusy)
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (FindVisualParent<DataGridRow>(e.OriginalSource as DependencyObject) is not DataGridRow row ||
             row.Item is not BackupMetadata backup)
         {
@@ -131,16 +144,18 @@ public partial class BackupRestoreControl : UserControl
     private void Backup_ContextMenu_Opened(object sender, RoutedEventArgs e)
     {
         BackupMetadata? backup = Backup_DataGrid.SelectedItem as BackupMetadata;
+        bool canUseActions = !isBackupOperationBusy;
         bool hasBackup = backup != null;
         bool hasBackupDirectory = backup != null && Directory.Exists(backup.BackupDirectory);
         bool hasValidUserID = backup != null && IsValidUserID(backup.EffectiveUserID);
         bool alreadyHasCharacterProfile = hasValidUserID && HasCharacterProfile(backup!.EffectiveUserID);
 
-        RestoreBackup_MenuItem.IsEnabled = hasBackup;
-        RestoreBackupAs_MenuItem.IsEnabled = hasBackup;
-        DeleteBackup_MenuItem.IsEnabled = hasBackup;
-        OpenBackupDirectory_MenuItem.IsEnabled = hasBackupDirectory;
-        OpenCharacterProfileFromBackup_MenuItem.IsEnabled = hasValidUserID;
+        RefreshBackups_MenuItem.IsEnabled = canUseActions;
+        RestoreBackup_MenuItem.IsEnabled = canUseActions && hasBackup;
+        RestoreBackupAs_MenuItem.IsEnabled = canUseActions && hasBackup;
+        DeleteBackup_MenuItem.IsEnabled = canUseActions && hasBackup;
+        OpenBackupDirectory_MenuItem.IsEnabled = canUseActions && hasBackupDirectory;
+        OpenCharacterProfileFromBackup_MenuItem.IsEnabled = canUseActions && hasValidUserID;
         OpenCharacterProfileFromBackup_MenuItem.Header = backup == null
             ? "为此备份创建角色备注..."
             : alreadyHasCharacterProfile
@@ -152,12 +167,14 @@ public partial class BackupRestoreControl : UserControl
 
     private async void OpenCharacterProfileFromBackup_MenuItem_Click(object sender, RoutedEventArgs e)
     {
+        if (isBackupOperationBusy) return;
+
         await OpenCharacterProfileForBackupAsync(Backup_DataGrid.SelectedItem as BackupMetadata);
     }
 
     private async Task OpenCharacterProfileForBackupAsync(BackupMetadata? backup)
     {
-        if (appDataStore == null || !confirmSaveOrDiscardCharacterChanges()) return;
+        if (appDataStore == null || isBackupOperationBusy) return;
 
         if (backup == null)
         {
@@ -172,7 +189,38 @@ public partial class BackupRestoreControl : UserControl
             return;
         }
 
-        await syncServerListForCharacterEditing();
+        if (!confirmSaveOrDiscardCharacterChanges()) return;
+
+        ServerListLoadResult? serverListResult = null;
+        Exception? syncFailure = null;
+        ShowBackupBusyOverlay("正在同步服务器列表...", "正在准备角色备注窗口，请稍候。");
+        try
+        {
+            serverListResult = await syncServerListForCharacterEditing();
+        }
+        catch (Exception ex)
+        {
+            syncFailure = ex;
+            AppLogger.Warning(AppLogCategory.IO, "从备份创建角色备注前同步服务器列表失败", ex);
+        }
+        finally
+        {
+            HideBackupBusyOverlay();
+        }
+
+        if (syncFailure != null)
+        {
+            AppMessageBox.Show(ownerWindow, $"同步服务器列表失败：{syncFailure.Message}", "角色备注准备失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (serverListResult?.Success == false && appDataStore.ServerList.Groups.Count == 0)
+        {
+            ShowServerListUnavailableMessage();
+        }
+
+        if (!confirmSaveOrDiscardCharacterChanges()) return;
+
         CharacterProfile? existingProfile = appDataStore.Characters.FirstOrDefault(character =>
             string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase));
         BackupCharacterProfileDialog dialog = existingProfile != null && HasCharacterRemark(existingProfile)
@@ -264,11 +312,43 @@ public partial class BackupRestoreControl : UserControl
 
     private void UpdateBackupActionButtons(BackupMetadata? backup)
     {
+        bool canUseActions = !isBackupOperationBusy;
         bool hasBackup = backup != null;
-        RestoreBackup_Button.IsEnabled = hasBackup;
-        RestoreBackupAs_Button.IsEnabled = hasBackup;
-        DeleteBackup_Button.IsEnabled = hasBackup;
-        OpenBackupDirectory_Button.IsEnabled = backup != null && Directory.Exists(backup.BackupDirectory);
+        RestoreBackup_Button.IsEnabled = canUseActions && hasBackup;
+        RestoreBackupAs_Button.IsEnabled = canUseActions && hasBackup;
+        DeleteBackup_Button.IsEnabled = canUseActions && hasBackup;
+        OpenBackupDirectory_Button.IsEnabled = canUseActions && backup != null && Directory.Exists(backup.BackupDirectory);
+    }
+
+    private void ShowBackupBusyOverlay(string title, string message)
+    {
+        isBackupOperationBusy = true;
+        BackupRoot_Grid.IsEnabled = false;
+        if (Backup_DataGrid.ContextMenu != null)
+        {
+            Backup_DataGrid.ContextMenu.IsOpen = false;
+        }
+
+        BackupBusyOverlay_Control.Show(title, message);
+        UpdateBackupActionButtons(Backup_DataGrid.SelectedItem as BackupMetadata);
+    }
+
+    private void HideBackupBusyOverlay()
+    {
+        BackupBusyOverlay_Control.Hide();
+        BackupRoot_Grid.IsEnabled = true;
+        isBackupOperationBusy = false;
+        UpdateBackupActionButtons(Backup_DataGrid.SelectedItem as BackupMetadata);
+    }
+
+    private void ShowServerListUnavailableMessage()
+    {
+        AppMessageBox.Show(
+            ownerWindow ?? Window.GetWindow(this),
+            "服务器列表同步失败，当前没有可用的服务器列表。你仍然可以编辑角色名和备注，稍后可在工具设置中手动检查服务器列表。",
+            "服务器列表不可用",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
     }
 
     private void ClearBackupDetailFields()
@@ -287,12 +367,14 @@ public partial class BackupRestoreControl : UserControl
 
     private void RefreshBackups_Button_Click(object sender, RoutedEventArgs e)
     {
+        if (isBackupOperationBusy) return;
+
         RefreshBackupList();
     }
 
     private void RestoreBackup_Button_Click(object sender, RoutedEventArgs e)
     {
-        if (appDataStore == null) return;
+        if (appDataStore == null || isBackupOperationBusy) return;
 
         if (Backup_DataGrid.SelectedItem is not BackupMetadata backup)
         {
@@ -355,7 +437,7 @@ public partial class BackupRestoreControl : UserControl
 
     private void RestoreBackupAs_Button_Click(object sender, RoutedEventArgs e)
     {
-        if (appDataStore == null) return;
+        if (appDataStore == null || isBackupOperationBusy) return;
 
         if (Backup_DataGrid.SelectedItem is not BackupMetadata backup)
         {
@@ -494,7 +576,7 @@ public partial class BackupRestoreControl : UserControl
 
     private void DeleteBackup_Button_Click(object sender, RoutedEventArgs e)
     {
-        if (appDataStore == null) return;
+        if (appDataStore == null || isBackupOperationBusy) return;
 
         if (Backup_DataGrid.SelectedItem is not BackupMetadata backup)
         {
@@ -531,6 +613,8 @@ public partial class BackupRestoreControl : UserControl
 
     private void OpenBackupDirectory_Button_Click(object sender, RoutedEventArgs e)
     {
+        if (isBackupOperationBusy) return;
+
         if (Backup_DataGrid.SelectedItem is not BackupMetadata backup)
         {
             AppMessageBox.Show(ownerWindow, "请先选择一个备份。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);

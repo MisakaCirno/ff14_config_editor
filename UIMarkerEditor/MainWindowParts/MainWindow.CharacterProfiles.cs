@@ -8,10 +8,11 @@
             RefreshLocalCharacterSelectionAvailability();
         }
 
-        private async Task SyncServerListIfNeededAsync(bool showFailureMessage = false)
+        private async Task<ServerListLoadResult?> SyncServerListIfNeededAsync(bool showFailureMessage = false)
         {
-            await CharacterProfiles_Control.SyncServerListIfNeededAsync(showFailureMessage);
+            ServerListLoadResult? result = await CharacterProfiles_Control.SyncServerListIfNeededAsync(showFailureMessage);
             ToolSettings_Control.RefreshOnlineDataStatus();
+            return result;
         }
 
         private async void MainTab_Control_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

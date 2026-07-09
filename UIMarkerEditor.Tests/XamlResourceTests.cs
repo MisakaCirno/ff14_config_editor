@@ -28,6 +28,7 @@ public sealed class XamlResourceTests
             {
                 MainWindow window = new(new AppDataStore(testDirectory));
                 AssertMainWindowMapDataOperationOverlayCanShowAndHide(window);
+                AssertBackupRestoreOverlayCanShowAndHide(window);
                 window.Close();
                 AssertDataDirectoryMigrationReportDialogCanInitialize(testDirectory);
             }
@@ -98,6 +99,27 @@ public sealed class XamlResourceTests
         Assert.Equal(Visibility.Collapsed, overlay.Visibility);
 
         overlay.Show("正在测试地图数据...", "请等待测试完成。");
+        overlay.Measure(new Size(420, 240));
+        overlay.Arrange(new Rect(0, 0, 420, 240));
+        overlay.UpdateLayout();
+
+        Assert.Equal(Visibility.Visible, overlay.Visibility);
+
+        overlay.Hide();
+
+        Assert.Equal(Visibility.Collapsed, overlay.Visibility);
+    }
+
+    private static void AssertBackupRestoreOverlayCanShowAndHide(MainWindow window)
+    {
+        BackupRestoreControl backupRestoreControl = Assert.IsType<BackupRestoreControl>(
+            window.FindName("BackupRestore_Control"));
+        BusyOverlayControl overlay = Assert.IsType<BusyOverlayControl>(
+            backupRestoreControl.FindName("BackupBusyOverlay_Control"));
+
+        Assert.Equal(Visibility.Collapsed, overlay.Visibility);
+
+        overlay.Show("正在测试备份操作...", "请等待测试完成。");
         overlay.Measure(new Size(420, 240));
         overlay.Arrange(new Rect(0, 0, 420, 240));
         overlay.UpdateLayout();

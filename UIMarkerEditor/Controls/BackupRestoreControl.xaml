@@ -1,6 +1,7 @@
 ﻿<UserControl x:Class="UIMarkerEditor.Controls.BackupRestoreControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:UIMarkerEditor.Controls">
     <UserControl.Resources>
         <Style x:Key="BackupFieldLabelStyle" TargetType="TextBlock">
             <Setter Property="HorizontalAlignment" Value="Left"/>
@@ -20,7 +21,8 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid x:Name="BackupRoot_Grid" Margin="10">
+    <Grid>
+        <Grid x:Name="BackupRoot_Grid" Margin="10">
         <Grid.ColumnDefinitions>
             <ColumnDefinition x:Name="BackupList_Column" Width="2*"/>
             <ColumnDefinition Width="5"/>
@@ -217,5 +219,8 @@
                 </StackPanel>
             </Grid>
         </GroupBox>
+        </Grid>
+
+        <controls:BusyOverlayControl x:Name="BackupBusyOverlay_Control"/>
     </Grid>
 </UserControl>
