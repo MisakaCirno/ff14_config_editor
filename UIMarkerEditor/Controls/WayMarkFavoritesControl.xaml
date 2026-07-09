@@ -154,9 +154,10 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="注释名：" VerticalAlignment="Center"/>
                 <TextBox x:Name="CommentName_TextBox"
-                         Grid.Column="1"
-                         MaxLength="120"
-                         TextChanged="CommentName_TextBox_TextChanged"/>
+                          Grid.Column="1"
+                          MaxLength="120"
+                          TextChanged="CommentName_TextBox_TextChanged"
+                          LostKeyboardFocus="CommentName_TextBox_LostKeyboardFocus"/>
             </Grid>
 
             <controls:WayMarkEditPanelControl x:Name="WayMarkEditPanel_Control"

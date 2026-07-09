@@ -10,14 +10,14 @@ namespace UIMarkerEditor.Controls;
 
 public partial class WayMarkFavoritesControl : UserControl
 {
-    private static readonly TimeSpan AutoSaveDelay = TimeSpan.FromMilliseconds(500);
     private readonly ObservableCollection<WayMarkFavorite> favoriteEntries = [];
-    private readonly DispatcherTimer autoSaveTimer;
     private AppDataStore? appDataStore;
     private Window? ownerWindow;
     private WayMarkFavorite? loadedFavorite;
     private WayMark? editingWayMark;
     private bool hasUnsavedChanges;
+    private bool isAutoSaveQueued;
+    private bool isSavingFavorite;
     private bool isUpdatingDetail;
     private bool suppressSelectionChanged;
     private bool isAutoSaveMode;
@@ -25,11 +25,8 @@ public partial class WayMarkFavoritesControl : UserControl
     public WayMarkFavoritesControl()
     {
         InitializeComponent();
-        autoSaveTimer = new DispatcherTimer { Interval = AutoSaveDelay };
-        autoSaveTimer.Tick += AutoSaveTimer_Tick;
         Unloaded += (_, _) =>
         {
-            autoSaveTimer.Stop();
             StopWatchingFavoritesListDragSuppressionRelease();
         };
 
@@ -39,6 +36,7 @@ public partial class WayMarkFavoritesControl : UserControl
             if (isUpdatingDetail) return;
             MarkDirty();
             Preview_Control.RefreshPreview();
+            QueueAutoSaveCommittedFavoriteChange();
         };
         UpdateDetail(null);
     }
@@ -63,16 +61,17 @@ public partial class WayMarkFavoritesControl : UserControl
         }
 
         isAutoSaveMode = nextAutoSaveMode;
-        if (isAutoSaveMode && hasUnsavedChanges)
+        bool autoSaveAttempted = isAutoSaveMode && hasUnsavedChanges;
+        if (autoSaveAttempted)
         {
-            ScheduleAutoSave();
-        }
-        else if (!isAutoSaveMode)
-        {
-            autoSaveTimer.Stop();
+            TryAutoSaveCommittedFavoriteChange();
         }
 
-        SetAutoSaveStatus(hasUnsavedChanges ? "保存中..." : "已保存", hasUnsavedChanges ? Brushes.DimGray : Brushes.DarkGreen);
+        if (!autoSaveAttempted || !hasUnsavedChanges)
+        {
+            SetAutoSaveStatus(hasUnsavedChanges ? "未保存" : "已保存", hasUnsavedChanges ? Brushes.DimGray : Brushes.DarkGreen);
+        }
+
         UpdateButtonState();
     }
 
@@ -156,7 +155,6 @@ public partial class WayMarkFavoritesControl : UserControl
 
         if (isAutoSaveMode)
         {
-            autoSaveTimer.Stop();
             shouldSave = true;
             return true;
         }
@@ -189,8 +187,8 @@ public partial class WayMarkFavoritesControl : UserControl
             return;
         }
 
-        SetAutoSaveStatus("保存中...", Brushes.DimGray);
-        ScheduleAutoSave();
+        SetAutoSaveStatus("未保存", Brushes.DimGray);
+        TryAutoSaveCommittedFavoriteChange();
         UpdateButtonState();
     }
 
@@ -282,7 +280,6 @@ public partial class WayMarkFavoritesControl : UserControl
         if (loadedFavorite == null) return;
 
         string favoriteId = loadedFavorite.Id;
-        autoSaveTimer.Stop();
         hasUnsavedChanges = false;
         RefreshFavoritesCore(favoriteId);
     }
@@ -292,14 +289,8 @@ public partial class WayMarkFavoritesControl : UserControl
         if (appDataStore == null || SelectedFavorite == null || loadedFavorite == null) return;
 
         WayMarkFavorite favorite = SelectedFavorite;
-        bool shouldResumeAutoSave = isAutoSaveMode && hasUnsavedChanges;
-        autoSaveTimer.Stop();
         if (AppMessageBox.Show(ownerWindow, $"确定要删除收藏“{favorite.DisplayName}”吗？", "确认删除收藏", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
         {
-            if (shouldResumeAutoSave)
-            {
-                ScheduleAutoSave();
-            }
             return;
         }
 
@@ -313,10 +304,6 @@ public partial class WayMarkFavoritesControl : UserControl
         }
         catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
         {
-            if (shouldResumeAutoSave)
-            {
-                ScheduleAutoSave();
-            }
             UpdateButtonState();
             AppMessageBox.Show(ownerWindow, $"删除标点收藏失败：{ex.Message}", "标点收藏保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
@@ -338,13 +325,9 @@ public partial class WayMarkFavoritesControl : UserControl
         MarkDirty();
     }
 
-    private void AutoSaveTimer_Tick(object? sender, EventArgs e)
+    private void CommentName_TextBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
-        autoSaveTimer.Stop();
-        if (hasUnsavedChanges)
-        {
-            SaveLoadedFavorite(showSuccessMessage: false, showFailureMessage: false);
-        }
+        TryAutoSaveCommittedFavoriteChange();
     }
 
     private void MoveLoadedFavorite(int offset)
@@ -360,7 +343,6 @@ public partial class WayMarkFavoritesControl : UserControl
         isUpdatingDetail = true;
         try
         {
-            autoSaveTimer.Stop();
             loadedFavorite = favorite == null ? null : WayMarkSnapshotConverter.CloneFavorite(favorite);
             editingWayMark = loadedFavorite == null
                 ? null
@@ -386,17 +368,10 @@ public partial class WayMarkFavoritesControl : UserControl
         hasUnsavedChanges = true;
         if (isAutoSaveMode)
         {
-            SetAutoSaveStatus("保存中...", Brushes.DimGray);
-            ScheduleAutoSave();
+            SetAutoSaveStatus("未保存", Brushes.DimGray);
         }
 
         UpdateButtonState();
-    }
-
-    private void ScheduleAutoSave()
-    {
-        autoSaveTimer.Stop();
-        autoSaveTimer.Start();
     }
 
     private void UpdateButtonState()
@@ -439,7 +414,6 @@ public partial class WayMarkFavoritesControl : UserControl
 
         if (isAutoSaveMode)
         {
-            autoSaveTimer.Stop();
             return SaveLoadedFavorite(showSuccessMessage: false);
         }
 
@@ -457,18 +431,51 @@ public partial class WayMarkFavoritesControl : UserControl
         };
     }
 
-    private bool SaveLoadedFavorite(bool showSuccessMessage, bool showFailureMessage = true)
+    private bool TryAutoSaveCommittedFavoriteChange()
     {
-        autoSaveTimer.Stop();
-        if (appDataStore == null || loadedFavorite == null || editingWayMark == null) return false;
-        if (!TryCommitPendingFavoriteEdits()) return false;
-        autoSaveTimer.Stop();
+        if (!isAutoSaveMode || !hasUnsavedChanges || isSavingFavorite)
+        {
+            return true;
+        }
 
-        WayMarkFavorite updatedFavorite = WayMarkSnapshotConverter.CloneFavorite(loadedFavorite);
-        updatedFavorite.CommentName = CommentName_TextBox.Text.Trim();
-        updatedFavorite.Marker = WayMarkSnapshotConverter.CreateSnapshot(editingWayMark);
+        SetAutoSaveStatus("保存中...", Brushes.DimGray);
+        return SaveLoadedFavorite(
+            showSuccessMessage: false,
+            showFailureMessage: false,
+            commitPendingEdits: false);
+    }
+
+    private void QueueAutoSaveCommittedFavoriteChange()
+    {
+        if (!isAutoSaveMode || !hasUnsavedChanges || isSavingFavorite || isAutoSaveQueued)
+        {
+            return;
+        }
+
+        isAutoSaveQueued = true;
+        Dispatcher.BeginInvoke(() =>
+        {
+            isAutoSaveQueued = false;
+            TryAutoSaveCommittedFavoriteChange();
+        }, DispatcherPriority.Background);
+    }
+
+    private bool SaveLoadedFavorite(
+        bool showSuccessMessage,
+        bool showFailureMessage = true,
+        bool commitPendingEdits = true)
+    {
+        if (appDataStore == null || loadedFavorite == null || editingWayMark == null) return false;
+        if (isSavingFavorite) return false;
+
+        isSavingFavorite = true;
         try
         {
+            if (commitPendingEdits && !TryCommitPendingFavoriteEdits()) return false;
+
+            WayMarkFavorite updatedFavorite = WayMarkSnapshotConverter.CloneFavorite(loadedFavorite);
+            updatedFavorite.CommentName = CommentName_TextBox.Text.Trim();
+            updatedFavorite.Marker = WayMarkSnapshotConverter.CreateSnapshot(editingWayMark);
             appDataStore.UpdateWayMarkFavorite(updatedFavorite);
             hasUnsavedChanges = false;
             SetAutoSaveStatus("已保存", Brushes.DarkGreen);
@@ -488,6 +495,10 @@ public partial class WayMarkFavoritesControl : UserControl
                 AppMessageBox.Show(ownerWindow, $"保存标点收藏失败：{ex.Message}", "标点收藏保存受保护", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             return false;
+        }
+        finally
+        {
+            isSavingFavorite = false;
         }
     }
 
