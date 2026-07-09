@@ -50,19 +50,23 @@ namespace UIMarkerEditor
                 isWayMarkDirty);
         }
 
-        private bool TryCommitPendingWayMarkEdits()
+        private bool TryCommitPendingWayMarkEdits(bool showValidationMessage = true)
         {
             if (WayMarkEditor_Control.CommitPendingEdits())
             {
                 return true;
             }
 
-            AppMessageBox.Show(
-                this,
-                "当前坐标输入不完整或超出可保存范围，请修正后再继续。",
-                "坐标输入无效",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+            if (showValidationMessage)
+            {
+                AppMessageBox.Show(
+                    this,
+                    "当前坐标输入不完整或超出可保存范围，请修正后再继续。",
+                    "坐标输入无效",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+
             return false;
         }
 

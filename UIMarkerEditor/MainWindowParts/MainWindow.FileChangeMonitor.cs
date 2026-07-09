@@ -239,7 +239,12 @@ namespace UIMarkerEditor
                     return state;
                 }
 
-                hasPromptedCurrentFileMissing = true;
+                if (PromptForCurrentFileExternalChange(state))
+                {
+                    hasPromptedCurrentFileMissing = true;
+                }
+
+                return state;
             }
             else if (currentSnapshot != null)
             {
@@ -248,7 +253,12 @@ namespace UIMarkerEditor
                     return state;
                 }
 
-                promptedExternalFileSnapshot = currentSnapshot;
+                if (PromptForCurrentFileExternalChange(state))
+                {
+                    promptedExternalFileSnapshot = currentSnapshot;
+                }
+
+                return state;
             }
 
             PromptForCurrentFileExternalChange(state);
@@ -300,7 +310,7 @@ namespace UIMarkerEditor
             return CurrentFileExternalChangeState.Updated;
         }
 
-        private void PromptForCurrentFileExternalChange(CurrentFileExternalChangeState state)
+        private bool PromptForCurrentFileExternalChange(CurrentFileExternalChangeState state)
         {
             isHandlingCurrentFileExternalChange = true;
             try
@@ -313,17 +323,11 @@ namespace UIMarkerEditor
                         "当前文件不可读取",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
-                    return;
+                    return true;
                 }
 
-                if (!TryCommitPendingWayMarkEdits())
-                {
-                    return;
-                }
-
-                string message = isWayMarkDirty
-                    ? "当前 UISAVE.DAT 已被外部更新，且本窗口有未保存的修改。\n\n选择“是”重新读取磁盘上的最新内容并放弃本窗口未保存修改，选择“否”继续保留当前编辑。"
-                    : "当前 UISAVE.DAT 已被外部更新。\n\n是否重新读取磁盘上的最新内容？";
+                bool hasInvalidPendingWayMarkEdits = !TryCommitPendingWayMarkEdits(showValidationMessage: false);
+                string message = BuildCurrentFileUpdatedMessage(hasInvalidPendingWayMarkEdits);
 
                 MessageBoxResult result = AppMessageBox.Show(
                     this,
@@ -336,11 +340,33 @@ namespace UIMarkerEditor
                 {
                     LoadConfigFileWithOverlay(currentFilePath);
                 }
+
+                return true;
             }
             finally
             {
                 isHandlingCurrentFileExternalChange = false;
             }
+        }
+
+        private string BuildCurrentFileUpdatedMessage(bool hasInvalidPendingWayMarkEdits)
+        {
+            if (hasInvalidPendingWayMarkEdits && isWayMarkDirty)
+            {
+                return "当前 UISAVE.DAT 已被外部更新，且本窗口有未保存的修改或未完成的坐标输入。\n\n选择“是”重新读取磁盘上的最新内容并放弃本窗口未保存修改和未完成输入，选择“否”继续保留当前编辑。";
+            }
+
+            if (hasInvalidPendingWayMarkEdits)
+            {
+                return "当前 UISAVE.DAT 已被外部更新，且当前坐标输入未完成或超出可保存范围。\n\n选择“是”重新读取磁盘上的最新内容并放弃未完成输入，选择“否”继续编辑当前输入。";
+            }
+
+            if (isWayMarkDirty)
+            {
+                return "当前 UISAVE.DAT 已被外部更新，且本窗口有未保存的修改。\n\n选择“是”重新读取磁盘上的最新内容并放弃本窗口未保存修改，选择“否”继续保留当前编辑。";
+            }
+
+            return "当前 UISAVE.DAT 已被外部更新。\n\n是否重新读取磁盘上的最新内容？";
         }
 
         private bool IsCurrentWayMarkFilePath(string filePath)
