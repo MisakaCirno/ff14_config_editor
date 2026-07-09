@@ -13,6 +13,7 @@ public partial class WayMarkEditorControl
     private Window? ownerWindow;
     private Action refreshWayMarkFavorites = () => { };
     private WayMarkSnapshot? toolClipboardSnapshot;
+    private UnknownMapIdPolicy unknownMapIdPolicy = UnknownMapIdPolicy.RejectUnknown;
 
     public WayMark? SelectedWayMark => WayMark_ListBox.SelectedItem as WayMark;
 
@@ -30,8 +31,7 @@ public partial class WayMarkEditorControl
             return false;
         }
 
-        ApplySnapshotToWayMark(selectedMark, snapshot);
-        return true;
+        return TryApplySnapshotToWayMark(selectedMark, snapshot, showFailureMessage: false);
     }
 
     private void WayMark_ListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -178,7 +178,7 @@ public partial class WayMarkEditorControl
             return;
         }
 
-        ApplySnapshotToWayMark(selectedMark, toolClipboardSnapshot);
+        TryApplySnapshotToWayMark(selectedMark, toolClipboardSnapshot, showMessage);
     }
 
     private void SaveSelectedWayMarkToFavorites()
@@ -237,7 +237,11 @@ public partial class WayMarkEditorControl
         SaveFavoritePickerLayout(dialog);
         if (dialogResult != true || dialog.SelectedFavorite == null) return;
 
-        ApplySnapshotToWayMark(SelectedWayMark, dialog.SelectedFavorite.Marker);
+        if (!TryApplySnapshotToWayMark(SelectedWayMark, dialog.SelectedFavorite.Marker, showFailureMessage: true))
+        {
+            return;
+        }
+
         ToastService.ShowSuccess("收藏标点已导入到当前标点。");
     }
 
@@ -258,6 +262,46 @@ public partial class WayMarkEditorControl
             AppLogger.Warning(AppLogCategory.IO, "保存收藏导入窗口布局设置失败", ex);
         }
     }
+
+    private bool TryApplySnapshotToWayMark(WayMark targetMark, WayMarkSnapshot snapshot, bool showFailureMessage)
+    {
+        if (!CanImportSnapshot(snapshot, out string errorMessage))
+        {
+            if (showFailureMessage)
+            {
+                AppMessageBox.Show(ownerWindow, errorMessage, "导入标点无效", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+
+            return false;
+        }
+
+        ApplySnapshotToWayMark(targetMark, snapshot);
+        return true;
+    }
+
+    private bool CanImportSnapshot(WayMarkSnapshot snapshot, out string errorMessage)
+    {
+        errorMessage = string.Empty;
+        ushort regionId = snapshot.RegionID;
+        if (unknownMapIdPolicy == UnknownMapIdPolicy.AllowUnknown ||
+            regionId == MapData.EmptyRegionId)
+        {
+            return true;
+        }
+
+        IReadOnlySet<ushort> knownMapIds = MapData.GetKnownMapIds();
+        if (knownMapIds.Contains(regionId) ||
+            GetLoadedRegionIds().Contains(regionId))
+        {
+            return true;
+        }
+
+        errorMessage = knownMapIds.Count == 0
+            ? "当前地图数据未加载，无法校验地图 ID。请先检查地图数据，或开启“允许未知地图 ID”后自行确认地图 ID。"
+            : $"地图 ID 不存在于当前地图数据：{regionId}。如确认该 ID 有效，可开启“允许未知地图 ID”后导入。";
+        return false;
+    }
+
     private void ApplySnapshotToWayMark(WayMark targetMark, WayMarkSnapshot snapshot)
     {
         WayMarkSnapshotConverter.ApplyToWayMark(targetMark, snapshot, updateTimestamp: true);
