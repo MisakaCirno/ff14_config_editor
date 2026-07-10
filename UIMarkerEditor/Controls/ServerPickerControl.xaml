@@ -44,7 +44,8 @@
                PlacementTarget="{Binding ElementName=ServerPicker_Button}"
                Placement="Bottom"
                StaysOpen="False"
-               AllowsTransparency="True">
+               AllowsTransparency="True"
+               Opened="ServerPicker_Popup_Opened">
             <Border Background="White"
                     BorderBrush="#FF888888"
                     BorderThickness="1"
@@ -57,11 +58,13 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <ListBox x:Name="ServerArea_ListBox"
-                             DisplayMemberPath="DataCenter"
-                             SelectionChanged="ServerArea_ListBox_SelectionChanged"/>
+                              DisplayMemberPath="DataCenter"
+                              SelectionChanged="ServerArea_ListBox_SelectionChanged"
+                              PreviewKeyDown="ServerArea_ListBox_PreviewKeyDown"/>
                     <ListBox x:Name="ServerWorld_ListBox"
-                             Grid.Column="1"
-                             SelectionChanged="ServerWorld_ListBox_SelectionChanged"/>
+                              Grid.Column="1"
+                              PreviewKeyDown="ServerWorld_ListBox_PreviewKeyDown"
+                              PreviewMouseLeftButtonUp="ServerWorld_ListBox_PreviewMouseLeftButtonUp"/>
                 </Grid>
             </Border>
         </Popup>
