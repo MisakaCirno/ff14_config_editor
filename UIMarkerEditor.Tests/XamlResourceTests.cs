@@ -28,10 +28,14 @@ public sealed class XamlResourceTests
             try
             {
                 MainWindow window = new(new AppDataStore(testDirectory));
+                Assert.Equal(880d, window.MinWidth);
+                Assert.Equal(460d, window.MinHeight);
                 AssertMainWindowCloseFileCommand(window);
                 AssertMainWindowMapDataOperationOverlayCanShowAndHide(window);
                 AssertBackupRestoreOverlayCanShowAndHide(window);
+                AssertResponsiveSplitPaneMinimums(window);
                 window.Close();
+                AssertMapDataSourceStartupDialogSupportsSmallWorkAreas();
                 AssertStartupLoadingWindowCannotClosePrematurely();
                 AssertAppMessageBoxLongTextUsesScrollLimit();
                 AssertCurrentFileMissingDialogCanInitialize();
@@ -44,6 +48,39 @@ public sealed class XamlResourceTests
         });
 
         Assert.Null(exception);
+    }
+
+    private static void AssertMapDataSourceStartupDialogSupportsSmallWorkAreas()
+    {
+        MapDataSourceStartupDialog dialog = new();
+        try
+        {
+            dialog.Show();
+            ScrollViewer scrollViewer = Assert.IsType<ScrollViewer>(dialog.FindName("SourceOptions_ScrollViewer"));
+
+            Assert.Equal(ResizeMode.CanResize, dialog.ResizeMode);
+            Assert.Equal(760d, dialog.MinWidth);
+            Assert.Equal(420d, dialog.MinHeight);
+            Assert.Equal(ScrollBarVisibility.Auto, scrollViewer.VerticalScrollBarVisibility);
+            Assert.True(dialog.Width <= SystemParameters.WorkArea.Width);
+            Assert.True(dialog.Height <= SystemParameters.WorkArea.Height);
+        }
+        finally
+        {
+            dialog.Close();
+        }
+    }
+
+    private static void AssertResponsiveSplitPaneMinimums(MainWindow window)
+    {
+        WayMarkEditorControl wayMarkEditor = Assert.IsType<WayMarkEditorControl>(window.FindName("WayMarkEditor_Control"));
+        Assert.Equal(190d, Assert.IsType<ColumnDefinition>(wayMarkEditor.FindName("WayMarkList_Column")).MinWidth);
+        Assert.Equal(280d, Assert.IsType<ColumnDefinition>(wayMarkEditor.FindName("WayMarkEditor_Column")).MinWidth);
+        Assert.Equal(220d, Assert.IsType<ColumnDefinition>(wayMarkEditor.FindName("WayMarkPreview_Column")).MinWidth);
+
+        CharacterProfilesControl characterProfiles = Assert.IsType<CharacterProfilesControl>(window.FindName("CharacterProfiles_Control"));
+        Assert.Equal(340d, Assert.IsType<ColumnDefinition>(characterProfiles.FindName("CharacterList_Column")).MinWidth);
+        Assert.Equal(280d, Assert.IsType<ColumnDefinition>(characterProfiles.FindName("CharacterDetail_Column")).MinWidth);
     }
 
     private static void AssertCurrentFileMissingDialogCanInitialize()

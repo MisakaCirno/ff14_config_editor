@@ -11,6 +11,7 @@ public partial class MapDataSourceStartupDialog : Window
     public MapDataSourceStartupDialog()
     {
         InitializeComponent();
+        SourceInitialized += (_, _) => WindowPlacementHelper.ConstrainToCurrentWorkArea(this);
     }
 
     private void GitHubOnlineReference_Button_Click(object sender, RoutedEventArgs e)

@@ -4,11 +4,11 @@
              xmlns:controls="clr-namespace:UIMarkerEditor.Controls">
     <Grid Margin="10">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition x:Name="FavoriteList_Column" Width="*"/>
+            <ColumnDefinition x:Name="FavoriteList_Column" Width="*" MinWidth="190"/>
             <ColumnDefinition Width="5"/>
-            <ColumnDefinition x:Name="FavoriteEditor_Column" Width="*"/>
+            <ColumnDefinition x:Name="FavoriteEditor_Column" Width="*" MinWidth="280"/>
             <ColumnDefinition Width="5"/>
-            <ColumnDefinition x:Name="FavoritePreview_Column" Width="*"/>
+            <ColumnDefinition x:Name="FavoritePreview_Column" Width="*" MinWidth="220"/>
         </Grid.ColumnDefinitions>
 
         <Grid>

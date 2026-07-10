@@ -3,8 +3,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="选择地图数据来源"
         Style="{StaticResource AppDialogWindowStyle}"
-        ResizeMode="NoResize"
-        SizeToContent="WidthAndHeight"
+        Width="900"
+        Height="560"
+        MinWidth="760"
+        MinHeight="420"
+        ResizeMode="CanResize"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <SolidColorBrush x:Key="OnlineReferenceAccentBrush" Color="#FF0B5ED7"/>
@@ -58,132 +61,136 @@
         </Style>
     </Window.Resources>
 
-    <Grid Margin="18" MinWidth="880" MaxWidth="980">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-
-        <StackPanel>
-            <TextBlock Text="选择地图数据来源"
-                       FontSize="18"
-                       FontWeight="SemiBold"/>
-            <TextBlock Text="这项选择决定地图名称和地图列表从哪里来。默认不允许输入列表中不存在的地图 ID；之后可以在设置中更改数据来源、手动文件和未知 ID 策略。"
-                       TextWrapping="Wrap"
-                       Margin="0,6,0,0"/>
-        </StackPanel>
-
-        <Grid Grid.Row="1" Margin="0,18,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="12"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+    <ScrollViewer x:Name="SourceOptions_ScrollViewer"
+                  VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="18">
             <Grid.RowDefinitions>
-                <RowDefinition Height="196"/>
-                <RowDefinition Height="12"/>
-                <RowDefinition Height="196"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <Button Grid.Row="0"
-                    Grid.Column="0"
-                    BorderBrush="{StaticResource OnlineReferenceAccentBrush}"
-                    Style="{StaticResource MapDataSourceOptionButtonStyle}"
-                    Click="GitHubOnlineReference_Button_Click">
-                <StackPanel>
-                    <TextBlock Text="以在线数据继续"
-                               Foreground="{StaticResource OnlineReferenceAccentBrush}"
-                               FontSize="18"
-                               FontWeight="SemiBold"
-                               TextWrapping="Wrap"/>
-                    <TextBlock Text="GitHub ffxiv-datamining-cn 仓库"
-                               Foreground="{StaticResource OnlineReferenceAccentBrush}"
-                               FontWeight="SemiBold"
-                               Margin="0,8,0,0"/>
-                    <TextBlock Text="读取仓库中的 ContentFinderCondition.csv 获取地图名称和列表。"
-                               TextWrapping="Wrap"
-                               Margin="0,6,0,0"/>
-                    <TextBlock Text="不会读取游戏文件，但需要网络环境允许访问 GitHub。"
-                               TextWrapping="Wrap"
-                               Foreground="{DynamicResource AppMutedTextBrush}"
-                               Margin="0,8,0,0"/>
-                </StackPanel>
-            </Button>
+            <StackPanel>
+                <TextBlock Text="选择地图数据来源"
+                           FontSize="18"
+                           FontWeight="SemiBold"/>
+                <TextBlock Text="这项选择决定地图名称和地图列表从哪里来。默认不允许输入列表中不存在的地图 ID；之后可以在设置中更改数据来源、手动文件和未知 ID 策略。"
+                           TextWrapping="Wrap"
+                           Margin="0,6,0,0"/>
+            </StackPanel>
 
-            <Button Grid.Row="0"
-                    Grid.Column="2"
-                    BorderBrush="{StaticResource OnlineReferenceAccentBrush}"
-                    Style="{StaticResource MapDataSourceOptionButtonStyle}"
-                    Click="DiemoeOnlineReference_Button_Click">
-                <StackPanel>
-                    <TextBlock Text="以在线数据继续"
-                               Foreground="{StaticResource OnlineReferenceAccentBrush}"
-                               FontSize="18"
-                               FontWeight="SemiBold"
-                               TextWrapping="Wrap"/>
-                    <TextBlock Text="呆萌数据站"
-                               Foreground="{StaticResource OnlineReferenceAccentBrush}"
-                               FontWeight="SemiBold"
-                               Margin="0,8,0,0"/>
-                    <TextBlock Text="读取呆萌提供的数据站获取地图名称和列表。"
-                               TextWrapping="Wrap"
-                               Margin="0,6,0,0"/>
-                    <TextBlock Text="不会读取游戏文件，国内网络环境下通常更友好。"
-                               TextWrapping="Wrap"
-                               Foreground="{DynamicResource AppMutedTextBrush}"
-                               Margin="0,8,0,0"/>
-                </StackPanel>
-            </Button>
+            <Grid Grid.Row="1" Margin="0,18,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="196"/>
+                        <RowDefinition Height="12"/>
+                        <RowDefinition Height="196"/>
+                    </Grid.RowDefinitions>
 
-            <Button Grid.Row="2"
-                    Grid.Column="0"
-                    BorderBrush="{StaticResource LocalGameAccentBrush}"
-                    Style="{StaticResource MapDataSourceOptionButtonStyle}"
-                    Click="LocalGame_Button_Click">
-                <StackPanel>
-                    <TextBlock Text="以本地游戏数据继续"
-                               Foreground="{StaticResource LocalGameAccentBrush}"
-                               FontSize="18"
-                               FontWeight="SemiBold"
-                               TextWrapping="Wrap"/>
-                    <TextBlock Text="会读取本地游戏资源文件"
-                               Foreground="{StaticResource LocalGameAccentBrush}"
-                               FontWeight="SemiBold"
-                               Margin="0,8,0,0"/>
-                    <TextBlock Text="从本地游戏 sqpack 解析地图名称和列表。数据与当前客户端更一致，不依赖网络。"
-                               TextWrapping="Wrap"
-                               Margin="0,6,0,0"/>
-                    <TextBlock Text="这是稍有敏感的操作：工具会读取游戏的数据文件，但不会修改游戏文件。"
-                               TextWrapping="Wrap"
-                               Foreground="{DynamicResource AppMutedTextBrush}"
-                               Margin="0,8,0,0"/>
-                </StackPanel>
-            </Button>
+                    <Button Grid.Row="0"
+                            Grid.Column="0"
+                            BorderBrush="{StaticResource OnlineReferenceAccentBrush}"
+                            Style="{StaticResource MapDataSourceOptionButtonStyle}"
+                            Click="GitHubOnlineReference_Button_Click">
+                        <StackPanel>
+                            <TextBlock Text="以在线数据继续"
+                                       Foreground="{StaticResource OnlineReferenceAccentBrush}"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap"/>
+                            <TextBlock Text="GitHub ffxiv-datamining-cn 仓库"
+                                       Foreground="{StaticResource OnlineReferenceAccentBrush}"
+                                       FontWeight="SemiBold"
+                                       Margin="0,8,0,0"/>
+                            <TextBlock Text="读取仓库中的 ContentFinderCondition.csv 获取地图名称和列表。"
+                                       TextWrapping="Wrap"
+                                       Margin="0,6,0,0"/>
+                            <TextBlock Text="不会读取游戏文件，但需要网络环境允许访问 GitHub。"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                       Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Button>
 
-            <Button Grid.Row="2"
-                    Grid.Column="2"
-                    BorderBrush="{StaticResource ManualCsvAccentBrush}"
-                    Style="{StaticResource MapDataSourceOptionButtonStyle}"
-                    Click="ManualCsv_Button_Click">
-                <StackPanel>
-                    <TextBlock Text="以用户填写数据继续"
-                               Foreground="{StaticResource ManualCsvAccentBrush}"
-                               FontSize="18"
-                               FontWeight="SemiBold"
-                               TextWrapping="Wrap"/>
-                    <TextBlock Text="只读取用户维护的 CSV"
-                               Foreground="{StaticResource ManualCsvAccentBrush}"
-                               FontWeight="SemiBold"
-                               Margin="0,8,0,0"/>
-                    <TextBlock Text="需要手动填写地图列表。工具不会联网获取，也不会读取游戏资源文件。"
-                               TextWrapping="Wrap"
-                               Margin="0,6,0,0"/>
-                    <TextBlock Text="适合想完全自行维护地图 ID 和名称来源的用户。"
-                               TextWrapping="Wrap"
-                               Foreground="{DynamicResource AppMutedTextBrush}"
-                               Margin="0,8,0,0"/>
-                </StackPanel>
-            </Button>
+                    <Button Grid.Row="0"
+                            Grid.Column="2"
+                            BorderBrush="{StaticResource OnlineReferenceAccentBrush}"
+                            Style="{StaticResource MapDataSourceOptionButtonStyle}"
+                            Click="DiemoeOnlineReference_Button_Click">
+                        <StackPanel>
+                            <TextBlock Text="以在线数据继续"
+                                       Foreground="{StaticResource OnlineReferenceAccentBrush}"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap"/>
+                            <TextBlock Text="呆萌数据站"
+                                       Foreground="{StaticResource OnlineReferenceAccentBrush}"
+                                       FontWeight="SemiBold"
+                                       Margin="0,8,0,0"/>
+                            <TextBlock Text="读取呆萌提供的数据站获取地图名称和列表。"
+                                       TextWrapping="Wrap"
+                                       Margin="0,6,0,0"/>
+                            <TextBlock Text="不会读取游戏文件，国内网络环境下通常更友好。"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                       Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Grid.Row="2"
+                            Grid.Column="0"
+                            BorderBrush="{StaticResource LocalGameAccentBrush}"
+                            Style="{StaticResource MapDataSourceOptionButtonStyle}"
+                            Click="LocalGame_Button_Click">
+                        <StackPanel>
+                            <TextBlock Text="以本地游戏数据继续"
+                                       Foreground="{StaticResource LocalGameAccentBrush}"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap"/>
+                            <TextBlock Text="会读取本地游戏资源文件"
+                                       Foreground="{StaticResource LocalGameAccentBrush}"
+                                       FontWeight="SemiBold"
+                                       Margin="0,8,0,0"/>
+                            <TextBlock Text="从本地游戏 sqpack 解析地图名称和列表。数据与当前客户端更一致，不依赖网络。"
+                                       TextWrapping="Wrap"
+                                       Margin="0,6,0,0"/>
+                            <TextBlock Text="这是稍有敏感的操作：工具会读取游戏的数据文件，但不会修改游戏文件。"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                       Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Grid.Row="2"
+                            Grid.Column="2"
+                            BorderBrush="{StaticResource ManualCsvAccentBrush}"
+                            Style="{StaticResource MapDataSourceOptionButtonStyle}"
+                            Click="ManualCsv_Button_Click">
+                        <StackPanel>
+                            <TextBlock Text="以用户填写数据继续"
+                                       Foreground="{StaticResource ManualCsvAccentBrush}"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap"/>
+                            <TextBlock Text="只读取用户维护的 CSV"
+                                       Foreground="{StaticResource ManualCsvAccentBrush}"
+                                       FontWeight="SemiBold"
+                                       Margin="0,8,0,0"/>
+                            <TextBlock Text="需要手动填写地图列表。工具不会联网获取，也不会读取游戏资源文件。"
+                                       TextWrapping="Wrap"
+                                       Margin="0,6,0,0"/>
+                            <TextBlock Text="适合想完全自行维护地图 ID 和名称来源的用户。"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                       Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Button>
+            </Grid>
         </Grid>
-    </Grid>
+    </ScrollViewer>
 </Window>

@@ -35,6 +35,14 @@ internal static class WindowPlacementHelper
         window.SourceInitialized += sourceInitializedHandler;
     }
 
+    public static void ConstrainToCurrentWorkArea(Window window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        Rect currentBounds = new(window.Left, window.Top, window.Width, window.Height);
+        window.WindowStartupLocation = WindowStartupLocation.Manual;
+        ConstrainWindowToCurrentWorkArea(window, currentBounds);
+    }
+
     internal static Rect ConstrainToWorkArea(
         Rect bounds,
         Rect workArea,

@@ -4,9 +4,9 @@
              xmlns:controls="clr-namespace:UIMarkerEditor.Controls">
     <Grid x:Name="CharacterRoot_Grid" Margin="10">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition x:Name="CharacterList_Column" Width="2*"/>
+            <ColumnDefinition x:Name="CharacterList_Column" Width="2*" MinWidth="340"/>
             <ColumnDefinition Width="5"/>
-            <ColumnDefinition x:Name="CharacterDetail_Column" Width="3*"/>
+            <ColumnDefinition x:Name="CharacterDetail_Column" Width="3*" MinWidth="280"/>
         </Grid.ColumnDefinitions>
 
         <GroupBox x:Name="CharacterList_GroupBox"

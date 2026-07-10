@@ -8,11 +8,11 @@
     </UserControl.Resources>
     <Grid x:Name="WayMarkRoot_Grid" Background="Transparent">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition x:Name="WayMarkList_Column" Width="*"/>
+            <ColumnDefinition x:Name="WayMarkList_Column" Width="*" MinWidth="190"/>
             <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition x:Name="WayMarkEditor_Column" Width="*"/>
+            <ColumnDefinition x:Name="WayMarkEditor_Column" Width="*" MinWidth="280"/>
             <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition x:Name="WayMarkPreview_Column" Width="*"/>
+            <ColumnDefinition x:Name="WayMarkPreview_Column" Width="*" MinWidth="220"/>
         </Grid.ColumnDefinitions>
 
         <Grid>

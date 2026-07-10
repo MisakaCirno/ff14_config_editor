@@ -11,9 +11,9 @@
         Style="{StaticResource AppDialogWindowStyle}">
     <Grid Margin="12">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition x:Name="FavoritePickerList_Column" Width="3*"/>
+            <ColumnDefinition x:Name="FavoritePickerList_Column" Width="3*" MinWidth="300"/>
             <ColumnDefinition Width="5"/>
-            <ColumnDefinition x:Name="FavoritePickerPreview_Column" Width="2*"/>
+            <ColumnDefinition x:Name="FavoritePickerPreview_Column" Width="2*" MinWidth="260"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>

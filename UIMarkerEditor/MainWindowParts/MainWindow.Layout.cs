@@ -9,7 +9,10 @@ namespace UIMarkerEditor
         private void ApplySavedLayoutSettings()
         {
             WindowLayoutSettings layout = appDataStore.Settings.WindowLayout ?? new WindowLayoutSettings();
-            ApplyWindowBounds(layout);
+            if (!ApplyWindowBounds(layout))
+            {
+                SourceInitialized += (_, _) => WindowPlacementHelper.ConstrainToCurrentWorkArea(this);
+            }
             ApplyWindowState(layout);
             WayMarkEditor_Control.ApplyLayoutSettings(layout);
             WayMarkFavorites_Control.ApplyLayoutSettings(layout);
@@ -152,9 +155,9 @@ namespace UIMarkerEditor
             }
         }
 
-        private void ApplyWindowBounds(WindowLayoutSettings layout)
+        private bool ApplyWindowBounds(WindowLayoutSettings layout)
         {
-            if (!IsFinitePositive(layout.Width) || !IsFinitePositive(layout.Height)) return;
+            if (!IsFinitePositive(layout.Width) || !IsFinitePositive(layout.Height)) return false;
 
             Rect savedBounds = new(
                 layout.Left,
@@ -162,6 +165,7 @@ namespace UIMarkerEditor
                 Math.Max(layout.Width, MinWidth),
                 Math.Max(layout.Height, MinHeight));
             WindowPlacementHelper.ApplySavedBounds(this, savedBounds);
+            return true;
         }
 
         private void ApplyWindowState(WindowLayoutSettings layout)
