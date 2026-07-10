@@ -10,7 +10,8 @@ internal interface IAppDataNetworkClient
         string url,
         TimeSpan timeout,
         int maxResponseBytes,
-        IReadOnlyDictionary<string, string>? headers = null);
+        IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default);
 }
 
 internal sealed class HttpAppDataNetworkClient : IAppDataNetworkClient
@@ -19,7 +20,8 @@ internal sealed class HttpAppDataNetworkClient : IAppDataNetworkClient
         string url,
         TimeSpan timeout,
         int maxResponseBytes,
-        IReadOnlyDictionary<string, string>? headers = null)
+        IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxResponseBytes);
 
@@ -36,7 +38,8 @@ internal sealed class HttpAppDataNetworkClient : IAppDataNetworkClient
             }
         }
 
-        using CancellationTokenSource timeoutSource = new(timeout);
+        using CancellationTokenSource timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutSource.CancelAfter(timeout);
         using HttpResponseMessage response = await httpClient.SendAsync(
             request,
             HttpCompletionOption.ResponseHeadersRead,

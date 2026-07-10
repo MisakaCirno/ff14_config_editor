@@ -2611,7 +2611,9 @@ public sealed class AppDataStoreTests : IDisposable
         {
             Assert.StartsWith("https://static.web.sdo.com/", request.Url, StringComparison.Ordinal);
             Assert.InRange(request.MaxResponseBytes, 1, 2 * 1024 * 1024);
+            Assert.True(request.CanBeCanceled);
         });
+        Assert.All(networkClient.Requests, request => Assert.True(request.CanBeCanceled));
         Assert.DoesNotContain(networkClient.Requests, request =>
             request.Url.Contains("example.com", StringComparison.OrdinalIgnoreCase) ||
             request.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase));
@@ -3610,55 +3612,57 @@ public sealed class AppDataStoreTests : IDisposable
 
     private sealed class FakeAppDataNetworkClient : IAppDataNetworkClient
     {
-        private readonly Dictionary<string, Queue<Func<Task<string>>>> responses = [];
+        private readonly Dictionary<string, Queue<Func<CancellationToken, Task<string>>>> responses = [];
 
         public List<FakeNetworkRequest> Requests { get; } = [];
 
         public void AddResponse(string url, string response)
         {
-            Add(url, () => Task.FromResult(response));
+            Add(url, _ => Task.FromResult(response));
         }
 
         public TaskCompletionSource<string> AddPendingResponse(string url)
         {
             TaskCompletionSource<string> response = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            Add(url, () => response.Task);
+            Add(url, cancellationToken => response.Task.WaitAsync(cancellationToken));
             return response;
         }
 
         public void AddException(string url, Exception exception)
         {
-            Add(url, () => throw exception);
+            Add(url, _ => throw exception);
         }
 
         public Task<string> GetStringAsync(
             string url,
             TimeSpan timeout,
             int maxResponseBytes,
-            IReadOnlyDictionary<string, string>? headers = null)
+            IReadOnlyDictionary<string, string>? headers = null,
+            CancellationToken cancellationToken = default)
         {
             Requests.Add(new FakeNetworkRequest(
                 url,
                 timeout,
                 maxResponseBytes,
+                cancellationToken.CanBeCanceled,
                 headers?.ToDictionary(
                     pair => pair.Key,
                     pair => pair.Value,
                     StringComparer.OrdinalIgnoreCase) ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)));
 
-            if (!responses.TryGetValue(url, out Queue<Func<Task<string>>>? queue) || queue.Count == 0)
+            if (!responses.TryGetValue(url, out Queue<Func<CancellationToken, Task<string>>>? queue) || queue.Count == 0)
             {
                 throw new InvalidOperationException($"未配置测试网络响应：{url}");
             }
 
-            return queue.Dequeue().Invoke();
+            return queue.Dequeue().Invoke(cancellationToken);
         }
 
-        private void Add(string url, Func<Task<string>> responseFactory)
+        private void Add(string url, Func<CancellationToken, Task<string>> responseFactory)
         {
-            if (!responses.TryGetValue(url, out Queue<Func<Task<string>>>? queue))
+            if (!responses.TryGetValue(url, out Queue<Func<CancellationToken, Task<string>>>? queue))
             {
-                queue = new Queue<Func<Task<string>>>();
+                queue = new Queue<Func<CancellationToken, Task<string>>>();
                 responses[url] = queue;
             }
 
@@ -3670,5 +3674,6 @@ public sealed class AppDataStoreTests : IDisposable
         string Url,
         TimeSpan Timeout,
         int MaxResponseBytes,
+        bool CanBeCanceled,
         IReadOnlyDictionary<string, string> Headers);
 }

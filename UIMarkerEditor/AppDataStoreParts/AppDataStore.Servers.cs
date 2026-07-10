@@ -15,6 +15,7 @@ public sealed partial class AppDataStore
 {
     private static readonly TimeSpan ServerListAutoSyncInterval = TimeSpan.FromDays(7);
     private static readonly TimeSpan ServerListRequestTimeout = TimeSpan.FromSeconds(8);
+    private static readonly TimeSpan ServerListSyncTimeout = TimeSpan.FromSeconds(20);
     private const int ServerApiMaxResponseBytes = 2 * 1024 * 1024;
     private const int ServerPageMaxResponseBytes = 4 * 1024 * 1024;
     private const int ServerPageResourceMaxResponseBytes = 2 * 1024 * 1024;
@@ -65,9 +66,10 @@ public sealed partial class AppDataStore
     {
         DateTime successfulSyncTime = DateTime.Now;
         string currentStage = "检查服务器列表";
+        using CancellationTokenSource syncTimeoutSource = new(ServerListSyncTimeout);
         try
         {
-            string apiJson = await GetServerStatusApiJsonAsync();
+            string apiJson = await GetServerStatusApiJsonAsync(syncTimeoutSource.Token);
             currentStage = "解析服务器列表";
             List<ServerGroup> groups = ParseServerGroups(apiJson);
 
@@ -77,7 +79,8 @@ public sealed partial class AppDataStore
                 string html = await networkClient.GetStringAsync(
                     ExternalLinks.ServerListPage,
                     ServerListRequestTimeout,
-                    ServerPageMaxResponseBytes);
+                    ServerPageMaxResponseBytes,
+                    cancellationToken: syncTimeoutSource.Token);
                 StringBuilder combinedPageText = new(html, ServerPageMaxCombinedCharacters);
                 foreach (Uri resourceUri in ExtractServerPageResourceUris(html, new Uri(ExternalLinks.ServerListPage)))
                 {
@@ -86,7 +89,8 @@ public sealed partial class AppDataStore
                         string resourceText = await networkClient.GetStringAsync(
                             resourceUri.ToString(),
                             ServerListRequestTimeout,
-                            ServerPageResourceMaxResponseBytes);
+                            ServerPageResourceMaxResponseBytes,
+                            cancellationToken: syncTimeoutSource.Token);
                         if (combinedPageText.Length + resourceText.Length + 1 > ServerPageMaxCombinedCharacters)
                         {
                             break;
@@ -94,6 +98,10 @@ public sealed partial class AppDataStore
 
                         combinedPageText.Append('\n');
                         combinedPageText.Append(resourceText);
+                    }
+                    catch (OperationCanceledException) when (syncTimeoutSource.IsCancellationRequested)
+                    {
+                        throw;
                     }
                     catch
                     {
@@ -304,13 +312,14 @@ public sealed partial class AppDataStore
              resourceUri.Host.EndsWith(".sdo.com", StringComparison.OrdinalIgnoreCase));
     }
 
-    private async Task<string> GetServerStatusApiJsonAsync()
+    private async Task<string> GetServerStatusApiJsonAsync(CancellationToken cancellationToken)
     {
         return await networkClient.GetStringAsync(
             ExternalLinks.ServerStatusApi,
             ServerListRequestTimeout,
             ServerApiMaxResponseBytes,
-            ServerStatusRequestHeaders);
+            ServerStatusRequestHeaders,
+            cancellationToken);
     }
 
     private static List<ServerGroup> ParseServerGroups(string html)
