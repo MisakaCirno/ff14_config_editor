@@ -25,6 +25,8 @@ public partial class CharacterProfilesControl : UserControl
     private bool suppressCharacterChangeTracking;
     private Task<ServerListLoadResult?>? serverListSyncTask;
 
+    public bool IsOperationBusy => isCharacterOperationBusy || CharacterBusyOverlay_Control.IsBusy;
+
     public CharacterProfilesControl()
     {
         InitializeComponent();
@@ -812,11 +814,11 @@ public partial class CharacterProfilesControl : UserControl
 
     private void HideCharacterBusyOverlay()
     {
+        isCharacterOperationBusy = false;
         CharacterBusyOverlay_Control.Hide();
         CharacterList_GroupBox.IsEnabled = true;
         CharacterGridSplitter.IsEnabled = true;
         CharacterDetail_GroupBox.IsEnabled = true;
-        isCharacterOperationBusy = false;
         UpdateCharacterActionStates();
     }
 

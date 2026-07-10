@@ -15,7 +15,7 @@ namespace UIMarkerEditor
 
         private void OpenWayMarkFile()
         {
-            if (isWayMarkFileLoading)
+            if (IsBlockingOperationInProgress())
             {
                 return;
             }
@@ -82,7 +82,13 @@ namespace UIMarkerEditor
 
         private void CurrentWayMarkFileCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
-            e.CanExecute = HasLoadedWayMarkFile() && !isWayMarkFileLoading;
+            e.CanExecute = HasLoadedWayMarkFile() && !IsBlockingOperationInProgress();
+            e.Handled = true;
+        }
+
+        private void OpenWayMarkFileCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = !IsBlockingOperationInProgress();
             e.Handled = true;
         }
 
@@ -93,6 +99,11 @@ namespace UIMarkerEditor
 
         private void ReloadWayMarkFile()
         {
+            if (IsBlockingOperationInProgress())
+            {
+                return;
+            }
+
             // 重新加载标点列表
             if (!string.IsNullOrEmpty(currentFilePath))
             {
@@ -111,7 +122,7 @@ namespace UIMarkerEditor
 
         private bool SaveWayMarkFile(bool showSuccessMessage = true, bool allowMissingFileRecreate = false)
         {
-            if (isWayMarkFileLoading)
+            if (IsBlockingOperationInProgress())
             {
                 return false;
             }
@@ -191,7 +202,7 @@ namespace UIMarkerEditor
 
         private bool CloseWayMarkFile(bool showSuccessMessage = true)
         {
-            if (isWayMarkFileLoading)
+            if (IsBlockingOperationInProgress())
             {
                 return false;
             }

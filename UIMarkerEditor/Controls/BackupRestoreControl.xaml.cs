@@ -21,6 +21,8 @@ public partial class BackupRestoreControl : UserControl
     private Action refreshCharacterList = () => { };
     private bool isBackupOperationBusy;
 
+    public bool IsOperationBusy => isBackupOperationBusy || BackupBusyOverlay_Control.IsBusy;
+
     public BackupRestoreControl()
     {
         InitializeComponent();
@@ -335,9 +337,9 @@ public partial class BackupRestoreControl : UserControl
 
     private void HideBackupBusyOverlay()
     {
+        isBackupOperationBusy = false;
         BackupBusyOverlay_Control.Hide();
         BackupRoot_Grid.IsEnabled = true;
-        isBackupOperationBusy = false;
         UpdateBackupActionButtons(Backup_DataGrid.SelectedItem as BackupMetadata);
     }
 

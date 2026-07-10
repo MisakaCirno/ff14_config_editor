@@ -18,7 +18,8 @@
         Background="{StaticResource AppBackgroundBrush}">
     <Window.CommandBindings>
         <CommandBinding Command="{x:Static local:MainWindow.OpenWayMarkFileCommand}"
-                        Executed="OpenWayMarkFileCommand_Executed"/>
+                        Executed="OpenWayMarkFileCommand_Executed"
+                        CanExecute="OpenWayMarkFileCommand_CanExecute"/>
         <CommandBinding Command="{x:Static local:MainWindow.ReloadWayMarkFileCommand}"
                         Executed="ReloadWayMarkFileCommand_Executed"
                         CanExecute="CurrentWayMarkFileCommand_CanExecute"/>

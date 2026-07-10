@@ -192,11 +192,21 @@ namespace UIMarkerEditor
         private void CurrentFileChangeDebounceTimer_Tick(object? sender, EventArgs e)
         {
             currentFileChangeDebounceTimer.Stop();
+            if (IsNonFileOperationInProgress())
+            {
+                return;
+            }
+
             CheckCurrentFileExternalChange(showPrompt: true);
         }
 
         private void CurrentFilePollingTimer_Tick(object? sender, EventArgs e)
         {
+            if (IsNonFileOperationInProgress())
+            {
+                return;
+            }
+
             CheckCurrentFileExternalChange(showPrompt: true);
         }
 

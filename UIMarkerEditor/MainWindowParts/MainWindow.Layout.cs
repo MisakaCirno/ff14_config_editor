@@ -31,6 +31,18 @@ namespace UIMarkerEditor
                 return;
             }
 
+            if (TryGetBlockingOperationDescription(out string blockingOperationDescription))
+            {
+                AppMessageBox.Show(
+                    this,
+                    $"{blockingOperationDescription}正在进行中，请稍候完成后再关闭工具。",
+                    "操作正在进行",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                e.Cancel = true;
+                return;
+            }
+
             if (!TryPrepareWindowCloseChanges(
                     out bool shouldSaveWayMarks,
                     out bool shouldSaveFavorite,

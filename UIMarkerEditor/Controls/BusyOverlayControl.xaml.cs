@@ -22,7 +22,10 @@ public partial class BusyOverlayControl : UserControl
     {
         InitializeComponent();
         Visibility = Visibility.Collapsed;
+        PreviewKeyDown += BusyOverlayControl_PreviewKeyDown;
     }
+
+    public bool IsBusy { get; private set; }
 
     public string Title
     {
@@ -40,13 +43,27 @@ public partial class BusyOverlayControl : UserControl
     {
         Title = title;
         Message = message;
+        IsBusy = true;
         Visibility = Visibility.Visible;
         Keyboard.ClearFocus();
         Focus();
+        CommandManager.InvalidateRequerySuggested();
     }
 
     public void Hide()
     {
+        IsBusy = false;
         Visibility = Visibility.Collapsed;
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    private void BusyOverlayControl_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.System && e.SystemKey == Key.F4)
+        {
+            return;
+        }
+
+        e.Handled = true;
     }
 }

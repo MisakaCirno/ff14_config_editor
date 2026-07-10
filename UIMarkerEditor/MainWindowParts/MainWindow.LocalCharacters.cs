@@ -62,7 +62,7 @@ namespace UIMarkerEditor
 
         private void OpenLocalGameCharacterPicker()
         {
-            if (isWayMarkFileLoading)
+            if (IsBlockingOperationInProgress())
             {
                 return;
             }

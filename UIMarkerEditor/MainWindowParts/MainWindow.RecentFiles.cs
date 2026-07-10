@@ -25,6 +25,11 @@ namespace UIMarkerEditor
 
         private void OpenRecentWayMarkFile(string filePath)
         {
+            if (IsBlockingOperationInProgress())
+            {
+                return;
+            }
+
             if (!File.Exists(filePath))
             {
                 AppMessageBox.Show(this, "这个最近文件已经不存在。", "最近打开", MessageBoxButton.OK, MessageBoxImage.Information);

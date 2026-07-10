@@ -83,6 +83,7 @@ public sealed class XamlResourceTests
             BusyOverlayControl control = new();
 
             Assert.Equal(Visibility.Collapsed, control.Visibility);
+            Assert.False(control.IsBusy);
 
             control.Show("正在测试...", "请等待测试完成。");
             control.Measure(new Size(420, 240));
@@ -92,12 +93,14 @@ public sealed class XamlResourceTests
             TextBlock titleTextBlock = Assert.IsType<TextBlock>(control.FindName("Title_TextBlock"));
             TextBlock messageTextBlock = Assert.IsType<TextBlock>(control.FindName("Message_TextBlock"));
             Assert.Equal(Visibility.Visible, control.Visibility);
+            Assert.True(control.IsBusy);
             Assert.Equal("正在测试...", titleTextBlock.Text);
             Assert.Equal("请等待测试完成。", messageTextBlock.Text);
 
             control.Hide();
 
             Assert.Equal(Visibility.Collapsed, control.Visibility);
+            Assert.False(control.IsBusy);
         });
 
         Assert.Null(exception);
@@ -130,6 +133,7 @@ public sealed class XamlResourceTests
             window.FindName("MapDataOperationOverlay_Control"));
 
         Assert.Equal(Visibility.Collapsed, overlay.Visibility);
+        Assert.False(window.IsBlockingOperationInProgress());
 
         overlay.Show("正在测试地图数据...", "请等待测试完成。");
         overlay.Measure(new Size(420, 240));
@@ -137,10 +141,14 @@ public sealed class XamlResourceTests
         overlay.UpdateLayout();
 
         Assert.Equal(Visibility.Visible, overlay.Visibility);
+        Assert.True(window.IsBlockingOperationInProgress());
+        Assert.False(MainWindow.OpenWayMarkFileCommand.CanExecute(null, window));
 
         overlay.Hide();
 
         Assert.Equal(Visibility.Collapsed, overlay.Visibility);
+        Assert.False(window.IsBlockingOperationInProgress());
+        Assert.True(MainWindow.OpenWayMarkFileCommand.CanExecute(null, window));
     }
 
     private static void AssertBackupRestoreOverlayCanShowAndHide(MainWindow window)
@@ -151,6 +159,7 @@ public sealed class XamlResourceTests
             backupRestoreControl.FindName("BackupBusyOverlay_Control"));
 
         Assert.Equal(Visibility.Collapsed, overlay.Visibility);
+        Assert.False(backupRestoreControl.IsOperationBusy);
 
         overlay.Show("正在测试备份操作...", "请等待测试完成。");
         overlay.Measure(new Size(420, 240));
@@ -158,10 +167,14 @@ public sealed class XamlResourceTests
         overlay.UpdateLayout();
 
         Assert.Equal(Visibility.Visible, overlay.Visibility);
+        Assert.True(backupRestoreControl.IsOperationBusy);
+        Assert.True(window.IsBlockingOperationInProgress());
 
         overlay.Hide();
 
         Assert.Equal(Visibility.Collapsed, overlay.Visibility);
+        Assert.False(backupRestoreControl.IsOperationBusy);
+        Assert.False(window.IsBlockingOperationInProgress());
     }
 
     private static void AssertColoredButtonForegroundPassesIntoTemplate()
