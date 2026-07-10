@@ -87,6 +87,8 @@
                                                IsHitTestVisible="False"/>
                                     <Button Grid.Column="2"
                                             Style="{StaticResource DialogTitleBarButtonStyle}"
+                                            ToolTip="关闭"
+                                            AutomationProperties.Name="关闭窗口"
                                             Command="{x:Static local:DialogWindowCommands.CloseWindowCommand}"
                                             CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}">
                                         <Viewbox Width="11" Height="11" shell:WindowChrome.IsHitTestVisibleInChrome="True">

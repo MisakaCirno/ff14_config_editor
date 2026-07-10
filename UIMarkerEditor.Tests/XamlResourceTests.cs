@@ -34,6 +34,7 @@ public sealed class XamlResourceTests
                 AssertMainWindowMapDataOperationOverlayCanShowAndHide(window);
                 AssertBackupRestoreOverlayCanShowAndHide(window);
                 AssertResponsiveSplitPaneMinimums(window);
+                AssertKeyboardFocusAndIconButtonAccessibility(window);
                 window.Close();
                 AssertMapDataSourceStartupDialogSupportsSmallWorkAreas();
                 AssertStartupLoadingWindowCannotClosePrematurely();
@@ -81,6 +82,78 @@ public sealed class XamlResourceTests
         CharacterProfilesControl characterProfiles = Assert.IsType<CharacterProfilesControl>(window.FindName("CharacterProfiles_Control"));
         Assert.Equal(340d, Assert.IsType<ColumnDefinition>(characterProfiles.FindName("CharacterList_Column")).MinWidth);
         Assert.Equal(280d, Assert.IsType<ColumnDefinition>(characterProfiles.FindName("CharacterDetail_Column")).MinWidth);
+    }
+
+    private static void AssertKeyboardFocusAndIconButtonAccessibility(MainWindow window)
+    {
+        Assert.IsType<Style>(Application.Current.FindResource("AppKeyboardFocusVisual"));
+
+        ToolSettingsControl settings = Assert.IsType<ToolSettingsControl>(window.FindName("ToolSettings_Control"));
+        RadioButton settingsRadioButton = Assert.IsType<RadioButton>(
+            settings.FindName("OpenDirectoryDefault_RadioButton"));
+        Assert.NotNull(settingsRadioButton.FocusVisualStyle);
+
+        ListBox settingsNavigation = Assert.IsType<ListBox>(settings.FindName("SettingsNavigation_ListBox"));
+        ListBoxItem settingsNavigationItem = Assert.IsType<ListBoxItem>(settingsNavigation.Items[0]);
+        Assert.NotNull(settingsNavigationItem.FocusVisualStyle);
+
+        SegmentedSwitchControl segmentedSwitch = Assert.IsType<SegmentedSwitchControl>(
+            settings.FindName("UnknownMapIdPolicy_SegmentedSwitch"));
+        RadioButton segmentedOption = Assert.IsType<RadioButton>(
+            segmentedSwitch.FindName("LeftOption_RadioButton"));
+        Assert.NotNull(segmentedOption.FocusVisualStyle);
+
+        WayMarkEditorControl wayMarkEditor = Assert.IsType<WayMarkEditorControl>(
+            window.FindName("WayMarkEditor_Control"));
+        AssertButtonAccessibility(
+            Assert.IsType<Button>(wayMarkEditor.FindName("MoveUp_Button")),
+            "上移",
+            "上移标点");
+        AssertButtonAccessibility(
+            Assert.IsType<Button>(wayMarkEditor.FindName("MoveDown_Button")),
+            "下移",
+            "下移标点");
+
+        WayMarkFavoritesControl favorites = Assert.IsType<WayMarkFavoritesControl>(
+            window.FindName("WayMarkFavorites_Control"));
+        AssertButtonAccessibility(
+            Assert.IsType<Button>(favorites.FindName("MoveFavoriteUp_Button")),
+            "上移",
+            "上移收藏");
+        AssertButtonAccessibility(
+            Assert.IsType<Button>(favorites.FindName("MoveFavoriteDown_Button")),
+            "下移",
+            "下移收藏");
+
+        ServerPickerControl serverPicker = new();
+        AssertButtonAccessibility(
+            Assert.IsType<Button>(serverPicker.FindName("ClearServer_Button")),
+            "清空服务器",
+            "清空服务器");
+
+        AssertButtonAccessibility(
+            Assert.IsType<Button>(window.FindName("MinimizeWindow_Button")),
+            "最小化",
+            "最小化窗口");
+        AssertButtonAccessibility(
+            Assert.IsType<Button>(window.FindName("MaximizeRestoreWindow_Button")),
+            "最大化",
+            "最大化窗口");
+        AssertButtonAccessibility(
+            Assert.IsType<Button>(window.FindName("CloseWindow_Button")),
+            "关闭",
+            "关闭窗口");
+    }
+
+    private static void AssertButtonAccessibility(
+        Button button,
+        string expectedToolTip,
+        string expectedAutomationName)
+    {
+        Assert.Equal(expectedToolTip, button.ToolTip);
+        Assert.Equal(
+            expectedAutomationName,
+            System.Windows.Automation.AutomationProperties.GetName(button));
     }
 
     private static void AssertCurrentFileMissingDialogCanInitialize()

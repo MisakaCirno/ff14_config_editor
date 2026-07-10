@@ -481,6 +481,7 @@
                     <Button x:Name="MinimizeWindow_Button"
                                 Style="{StaticResource TitleBarButtonStyle}"
                                 ToolTip="最小化"
+                                AutomationProperties.Name="最小化窗口"
                                 Click="MinimizeWindow_Button_Click">
                         <Path Width="10"
                                   Height="1"
@@ -492,6 +493,7 @@
                     <Button x:Name="MaximizeRestoreWindow_Button"
                                 Style="{StaticResource TitleBarButtonStyle}"
                                 ToolTip="最大化"
+                                AutomationProperties.Name="最大化窗口"
                                 Click="MaximizeRestoreWindow_Button_Click">
                         <Grid Width="10" Height="10">
                             <Path x:Name="MaximizeIcon_Path"
@@ -510,6 +512,7 @@
                     <Button x:Name="CloseWindow_Button"
                                 Style="{StaticResource TitleBarCloseButtonStyle}"
                                 ToolTip="关闭"
+                                AutomationProperties.Name="关闭窗口"
                                 Click="CloseWindow_Button_Click">
                         <Path Width="10"
                                   Height="10"

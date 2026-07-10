@@ -33,6 +33,7 @@
                 Margin="0,4,4,4"
                 Padding="0"
                 ToolTip="清空服务器"
+                AutomationProperties.Name="清空服务器"
                 Click="ClearServer_Button_Click">
             <TextBlock Text="×"
                        FontSize="16"

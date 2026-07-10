@@ -167,8 +167,18 @@
                         <TextBlock Text="标点分享网站" Padding="0"/>
                     </StackPanel>
                 </Button>
-                <Button x:Name="MoveUp_Button" Content="↑" Click="MoveUp_Button_Click" Grid.Column="2"/>
-                <Button x:Name="MoveDown_Button" Content="↓" Click="MoveDown_Button_Click" Grid.Column="3"/>
+                <Button x:Name="MoveUp_Button"
+                        Grid.Column="2"
+                        Content="↑"
+                        ToolTip="上移"
+                        AutomationProperties.Name="上移标点"
+                        Click="MoveUp_Button_Click"/>
+                <Button x:Name="MoveDown_Button"
+                        Grid.Column="3"
+                        Content="↓"
+                        ToolTip="下移"
+                        AutomationProperties.Name="下移标点"
+                        Click="MoveDown_Button_Click"/>
             </Grid>
         </Grid>
 
