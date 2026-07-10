@@ -33,6 +33,7 @@ public sealed class XamlResourceTests
                 AssertBackupRestoreOverlayCanShowAndHide(window);
                 window.Close();
                 AssertStartupLoadingWindowCannotClosePrematurely();
+                AssertAppMessageBoxLongTextUsesScrollLimit();
                 AssertCurrentFileMissingDialogCanInitialize();
                 AssertDataDirectoryMigrationReportDialogCanInitialize(testDirectory);
             }
@@ -75,6 +76,28 @@ public sealed class XamlResourceTests
 
         window.CloseAfterStartup();
         Assert.False(window.IsVisible);
+    }
+
+    private static void AssertAppMessageBoxLongTextUsesScrollLimit()
+    {
+        string message = string.Join(Environment.NewLine, Enumerable.Repeat("这是一行较长的诊断信息。", 100));
+        AppMessageBoxDialog dialog = new(
+            message,
+            "长消息测试",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+        try
+        {
+            ScrollViewer scrollViewer = Assert.IsType<ScrollViewer>(dialog.FindName("Message_ScrollViewer"));
+            TextBlock messageTextBlock = Assert.IsType<TextBlock>(dialog.FindName("Message_TextBlock"));
+
+            Assert.Equal(360d, scrollViewer.MaxHeight);
+            Assert.Equal(message, messageTextBlock.Text);
+        }
+        finally
+        {
+            dialog.Close();
+        }
     }
 
     private static void AssertMainWindowCloseFileCommand(MainWindow window)

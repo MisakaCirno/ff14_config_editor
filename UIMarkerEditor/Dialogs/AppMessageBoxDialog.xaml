@@ -31,11 +31,16 @@
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"/>
             </Border>
-            <TextBlock x:Name="Message_TextBlock"
-                       Grid.Column="1"
-                       Width="420"
-                       TextWrapping="Wrap"
-                       VerticalAlignment="Center"/>
+            <ScrollViewer x:Name="Message_ScrollViewer"
+                          Grid.Column="1"
+                          MaxHeight="360"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalAlignment="Center">
+                <TextBlock x:Name="Message_TextBlock"
+                           Width="420"
+                           TextWrapping="Wrap"/>
+            </ScrollViewer>
         </Grid>
 
         <CheckBox x:Name="Option_CheckBox"
