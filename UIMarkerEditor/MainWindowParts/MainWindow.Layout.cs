@@ -161,13 +161,7 @@ namespace UIMarkerEditor
                 layout.Top,
                 Math.Max(layout.Width, MinWidth),
                 Math.Max(layout.Height, MinHeight));
-            if (!IsUsableWindowBounds(savedBounds)) return;
-
-            WindowStartupLocation = WindowStartupLocation.Manual;
-            Left = savedBounds.Left;
-            Top = savedBounds.Top;
-            Width = savedBounds.Width;
-            Height = savedBounds.Height;
+            WindowPlacementHelper.ApplySavedBounds(this, savedBounds);
         }
 
         private void ApplyWindowState(WindowLayoutSettings layout)
@@ -182,25 +176,5 @@ namespace UIMarkerEditor
             return double.IsFinite(value) && value > 0;
         }
 
-        private static bool IsUsableWindowBounds(Rect bounds)
-        {
-            if (!double.IsFinite(bounds.Left) || !double.IsFinite(bounds.Top)) return false;
-
-            Rect virtualScreen = new(
-                SystemParameters.VirtualScreenLeft,
-                SystemParameters.VirtualScreenTop,
-                SystemParameters.VirtualScreenWidth,
-                SystemParameters.VirtualScreenHeight);
-            Rect visibleBounds = Rect.Intersect(virtualScreen, bounds);
-            if (visibleBounds.IsEmpty)
-            {
-                return false;
-            }
-
-            double requiredVisibleWidth = Math.Min(200, bounds.Width * 0.25);
-            double requiredVisibleHeight = Math.Min(120, bounds.Height * 0.25);
-            return visibleBounds.Width >= requiredVisibleWidth &&
-                visibleBounds.Height >= requiredVisibleHeight;
-        }
     }
 }

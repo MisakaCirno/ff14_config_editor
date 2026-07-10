@@ -14,8 +14,8 @@ public sealed class WayMarkFavoritePickerDialogTests
             WayMarkFavoritePickerDialog dialog = new([]);
             try
             {
-                double left = SystemParameters.VirtualScreenLeft + 20;
-                double top = SystemParameters.VirtualScreenTop + 20;
+                double left = SystemParameters.WorkArea.Left + 20;
+                double top = SystemParameters.WorkArea.Top + 20;
                 WindowLayoutSettings layout = new()
                 {
                     WayMarkFavoritePickerLeft = left,
@@ -26,6 +26,7 @@ public sealed class WayMarkFavoritePickerDialogTests
                 };
 
                 dialog.ApplyLayoutSettings(layout);
+                dialog.Show();
 
                 Assert.Equal(WindowStartupLocation.Manual, dialog.WindowStartupLocation);
                 Assert.Equal(left, dialog.Left);
@@ -43,7 +44,7 @@ public sealed class WayMarkFavoritePickerDialogTests
     }
 
     [Fact]
-    public void ApplyLayoutSettings_WhenSavedPositionIsOffScreen_KeepsCenteredStartupLocation()
+    public void ApplyLayoutSettings_WhenSavedPositionIsOffScreen_MovesWindowOntoVisibleScreen()
     {
         Exception? exception = WpfTestHost.Run(() =>
         {
@@ -61,10 +62,15 @@ public sealed class WayMarkFavoritePickerDialogTests
                 };
 
                 dialog.ApplyLayoutSettings(layout);
+                dialog.Show();
 
-                Assert.Equal(WindowStartupLocation.CenterOwner, dialog.WindowStartupLocation);
+                Assert.Equal(WindowStartupLocation.Manual, dialog.WindowStartupLocation);
                 Assert.Equal(720, dialog.Width);
                 Assert.Equal(520, dialog.Height);
+                Assert.True(dialog.Left >= SystemParameters.VirtualScreenLeft);
+                Assert.True(dialog.Top >= SystemParameters.VirtualScreenTop);
+                Assert.True(dialog.Left + dialog.Width <= SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth);
+                Assert.True(dialog.Top + dialog.Height <= SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight);
             }
             finally
             {
