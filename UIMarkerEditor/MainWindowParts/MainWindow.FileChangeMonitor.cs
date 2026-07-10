@@ -395,10 +395,19 @@ namespace UIMarkerEditor
 
         private CurrentFileMissingDialogResult ShowCurrentFileMissingDialog()
         {
-            CurrentFileMissingDialog dialog = new(currentFilePath);
-            DialogOwnerHelper.ConfigureOwnedDialog(dialog, this);
-            dialog.ShowDialog();
-            return dialog.Result;
+            bool wasHandlingCurrentFileExternalChange = isHandlingCurrentFileExternalChange;
+            isHandlingCurrentFileExternalChange = true;
+            try
+            {
+                CurrentFileMissingDialog dialog = new(currentFilePath);
+                DialogOwnerHelper.ConfigureOwnedDialog(dialog, this);
+                dialog.ShowDialog();
+                return dialog.Result;
+            }
+            finally
+            {
+                isHandlingCurrentFileExternalChange = wasHandlingCurrentFileExternalChange;
+            }
         }
 
         private void AcknowledgeMissingCurrentFile()
