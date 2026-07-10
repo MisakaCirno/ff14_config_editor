@@ -2583,6 +2583,41 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task RefreshServerListAsync_WhenUsingPageFallback_LimitsResourcesToTrustedHostsAndCount()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddResponse(ServerStatusApiUrl, "{}");
+        string trustedResources = string.Join(
+            Environment.NewLine,
+            Enumerable.Range(0, 12).Select(index =>
+                $"<script src=\"https://static.web.sdo.com/chunk-{index}.js\"></script>"));
+        networkClient.AddResponse(
+            ExternalLinks.ServerListPage,
+            $"""
+            <script src="https://example.com/untrusted.json"></script>
+            <script src="http://ff.web.sdo.com/insecure.js"></script>
+            {trustedResources}
+            """);
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+
+        await store.RefreshServerListAsync();
+
+        List<FakeNetworkRequest> resourceRequests = networkClient.Requests
+            .Where(request => request.Url.Contains("chunk-", StringComparison.Ordinal))
+            .ToList();
+        Assert.Equal(8, resourceRequests.Count);
+        Assert.All(resourceRequests, request =>
+        {
+            Assert.StartsWith("https://static.web.sdo.com/", request.Url, StringComparison.Ordinal);
+            Assert.InRange(request.MaxResponseBytes, 1, 2 * 1024 * 1024);
+        });
+        Assert.DoesNotContain(networkClient.Requests, request =>
+            request.Url.Contains("example.com", StringComparison.OrdinalIgnoreCase) ||
+            request.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task DataDirectoryMigration_WhenInProgress_BlocksManagedDataWrites()
     {
         AppDataStore store = CreateStore();
@@ -3599,11 +3634,13 @@ public sealed class AppDataStoreTests : IDisposable
         public Task<string> GetStringAsync(
             string url,
             TimeSpan timeout,
+            int maxResponseBytes,
             IReadOnlyDictionary<string, string>? headers = null)
         {
             Requests.Add(new FakeNetworkRequest(
                 url,
                 timeout,
+                maxResponseBytes,
                 headers?.ToDictionary(
                     pair => pair.Key,
                     pair => pair.Value,
@@ -3632,5 +3669,6 @@ public sealed class AppDataStoreTests : IDisposable
     private sealed record FakeNetworkRequest(
         string Url,
         TimeSpan Timeout,
+        int MaxResponseBytes,
         IReadOnlyDictionary<string, string> Headers);
 }

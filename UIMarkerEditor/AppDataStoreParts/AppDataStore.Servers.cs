@@ -15,6 +15,11 @@ public sealed partial class AppDataStore
 {
     private static readonly TimeSpan ServerListAutoSyncInterval = TimeSpan.FromDays(7);
     private static readonly TimeSpan ServerListRequestTimeout = TimeSpan.FromSeconds(8);
+    private const int ServerApiMaxResponseBytes = 2 * 1024 * 1024;
+    private const int ServerPageMaxResponseBytes = 4 * 1024 * 1024;
+    private const int ServerPageResourceMaxResponseBytes = 2 * 1024 * 1024;
+    private const int ServerPageMaxResourceCount = 8;
+    private const int ServerPageMaxCombinedCharacters = 8 * 1024 * 1024;
     private static readonly IReadOnlyDictionary<string, string> ServerStatusRequestHeaders =
         new Dictionary<string, string>
         {
@@ -69,15 +74,26 @@ public sealed partial class AppDataStore
             if (groups.Count == 0)
             {
                 currentStage = "下载服务器列表页面";
-                string html = await networkClient.GetStringAsync(ExternalLinks.ServerListPage, ServerListRequestTimeout);
-                string combinedPageText = html;
+                string html = await networkClient.GetStringAsync(
+                    ExternalLinks.ServerListPage,
+                    ServerListRequestTimeout,
+                    ServerPageMaxResponseBytes);
+                StringBuilder combinedPageText = new(html, ServerPageMaxCombinedCharacters);
                 foreach (Uri resourceUri in ExtractServerPageResourceUris(html, new Uri(ExternalLinks.ServerListPage)))
                 {
                     try
                     {
-                        combinedPageText += "\n" + await networkClient.GetStringAsync(
+                        string resourceText = await networkClient.GetStringAsync(
                             resourceUri.ToString(),
-                            ServerListRequestTimeout);
+                            ServerListRequestTimeout,
+                            ServerPageResourceMaxResponseBytes);
+                        if (combinedPageText.Length + resourceText.Length + 1 > ServerPageMaxCombinedCharacters)
+                        {
+                            break;
+                        }
+
+                        combinedPageText.Append('\n');
+                        combinedPageText.Append(resourceText);
                     }
                     catch
                     {
@@ -86,7 +102,7 @@ public sealed partial class AppDataStore
                 }
 
                 currentStage = "解析服务器列表";
-                groups = ParseServerGroups(combinedPageText);
+                groups = ParseServerGroups(combinedPageText.ToString());
             }
 
             if (groups.Count == 0)
@@ -259,17 +275,33 @@ public sealed partial class AppDataStore
                 continue;
             }
 
-            Uri resourceUri = url.StartsWith("//", StringComparison.Ordinal)
-                ? new Uri($"{baseUri.Scheme}:{url}")
-                : new Uri(baseUri, url);
+            string candidateUrl = url.StartsWith("//", StringComparison.Ordinal)
+                ? $"{baseUri.Scheme}:{url}"
+                : url;
+            if (!Uri.TryCreate(baseUri, candidateUrl, out Uri? resourceUri) ||
+                !IsAllowedServerPageResourceUri(resourceUri))
+            {
+                continue;
+            }
 
             if (!resourceUris.Any(existing => existing.Equals(resourceUri)))
             {
                 resourceUris.Add(resourceUri);
+                if (resourceUris.Count >= ServerPageMaxResourceCount)
+                {
+                    break;
+                }
             }
         }
 
         return resourceUris;
+    }
+
+    private static bool IsAllowedServerPageResourceUri(Uri resourceUri)
+    {
+        return string.Equals(resourceUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) &&
+            (string.Equals(resourceUri.Host, "sdo.com", StringComparison.OrdinalIgnoreCase) ||
+             resourceUri.Host.EndsWith(".sdo.com", StringComparison.OrdinalIgnoreCase));
     }
 
     private async Task<string> GetServerStatusApiJsonAsync()
@@ -277,6 +309,7 @@ public sealed partial class AppDataStore
         return await networkClient.GetStringAsync(
             ExternalLinks.ServerStatusApi,
             ServerListRequestTimeout,
+            ServerApiMaxResponseBytes,
             ServerStatusRequestHeaders);
     }
 

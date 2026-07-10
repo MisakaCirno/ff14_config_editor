@@ -22,6 +22,8 @@ public sealed partial class AppDataStore
         "10,神灵圣域放浪神古神殿\r\n";
     private static readonly Encoding MapDataCsvEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
     private static readonly TimeSpan MapDataRequestTimeout = TimeSpan.FromSeconds(20);
+    private const int MapDataMetadataMaxResponseBytes = 1024 * 1024;
+    private const int MapDataContentMaxResponseBytes = 16 * 1024 * 1024;
     private static readonly IReadOnlyDictionary<string, string> GitHubApiHeaders = new Dictionary<string, string>
     {
         ["Accept"] = "application/vnd.github+json",
@@ -309,7 +311,11 @@ public sealed partial class AppDataStore
         string commitJson;
         try
         {
-            commitJson = await networkClient.GetStringAsync(source.VersionUrl, MapDataRequestTimeout, GitHubApiHeaders);
+            commitJson = await networkClient.GetStringAsync(
+                source.VersionUrl,
+                MapDataRequestTimeout,
+                MapDataMetadataMaxResponseBytes,
+                GitHubApiHeaders);
         }
         catch (Exception ex)
         {
@@ -345,7 +351,10 @@ public sealed partial class AppDataStore
         string csv;
         try
         {
-            csv = await networkClient.GetStringAsync(sourceUrl, MapDataRequestTimeout);
+            csv = await networkClient.GetStringAsync(
+                sourceUrl,
+                MapDataRequestTimeout,
+                MapDataContentMaxResponseBytes);
         }
         catch (Exception ex)
         {
@@ -392,7 +401,10 @@ public sealed partial class AppDataStore
         string versionContent;
         try
         {
-            versionContent = await networkClient.GetStringAsync(source.VersionUrl, MapDataRequestTimeout);
+            versionContent = await networkClient.GetStringAsync(
+                source.VersionUrl,
+                MapDataRequestTimeout,
+                MapDataMetadataMaxResponseBytes);
         }
         catch (Exception ex)
         {
@@ -422,7 +434,10 @@ public sealed partial class AppDataStore
         string instanceJson;
         try
         {
-            instanceJson = await networkClient.GetStringAsync(source.ContentUrl, MapDataRequestTimeout);
+            instanceJson = await networkClient.GetStringAsync(
+                source.ContentUrl,
+                MapDataRequestTimeout,
+                MapDataContentMaxResponseBytes);
         }
         catch (Exception ex)
         {
