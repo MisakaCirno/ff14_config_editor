@@ -163,13 +163,39 @@ namespace UIMarkerEditor
             RefreshCharacterList();
             ShowDataLoadWarnings();
             ShowMigrationReports();
-            PromptForPendingUserMapDataRepair();
-            ScheduleStartupWayMarkAction();
-            RefreshLocalCharacterSelectionAvailability();
-            _ = AutoDetectGameInstallDirectoryAndScanLocalCharactersAsync();
+            _ = CompleteMainWindowStartupAsync();
         }
 
-        private void PromptForPendingUserMapDataRepair()
+        private async Task CompleteMainWindowStartupAsync()
+        {
+            try
+            {
+                await PromptForPendingUserMapDataRepairAsync();
+                if (!IsLoaded)
+                {
+                    return;
+                }
+
+                ScheduleStartupWayMarkAction();
+                RefreshLocalCharacterSelectionAvailability();
+                _ = AutoDetectGameInstallDirectoryAndScanLocalCharactersAsync();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error(AppLogCategory.UI, "完成主窗口启动操作失败", ex);
+                if (IsLoaded)
+                {
+                    AppMessageBox.Show(
+                        this,
+                        $"完成主窗口启动操作失败：{ex.Message}",
+                        "启动操作失败",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+            }
+        }
+
+        private async Task PromptForPendingUserMapDataRepairAsync()
         {
             MapDataLoadResult? result = pendingUserMapDataRepairPrompt;
             pendingUserMapDataRepairPrompt = null;
@@ -178,7 +204,7 @@ namespace UIMarkerEditor
                 return;
             }
 
-            _ = PromptToRepairUserMapDataAsync(result);
+            await PromptToRepairUserMapDataAsync(result);
         }
 
         private async Task AutoDetectGameInstallDirectoryAndScanLocalCharactersAsync()
