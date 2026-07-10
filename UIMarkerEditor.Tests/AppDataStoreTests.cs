@@ -1609,6 +1609,25 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task EnsureMapDataAvailableAsync_WhenCancelled_StopsPendingOnlineRequest()
+    {
+        FakeAppDataNetworkClient networkClient = new();
+        networkClient.AddPendingResponse(MapDataOnlineReferenceCommitApiUrl);
+        AppDataStore store = CreateStore(networkClient);
+        store.Initialize();
+        using CancellationTokenSource cancellationSource = new();
+
+        Task<MapDataLoadResult> loadTask = store.EnsureMapDataAvailableAsync(cancellationSource.Token);
+        Assert.Single(networkClient.Requests);
+        cancellationSource.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => loadTask);
+        Assert.Single(networkClient.Requests);
+        Assert.True(networkClient.Requests[0].CanBeCanceled);
+        Assert.False(MapData.HasData);
+    }
+
+    [Fact]
     public async Task EnsureMapDataAvailableAsync_WhenOnlineCacheWriteFails_ReturnsFailureWithoutApplyingMapData()
     {
         FakeAppDataNetworkClient networkClient = new();

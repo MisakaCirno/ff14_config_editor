@@ -65,17 +65,40 @@ public sealed class XamlResourceTests
 
     private static void AssertStartupLoadingWindowCannotClosePrematurely()
     {
-        StartupLoadingWindow window = new();
+        StartupLoadingWindow window = new(_ => false);
         window.Show();
+        try
+        {
+            window.Close();
 
-        window.Close();
+            Assert.True(window.IsVisible);
+            Assert.False(window.IsCancellationRequested);
+            TextBlock statusTextBlock = Assert.IsType<TextBlock>(window.FindName("Status_TextBlock"));
+            Assert.Contains("启动仍在进行", statusTextBlock.Text);
+        }
+        finally
+        {
+            window.CloseAfterStartup();
+        }
 
-        Assert.True(window.IsVisible);
-        TextBlock statusTextBlock = Assert.IsType<TextBlock>(window.FindName("Status_TextBlock"));
-        Assert.Contains("启动仍在进行", statusTextBlock.Text);
-
-        window.CloseAfterStartup();
         Assert.False(window.IsVisible);
+
+        bool cancellationRequested = false;
+        StartupLoadingWindow cancellingWindow = new(_ => true);
+        cancellingWindow.CancellationRequested += (_, _) => cancellationRequested = true;
+        cancellingWindow.Show();
+        try
+        {
+            cancellingWindow.Close();
+
+            Assert.True(cancellingWindow.IsVisible);
+            Assert.True(cancellingWindow.IsCancellationRequested);
+            Assert.True(cancellationRequested);
+        }
+        finally
+        {
+            cancellingWindow.CloseAfterStartup();
+        }
     }
 
     private static void AssertAppMessageBoxLongTextUsesScrollLimit()

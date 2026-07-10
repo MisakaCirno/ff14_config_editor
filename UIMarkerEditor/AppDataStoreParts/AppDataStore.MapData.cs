@@ -40,27 +40,32 @@ public sealed partial class AppDataStore
 
     public async Task<MapDataLoadResult> EnsureMapDataAvailableAsync()
     {
-        return await LoadMapDataAsync(forceRefresh: false);
+        return await LoadMapDataAsync(forceRefresh: false, CancellationToken.None);
+    }
+
+    internal async Task<MapDataLoadResult> EnsureMapDataAvailableAsync(CancellationToken cancellationToken)
+    {
+        return await LoadMapDataAsync(forceRefresh: false, cancellationToken);
     }
 
     public async Task<MapDataLoadResult> ForceRefreshMapDataAsync()
     {
-        return await LoadMapDataAsync(forceRefresh: true);
+        return await LoadMapDataAsync(forceRefresh: true, CancellationToken.None);
     }
 
-    private async Task<MapDataLoadResult> LoadMapDataAsync(bool forceRefresh)
+    private async Task<MapDataLoadResult> LoadMapDataAsync(bool forceRefresh, CancellationToken cancellationToken)
     {
         if (Settings.MapDataTableMode == MapDataTableMode.Manual)
         {
-            return await Task.Run(() => LoadMapDataFromUserCsv(forceRefresh));
+            return await Task.Run(() => LoadMapDataFromUserCsv(forceRefresh)).WaitAsync(cancellationToken);
         }
 
         if (Settings.MapDataSource == MapDataSource.LocalGame)
         {
-            return await Task.Run(() => LoadMapDataFromLocalGame(forceRefresh));
+            return await Task.Run(() => LoadMapDataFromLocalGame(forceRefresh)).WaitAsync(cancellationToken);
         }
 
-        return await LoadMapDataFromOnlineReferenceAsync(forceRefresh);
+        return await LoadMapDataFromOnlineReferenceAsync(forceRefresh, cancellationToken);
     }
 
     private MapDataLoadResult LoadMapDataFromUserCsv(bool forceRefresh)
@@ -229,7 +234,9 @@ public sealed partial class AppDataStore
         return $"手动地图数据文件存在需要修复的问题：{summary}";
     }
 
-    private async Task<MapDataLoadResult> LoadMapDataFromOnlineReferenceAsync(bool forceRefresh)
+    private async Task<MapDataLoadResult> LoadMapDataFromOnlineReferenceAsync(
+        bool forceRefresh,
+        CancellationToken cancellationToken)
     {
         DateTime successfulSyncTime = DateTime.Now;
         List<string> sourceFailures = [];
@@ -238,8 +245,18 @@ public sealed partial class AppDataStore
 
         MapDataLoadResult? result = source.Kind switch
         {
-            MapDataOnlineSourceKind.DiemoeMatcha => await TryLoadDiemoeMapDataAsync(source, forceRefresh, successfulSyncTime, sourceFailures),
-            _ => await TryLoadContentFinderConditionMapDataAsync(source, forceRefresh, successfulSyncTime, sourceFailures)
+            MapDataOnlineSourceKind.DiemoeMatcha => await TryLoadDiemoeMapDataAsync(
+                source,
+                forceRefresh,
+                successfulSyncTime,
+                sourceFailures,
+                cancellationToken),
+            _ => await TryLoadContentFinderConditionMapDataAsync(
+                source,
+                forceRefresh,
+                successfulSyncTime,
+                sourceFailures,
+                cancellationToken)
         };
         if (result != null)
         {
@@ -257,9 +274,10 @@ public sealed partial class AppDataStore
         MapDataOnlineSourceDefinition source,
         bool forceRefresh,
         DateTime successfulSyncTime,
-        List<string> sourceFailures)
+        List<string> sourceFailures,
+        CancellationToken cancellationToken)
     {
-        GitHubFileCommitInfo? commitInfo = await TryLoadContentFinderConditionCommitInfoAsync(source, sourceFailures);
+        GitHubFileCommitInfo? commitInfo = await TryLoadContentFinderConditionCommitInfoAsync(source, sourceFailures, cancellationToken);
         if (commitInfo != null)
         {
             string pinnedSourceUrl = ExternalLinks.CreateMapDataOnlineReferenceCsvUrl(commitInfo.Sha);
@@ -283,7 +301,8 @@ public sealed partial class AppDataStore
                 commitInfo.Version,
                 sourceFingerprint,
                 successfulSyncTime,
-                sourceFailures);
+                sourceFailures,
+                cancellationToken);
             if (pinnedResult != null)
             {
                 return pinnedResult;
@@ -296,12 +315,14 @@ public sealed partial class AppDataStore
             string.Empty,
             string.Empty,
             successfulSyncTime,
-            sourceFailures);
+            sourceFailures,
+            cancellationToken);
     }
 
     private async Task<GitHubFileCommitInfo?> TryLoadContentFinderConditionCommitInfoAsync(
         MapDataOnlineSourceDefinition source,
-        List<string> sourceFailures)
+        List<string> sourceFailures,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(source.VersionUrl))
         {
@@ -315,7 +336,12 @@ public sealed partial class AppDataStore
                 source.VersionUrl,
                 MapDataRequestTimeout,
                 MapDataMetadataMaxResponseBytes,
-                GitHubApiHeaders);
+                GitHubApiHeaders,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -346,7 +372,8 @@ public sealed partial class AppDataStore
         string version,
         string sourceFingerprint,
         DateTime successfulSyncTime,
-        List<string> sourceFailures)
+        List<string> sourceFailures,
+        CancellationToken cancellationToken)
     {
         string csv;
         try
@@ -354,7 +381,12 @@ public sealed partial class AppDataStore
             csv = await networkClient.GetStringAsync(
                 sourceUrl,
                 MapDataRequestTimeout,
-                MapDataContentMaxResponseBytes);
+                MapDataContentMaxResponseBytes,
+                cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -396,7 +428,8 @@ public sealed partial class AppDataStore
         MapDataOnlineSourceDefinition source,
         bool forceRefresh,
         DateTime successfulSyncTime,
-        List<string> sourceFailures)
+        List<string> sourceFailures,
+        CancellationToken cancellationToken)
     {
         string versionContent;
         try
@@ -404,7 +437,12 @@ public sealed partial class AppDataStore
             versionContent = await networkClient.GetStringAsync(
                 source.VersionUrl,
                 MapDataRequestTimeout,
-                MapDataMetadataMaxResponseBytes);
+                MapDataMetadataMaxResponseBytes,
+                cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -437,7 +475,12 @@ public sealed partial class AppDataStore
             instanceJson = await networkClient.GetStringAsync(
                 source.ContentUrl,
                 MapDataRequestTimeout,
-                MapDataContentMaxResponseBytes);
+                MapDataContentMaxResponseBytes,
+                cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

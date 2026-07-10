@@ -76,9 +76,22 @@ public partial class App : Application
         {
             StartupLoadingWindow startupLoadingWindow = ShowStartupLoadingWindow(BuildMapDataLoadingStatus(appDataStore));
             loadingWindow = startupLoadingWindow;
+            using CancellationTokenSource startupCancellationSource = new();
+            startupLoadingWindow.CancellationRequested += (_, _) => startupCancellationSource.Cancel();
             await YieldForStartupLoadingWindowAsync();
 
-            MapDataLoadResult mapDataLoadResult = await appDataStore.EnsureMapDataAvailableAsync();
+            MapDataLoadResult mapDataLoadResult;
+            try
+            {
+                mapDataLoadResult = await appDataStore.EnsureMapDataAvailableAsync(startupCancellationSource.Token);
+            }
+            catch (OperationCanceledException) when (startupCancellationSource.IsCancellationRequested)
+            {
+                CloseStartupLoadingWindow(startupLoadingWindow);
+                loadingWindow = null;
+                Shutdown();
+                return;
+            }
             if (ShouldAddStartupMapDataLoadWarning(mapDataLoadResult))
             {
                 if (!mapDataLoadResult.Success)
