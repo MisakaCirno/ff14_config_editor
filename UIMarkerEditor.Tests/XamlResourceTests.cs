@@ -32,6 +32,7 @@ public sealed class XamlResourceTests
                 AssertMainWindowMapDataOperationOverlayCanShowAndHide(window);
                 AssertBackupRestoreOverlayCanShowAndHide(window);
                 window.Close();
+                AssertStartupLoadingWindowCannotClosePrematurely();
                 AssertCurrentFileMissingDialogCanInitialize();
                 AssertDataDirectoryMigrationReportDialogCanInitialize(testDirectory);
             }
@@ -59,6 +60,21 @@ public sealed class XamlResourceTests
         {
             dialog.Close();
         }
+    }
+
+    private static void AssertStartupLoadingWindowCannotClosePrematurely()
+    {
+        StartupLoadingWindow window = new();
+        window.Show();
+
+        window.Close();
+
+        Assert.True(window.IsVisible);
+        TextBlock statusTextBlock = Assert.IsType<TextBlock>(window.FindName("Status_TextBlock"));
+        Assert.Contains("启动仍在进行", statusTextBlock.Text);
+
+        window.CloseAfterStartup();
+        Assert.False(window.IsVisible);
     }
 
     private static void AssertMainWindowCloseFileCommand(MainWindow window)

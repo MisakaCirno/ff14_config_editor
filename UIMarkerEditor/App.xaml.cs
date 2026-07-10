@@ -147,7 +147,7 @@ public partial class App : Application
 
         try
         {
-            window.Close();
+            window.CloseAfterStartup();
         }
         catch (InvalidOperationException)
         {
