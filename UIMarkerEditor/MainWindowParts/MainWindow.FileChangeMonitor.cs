@@ -356,7 +356,7 @@ namespace UIMarkerEditor
         {
             return ShowCurrentFileMissingDialog() switch
             {
-                CurrentFileMissingDialogResult.SaveToOriginalPath => CurrentFileSaveDecision.RecreateMissingFile,
+                CurrentFileMissingDialogResult.SaveToOriginalPath => ResolveCurrentFileSaveDecision(allowMissingFileRecreate: true),
                 CurrentFileMissingDialogResult.CloseCurrentFile => CloseMissingCurrentFileAndCancelSave(),
                 _ => AcknowledgeMissingCurrentFileAndCancelSave()
             };
