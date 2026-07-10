@@ -7,6 +7,7 @@ namespace UIMarkerEditor.Tests;
 internal static class WpfTestHost
 {
     private static readonly object SyncRoot = new();
+    private static readonly object RunSyncRoot = new();
     private static Dispatcher? dispatcher;
     private static Exception? startupException;
     private static bool isStarting;
@@ -19,20 +20,23 @@ internal static class WpfTestHost
             return startupException;
         }
 
-        Exception? exception = null;
-        dispatcher!.Invoke(() =>
+        lock (RunSyncRoot)
         {
-            try
+            Exception? exception = null;
+            dispatcher!.Invoke(() =>
             {
-                action();
-            }
-            catch (Exception ex)
-            {
-                exception = ex;
-            }
-        });
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    exception = ex;
+                }
+            });
 
-        return exception;
+            return exception;
+        }
     }
 
     public static void EnsureApplicationResources()

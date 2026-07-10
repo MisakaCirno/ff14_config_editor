@@ -104,6 +104,7 @@ public sealed class ServerPickerControlTests
                 Assert.True(popup.IsOpen);
                 Assert.True(areaListBox.IsKeyboardFocusWithin);
                 RaisePreviewKeyDown(areaListBox, Key.Right);
+                FlushDispatcher();
                 Assert.True(worldListBox.IsKeyboardFocusWithin);
 
                 worldListBox.SelectedIndex = 1;
@@ -111,6 +112,7 @@ public sealed class ServerPickerControlTests
                 Assert.Equal(0, selectionChangedCount);
 
                 RaisePreviewKeyDown(worldListBox, Key.Enter);
+                FlushDispatcher();
 
                 Assert.False(popup.IsOpen);
                 Assert.Equal(1, selectionChangedCount);
@@ -152,6 +154,7 @@ public sealed class ServerPickerControlTests
                 pickerButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 FlushDispatcher();
                 RaisePreviewKeyDown(areaListBox, Key.Escape);
+                FlushDispatcher();
 
                 Assert.False(popup.IsOpen);
                 Assert.True(pickerButton.IsKeyboardFocused);
