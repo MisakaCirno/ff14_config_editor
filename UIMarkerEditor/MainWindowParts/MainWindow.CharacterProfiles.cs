@@ -106,7 +106,7 @@ namespace UIMarkerEditor
             return true;
         }
 
-        private void FinishDataDirectoryMigration(
+        private async Task FinishDataDirectoryMigration(
             string currentDataDirectory,
             string targetDataDirectory,
             DataDirectoryMigrationResult? result)
@@ -114,14 +114,35 @@ namespace UIMarkerEditor
             string? pausedFilePath = dataDirectoryMigrationPausedCurrentFilePath;
             dataDirectoryMigrationPausedCurrentFilePath = null;
 
+            if (result != null && !string.IsNullOrWhiteSpace(pausedFilePath))
+            {
+                if (await TryReloadRelocatedCurrentFileAsync(pausedFilePath, currentDataDirectory, targetDataDirectory))
+                {
+                    WayMarkFavorites_Control.RefreshFavorites();
+                    StartLocalCharacterScan();
+                    return;
+                }
+
+                if (HasLoadedWayMarkFile())
+                {
+                    CloseCurrentWayMarkFile();
+                    AppMessageBox.Show(
+                        this,
+                        "工具数据目录迁移已完成，但当前标点文件无法从新位置重新加载。为避免继续显示失效的文件状态，已关闭当前文件。",
+                        "当前文件已关闭",
+                        System.Windows.MessageBoxButton.OK,
+                        System.Windows.MessageBoxImage.Warning);
+                }
+
+                WayMarkFavorites_Control.RefreshFavorites();
+                StartLocalCharacterScan();
+                return;
+            }
+
             if (result != null)
             {
                 WayMarkFavorites_Control.RefreshFavorites();
                 StartLocalCharacterScan();
-                if (TryReloadRelocatedCurrentFile(pausedFilePath ?? currentFilePath, currentDataDirectory, targetDataDirectory))
-                {
-                    return;
-                }
             }
 
             if (HasLoadedWayMarkFile())
@@ -151,7 +172,7 @@ namespace UIMarkerEditor
             StopCurrentFileChangeMonitor();
         }
 
-        private bool TryReloadRelocatedCurrentFile(
+        private async Task<bool> TryReloadRelocatedCurrentFileAsync(
             string? sourceFilePath,
             string currentDataDirectory,
             string targetDataDirectory)
@@ -174,8 +195,7 @@ namespace UIMarkerEditor
                 return false;
             }
 
-            LoadConfigFileWithOverlay(relocatedFilePath);
-            return true;
+            return await TryLoadConfigFileWithOverlayAsync(relocatedFilePath);
         }
     }
 }

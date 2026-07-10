@@ -108,7 +108,7 @@ public sealed class ToolSettingsControlTests
             () => { },
             () => { },
             (_, _) => true,
-            (_, _, _) => { },
+            (_, _, _) => Task.CompletedTask,
             () => { },
             () => { },
             () => { },

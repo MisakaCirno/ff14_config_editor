@@ -299,14 +299,20 @@ namespace UIMarkerEditor
 
         private async void LoadConfigFileWithOverlay(string filePath)
         {
+            await TryLoadConfigFileWithOverlayAsync(filePath);
+        }
+
+        private async Task<bool> TryLoadConfigFileWithOverlayAsync(string filePath)
+        {
             try
             {
-                await LoadConfigFileWithOverlayAsync(filePath);
+                return await LoadConfigFileWithOverlayAsync(filePath);
             }
             catch (Exception ex)
             {
                 AppLogger.Error(AppLogCategory.IO, $"加载 UISAVE.DAT 时更新界面状态失败：{filePath}", ex);
                 AppMessageBox.Show(this, $"加载 UISAVE.DAT 时更新界面状态失败。\n\n文件：{filePath}\n\n原因：{ex.Message}", "加载失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
             }
         }
 

@@ -23,7 +23,7 @@ public partial class ToolSettingsControl : UserControl
     private Action refreshBackupList = () => { };
     private Action refreshCharacterList = () => { };
     private Func<string, string, bool> prepareDataDirectoryMigration = (_, _) => true;
-    private Action<string, string, DataDirectoryMigrationResult?> finishDataDirectoryMigration = (_, _, _) => { };
+    private Func<string, string, DataDirectoryMigrationResult?, Task> finishDataDirectoryMigration = (_, _, _) => Task.CompletedTask;
     private Action refreshServerListConsumers = () => { };
     private Action refreshMapDataConsumers = () => { };
     private Action refreshAppearance = () => { };
@@ -46,7 +46,7 @@ public partial class ToolSettingsControl : UserControl
         Action refreshBackupList,
         Action refreshCharacterList,
         Func<string, string, bool> prepareDataDirectoryMigration,
-        Action<string, string, DataDirectoryMigrationResult?> finishDataDirectoryMigration,
+        Func<string, string, DataDirectoryMigrationResult?, Task> finishDataDirectoryMigration,
         Action refreshServerListConsumers,
         Action refreshMapDataConsumers,
         Action refreshAppearance,
@@ -300,7 +300,7 @@ public partial class ToolSettingsControl : UserControl
         }
     }
 
-    private void BrowseDataDirectory_Button_Click(object sender, RoutedEventArgs e)
+    private async void BrowseDataDirectory_Button_Click(object sender, RoutedEventArgs e)
     {
         if (appDataStore == null) return;
 
@@ -327,7 +327,7 @@ public partial class ToolSettingsControl : UserControl
                 out string targetFullPath,
                 out string errorMessage))
             {
-                RequestDataDirectoryChange(targetFullPath);
+                await RequestDataDirectoryChangeAsync(targetFullPath);
                 return;
             }
 
@@ -956,7 +956,7 @@ public partial class ToolSettingsControl : UserControl
         dialog.ShowDialog();
     }
 
-    private void RequestDataDirectoryChange(string requestedDataDirectory)
+    private async Task RequestDataDirectoryChangeAsync(string requestedDataDirectory)
     {
         if (appDataStore == null) return;
 
@@ -1004,25 +1004,25 @@ public partial class ToolSettingsControl : UserControl
             if (result == null)
             {
                 migrationFinishedNotified = true;
-                finishDataDirectoryMigration(currentFullPath, requestedFullPath, null);
+                await finishDataDirectoryMigration(currentFullPath, requestedFullPath, null);
                 LoadSettingsIntoUi();
                 return;
             }
 
+            migrationFinishedNotified = true;
+            await finishDataDirectoryMigration(currentFullPath, requestedFullPath, result);
             LoadSettingsIntoUi();
             refreshAppearance();
             refreshBackupList();
             refreshCharacterList();
             refreshServerListConsumers();
             refreshMapDataConsumers();
-            migrationFinishedNotified = true;
-            finishDataDirectoryMigration(currentFullPath, requestedFullPath, result);
         }
         catch (Exception ex)
         {
             if (!migrationFinishedNotified)
             {
-                finishDataDirectoryMigration(currentFullPath, requestedFullPath, null);
+                await finishDataDirectoryMigration(currentFullPath, requestedFullPath, null);
             }
 
             LoadSettingsIntoUi();
@@ -1033,11 +1033,11 @@ public partial class ToolSettingsControl : UserControl
         }
     }
 
-    private void ResetDataDirectory_Button_Click(object sender, RoutedEventArgs e)
+    private async void ResetDataDirectory_Button_Click(object sender, RoutedEventArgs e)
     {
         if (appDataStore == null) return;
 
-        RequestDataDirectoryChange(appDataStore.DefaultDataDirectory);
+        await RequestDataDirectoryChangeAsync(appDataStore.DefaultDataDirectory);
     }
 
     private void OpenDataDirectory_Button_Click(object sender, RoutedEventArgs e)
