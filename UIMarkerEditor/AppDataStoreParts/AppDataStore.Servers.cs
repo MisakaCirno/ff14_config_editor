@@ -81,7 +81,7 @@ public sealed partial class AppDataStore
                     ServerListRequestTimeout,
                     ServerPageMaxResponseBytes,
                     cancellationToken: syncTimeoutSource.Token);
-                StringBuilder combinedPageText = new(html, ServerPageMaxCombinedCharacters);
+                StringBuilder combinedPageText = new(html);
                 foreach (Uri resourceUri in ExtractServerPageResourceUris(html, new Uri(ExternalLinks.ServerListPage)))
                 {
                     try
