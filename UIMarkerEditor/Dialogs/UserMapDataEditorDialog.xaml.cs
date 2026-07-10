@@ -15,8 +15,16 @@ public partial class UserMapDataEditorDialog : Window
     private readonly string filePath;
     private readonly ObservableCollection<UserMapDataEditorRow> rows = [];
     private readonly bool isReadOnly;
+    private readonly Func<Window, bool> confirmDiscardChanges;
+    private IReadOnlyList<UserMapDataEditorRowSnapshot> initialRows = [];
+    private bool allowClose;
 
     public UserMapDataEditorDialog(string filePath)
+        : this(filePath, ConfirmDiscardChanges)
+    {
+    }
+
+    internal UserMapDataEditorDialog(string filePath, Func<Window, bool> confirmDiscardChanges)
     {
         if (string.IsNullOrWhiteSpace(filePath))
         {
@@ -24,10 +32,12 @@ public partial class UserMapDataEditorDialog : Window
         }
 
         this.filePath = filePath;
+        this.confirmDiscardChanges = confirmDiscardChanges ?? throw new ArgumentNullException(nameof(confirmDiscardChanges));
         InitializeComponent();
         FilePath_TextBox.Text = filePath;
         MapDataRows_DataGrid.ItemsSource = rows;
         LoadRowsFromFile();
+        initialRows = CaptureRows();
     }
 
     public UserMapDataEditorDialog(
@@ -40,6 +50,7 @@ public partial class UserMapDataEditorDialog : Window
 
         filePath = string.Empty;
         isReadOnly = true;
+        confirmDiscardChanges = _ => true;
         InitializeComponent();
         Title = title;
         Description_TextBlock.Text = description;
@@ -54,6 +65,7 @@ public partial class UserMapDataEditorDialog : Window
         MapDataRows_DataGrid.IsReadOnly = true;
         MapDataRows_DataGrid.ItemsSource = rows;
         LoadRows(mapNames);
+        initialRows = CaptureRows();
     }
 
     private void LoadRowsFromFile()
@@ -157,7 +169,39 @@ public partial class UserMapDataEditorDialog : Window
             return;
         }
 
+        allowClose = true;
         DialogResult = true;
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (!isReadOnly && !allowClose && HasUnsavedChanges() && !confirmDiscardChanges(this))
+        {
+            e.Cancel = true;
+            return;
+        }
+
+        base.OnClosing(e);
+    }
+
+    private IReadOnlyList<UserMapDataEditorRowSnapshot> CaptureRows()
+    {
+        return [.. rows.Select(static row => new UserMapDataEditorRowSnapshot(row.MapId, row.Name))];
+    }
+
+    private bool HasUnsavedChanges()
+    {
+        return !initialRows.SequenceEqual(CaptureRows());
+    }
+
+    private static bool ConfirmDiscardChanges(Window owner)
+    {
+        return AppMessageBox.Show(
+            owner,
+            "用户地图数据还有未保存的修改。是否放弃这些修改并关闭编辑器？",
+            "放弃未保存的修改",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes;
     }
 
     private bool TryBuildMapData(out Dictionary<ushort, string> mapNames)
@@ -284,6 +328,8 @@ public partial class UserMapDataEditorDialog : Window
         return message;
     }
 }
+
+internal sealed record UserMapDataEditorRowSnapshot(string MapId, string Name);
 
 internal sealed class UserMapDataEditorRow : INotifyPropertyChanged
 {

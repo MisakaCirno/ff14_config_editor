@@ -93,4 +93,110 @@ public sealed class UserMapDataEditorDialogTests
             Directory.Delete(testDirectory, recursive: true);
         }
     }
+
+    [Fact]
+    public void Close_WhenRowsChanged_RequiresDiscardConfirmation()
+    {
+        string testDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "UIMarkerEditor.UserMapDataEditorDialogTests",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(testDirectory);
+        try
+        {
+            string filePath = Path.Combine(testDirectory, "mapdata_user.csv");
+            File.WriteAllText(filePath, "321,原名称\r\n");
+
+            Exception? exception = WpfTestHost.Run(() =>
+            {
+                WpfTestHost.EnsureApplicationResources();
+                bool allowDiscard = false;
+                int confirmationCount = 0;
+                UserMapDataEditorDialog dialog = new(filePath, _ =>
+                {
+                    confirmationCount++;
+                    return allowDiscard;
+                });
+                dialog.Show();
+                try
+                {
+                    DataGrid dataGrid = Assert.IsType<DataGrid>(dialog.FindName("MapDataRows_DataGrid"));
+                    UserMapDataEditorRow row = Assert.Single(dataGrid.ItemsSource.Cast<UserMapDataEditorRow>());
+                    row.Name = "修改后的名称";
+
+                    dialog.Close();
+
+                    Assert.True(dialog.IsVisible);
+                    Assert.Equal(1, confirmationCount);
+
+                    allowDiscard = true;
+                    dialog.Close();
+
+                    Assert.False(dialog.IsVisible);
+                    Assert.Equal(2, confirmationCount);
+                }
+                finally
+                {
+                    allowDiscard = true;
+                    if (dialog.IsVisible)
+                    {
+                        dialog.Close();
+                    }
+                }
+            });
+
+            Assert.Null(exception);
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Close_WhenRowsUnchanged_DoesNotRequestDiscardConfirmation()
+    {
+        string testDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "UIMarkerEditor.UserMapDataEditorDialogTests",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(testDirectory);
+        try
+        {
+            string filePath = Path.Combine(testDirectory, "mapdata_user.csv");
+            File.WriteAllText(filePath, "321,原名称\r\n");
+
+            Exception? exception = WpfTestHost.Run(() =>
+            {
+                WpfTestHost.EnsureApplicationResources();
+                int confirmationCount = 0;
+                UserMapDataEditorDialog dialog = new(filePath, _ =>
+                {
+                    confirmationCount++;
+                    return false;
+                });
+                dialog.Show();
+                try
+                {
+                    dialog.Close();
+
+                    Assert.False(dialog.IsVisible);
+                    Assert.Equal(0, confirmationCount);
+                }
+                finally
+                {
+                    if (dialog.IsVisible)
+                    {
+                        dialog.Close();
+                    }
+                }
+            });
+
+            Assert.Null(exception);
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
 }
