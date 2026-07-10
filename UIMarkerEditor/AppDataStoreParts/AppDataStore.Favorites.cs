@@ -147,6 +147,11 @@ public sealed partial class AppDataStore
 
     private void SaveWayMarkFavorites(List<WayMarkFavorite> favorites)
     {
+        ExecuteDataDirectoryManagedWrite(() => SaveWayMarkFavoritesCore(favorites));
+    }
+
+    private void SaveWayMarkFavoritesCore(List<WayMarkFavorite> favorites)
+    {
         if (wayMarkFavoritesFileInvalid)
         {
             throw new InvalidOperationException("waymark-favorites.json 本次启动读取失败。为避免覆盖损坏文件，请先备份、删除或修复该文件后重启工具。");

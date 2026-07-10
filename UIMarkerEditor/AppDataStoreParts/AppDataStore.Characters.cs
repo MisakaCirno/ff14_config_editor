@@ -18,6 +18,11 @@ public sealed partial class AppDataStore
 
     public void SaveCharacters()
     {
+        ExecuteDataDirectoryManagedWrite(SaveCharactersCore);
+    }
+
+    private void SaveCharactersCore()
+    {
         if (charactersFileInvalid)
         {
             throw new InvalidOperationException("characters.json 本次启动读取失败。为避免覆盖损坏文件，请先备份、删除或修复该文件后重启工具。");

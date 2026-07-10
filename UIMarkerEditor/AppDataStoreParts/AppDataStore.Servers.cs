@@ -174,19 +174,15 @@ public sealed partial class AppDataStore
         [System.Diagnostics.CodeAnalysis.NotNullWhen(false)] out ServerListLoadResult? blockedResult)
     {
         blockedResult = null;
-        lock (dataDirectoryManagedFileWriteGate)
+        if (!TryExecuteDataDirectoryManagedWrite(() => SaveServerList(serverList)))
         {
-            if (IsDataDirectoryMigrationWriteBlocked())
-            {
-                blockedResult = CreateServerListSyncFailureResult(
-                    "保存服务器列表",
-                    "工具数据目录正在迁移，本次服务器列表同步结果已跳过。请在迁移完成后重新检查服务器列表。");
-                return false;
-            }
-
-            SaveServerList(serverList);
-            return true;
+            blockedResult = CreateServerListSyncFailureResult(
+                "保存服务器列表",
+                "工具数据目录正在迁移，本次服务器列表同步结果已跳过。请在迁移完成后重新检查服务器列表。");
+            return false;
         }
+
+        return true;
     }
 
     private ServerListLoadResult CreateServerListSyncFailureResult(string failureStage, string failureReason)

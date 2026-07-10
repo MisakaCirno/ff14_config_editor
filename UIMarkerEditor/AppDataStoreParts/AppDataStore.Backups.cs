@@ -18,6 +18,15 @@ public sealed partial class AppDataStore
         bool cleanupAfterCreate = true,
         string creationTrigger = "")
     {
+        return ExecuteDataDirectoryManagedWrite(() =>
+            CreateBackupCore(sourceFilePath, cleanupAfterCreate, creationTrigger));
+    }
+
+    private BackupMetadata CreateBackupCore(
+        string sourceFilePath,
+        bool cleanupAfterCreate,
+        string creationTrigger)
+    {
         if (!File.Exists(sourceFilePath))
         {
             throw new FileNotFoundException("找不到要备份的 UISAVE.DAT 文件。", sourceFilePath);
@@ -100,6 +109,11 @@ public sealed partial class AppDataStore
 
     public void DeleteBackup(BackupMetadata backup)
     {
+        ExecuteDataDirectoryManagedWrite(() => DeleteBackupCore(backup));
+    }
+
+    private static void DeleteBackupCore(BackupMetadata backup)
+    {
         if (!string.IsNullOrWhiteSpace(backup.BackupDirectory) && Directory.Exists(backup.BackupDirectory))
         {
             Directory.Delete(backup.BackupDirectory, recursive: true);
@@ -148,6 +162,11 @@ public sealed partial class AppDataStore
     }
 
     public void CleanupBackups(params string[] preservedBackupDirectories)
+    {
+        ExecuteDataDirectoryManagedWrite(() => CleanupBackupsCore(preservedBackupDirectories));
+    }
+
+    private void CleanupBackupsCore(string[] preservedBackupDirectories)
     {
         List<BackupMetadata> backups = LoadBackups();
         HashSet<string> deleteDirectories = [];

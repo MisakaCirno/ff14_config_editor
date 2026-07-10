@@ -16,6 +16,8 @@ public sealed partial class AppDataStore
     private const string MigrationStageCleaningOldDirectory = "CleaningOldDirectory";
     private const string MigrationStageCompleted = "Completed";
     private const string MigrationStageFailed = "Failed";
+    private const string DataDirectoryMigrationWriteBlockedMessage =
+        "工具数据目录正在迁移，本次写入已取消。请在迁移完成后重试。";
     private static readonly string[] ManagedDataDirectoryNames =
     [
         ConfigsFolderName,
@@ -199,6 +201,46 @@ public sealed partial class AppDataStore
     private bool IsDataDirectoryMigrationWriteBlocked()
     {
         return System.Threading.Volatile.Read(ref dataDirectoryMigrationWriteBlockCount) > 0;
+    }
+
+    private void ExecuteDataDirectoryManagedWrite(Action writeAction)
+    {
+        lock (dataDirectoryManagedFileWriteGate)
+        {
+            if (IsDataDirectoryMigrationWriteBlocked())
+            {
+                throw new InvalidOperationException(DataDirectoryMigrationWriteBlockedMessage);
+            }
+
+            writeAction();
+        }
+    }
+
+    private T ExecuteDataDirectoryManagedWrite<T>(Func<T> writeAction)
+    {
+        lock (dataDirectoryManagedFileWriteGate)
+        {
+            if (IsDataDirectoryMigrationWriteBlocked())
+            {
+                throw new InvalidOperationException(DataDirectoryMigrationWriteBlockedMessage);
+            }
+
+            return writeAction();
+        }
+    }
+
+    private bool TryExecuteDataDirectoryManagedWrite(Action writeAction)
+    {
+        lock (dataDirectoryManagedFileWriteGate)
+        {
+            if (IsDataDirectoryMigrationWriteBlocked())
+            {
+                return false;
+            }
+
+            writeAction();
+            return true;
+        }
     }
 
     private void ExitDataDirectoryMigrationWriteBlock()

@@ -68,11 +68,14 @@ public sealed partial class AppDataStore
         {
             if (!File.Exists(UserMapDataFilePath))
             {
-                Directory.CreateDirectory(CacheDirectory);
-                SafeFileWriter.WriteAllText(
-                    UserMapDataFilePath,
-                    DefaultUserMapDataCsv,
-                    MapDataCsvEncoding);
+                ExecuteDataDirectoryManagedWrite(() =>
+                {
+                    Directory.CreateDirectory(CacheDirectory);
+                    SafeFileWriter.WriteAllText(
+                        UserMapDataFilePath,
+                        DefaultUserMapDataCsv,
+                        MapDataCsvEncoding);
+                });
             }
 
             FileInfo userMapDataFileInfo = new(UserMapDataFilePath);
@@ -971,9 +974,12 @@ public sealed partial class AppDataStore
     {
         try
         {
-            string csv = MapDataTableCsv.Serialize(cache.MapNames);
-            SafeFileWriter.WriteAllText(MapDataCacheFilePath, csv, MapDataCsvEncoding);
-            WriteJson(MapDataCacheMetadataFilePath, cache);
+            ExecuteDataDirectoryManagedWrite(() =>
+            {
+                string csv = MapDataTableCsv.Serialize(cache.MapNames);
+                SafeFileWriter.WriteAllText(MapDataCacheFilePath, csv, MapDataCsvEncoding);
+                WriteJson(MapDataCacheMetadataFilePath, cache);
+            });
         }
         catch (Exception ex)
         {

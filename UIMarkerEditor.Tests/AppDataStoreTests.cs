@@ -2583,6 +2583,52 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task DataDirectoryMigration_WhenInProgress_BlocksManagedDataWrites()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        EnableMapDataManualTable(store);
+        File.WriteAllText(store.UserMapDataFilePath, "123,测试地图\r\n");
+
+        string sourceFilePath = Path.Combine(testDirectory, "BackupSource", "UISAVE.DAT");
+        Directory.CreateDirectory(Path.GetDirectoryName(sourceFilePath)!);
+        File.WriteAllBytes(sourceFilePath, CreateMinimalUISaveFile(regionId: 123));
+
+        BlockingMigrationProgress progress = new("准备迁移");
+        string targetDirectory = Path.Combine(testDirectory, "ManagedWriteMigrationTarget");
+        Task<DataDirectoryMigrationResult> migrationTask = Task.Run(() =>
+            store.ChangeDataDirectoryAsync(targetDirectory, progress));
+        await progress.WaitUntilBlockedAsync();
+
+        try
+        {
+            AppSettings settings = store.CreateSettingsSnapshot();
+            settings.MaxBackupCount++;
+            AssertMigrationWriteBlocked(() => store.SaveSettings(settings));
+
+            store.GetOrCreateCharacter("0123456789ABCDEF");
+            AssertMigrationWriteBlocked(store.SaveCharacters);
+            AssertMigrationWriteBlocked(() => store.AddWayMarkFavorite(
+                WayMarkSnapshotConverter.CreateSnapshot(CreateSampleWayMark(123)),
+                "迁移期间收藏"));
+            AssertMigrationWriteBlocked(() => store.CreateBackup(sourceFilePath, cleanupAfterCreate: false));
+
+            MapDataLoadResult mapDataResult = await store.ForceRefreshMapDataAsync();
+            Assert.False(mapDataResult.Success);
+            Assert.Contains("数据目录正在迁移", mapDataResult.FailureReason);
+        }
+        finally
+        {
+            progress.Release();
+        }
+
+        await migrationTask;
+        AppSettings postMigrationSettings = store.CreateSettingsSnapshot();
+        postMigrationSettings.MaxBackupCount++;
+        store.SaveSettings(postMigrationSettings);
+    }
+
+    [Fact]
     public async Task RefreshServerListAsync_WhenRemoteGroupsMatchCache_ReturnsLatestWithoutUpdatingContent()
     {
         DateTime originalUpdatedAt = new(2026, 6, 18, 8, 0, 0);
@@ -2933,6 +2979,12 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal("{ 损坏的 JSON", File.ReadAllText(favoritesPath));
         Assert.Empty(store.WayMarkFavorites);
         Assert.Contains(store.ConsumeDataLoadWarnings(), warning => warning.Contains("标点收藏无法读取"));
+    }
+
+    private static void AssertMigrationWriteBlocked(Action writeAction)
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(writeAction);
+        Assert.Contains("数据目录正在迁移", exception.Message);
     }
 
     private sealed class RecordingMigrationProgress : IProgress<DataDirectoryMigrationProgress>
