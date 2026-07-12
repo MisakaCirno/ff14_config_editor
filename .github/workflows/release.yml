@@ -51,7 +51,7 @@ jobs:
         run: dotnet test FFXIVConfigEditor.sln --configuration Release --no-restore -m:1 -p:UseSharedCompilation=false
 
       - name: Restore release runtime
-        run: dotnet restore UIMarkerEditor/UIMarkerEditor.csproj -p:RuntimeIdentifier=win-x86 --disable-parallel -m:1
+        run: dotnet restore UIMarkerEditor/UIMarkerEditor.csproj --runtime win-x86 --disable-parallel -m:1
 
       - name: Publish single-file executable
         shell: pwsh
