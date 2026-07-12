@@ -129,10 +129,27 @@
                             <DataTemplate DataType="{x:Type controls:RecentWayMarkFileItem}">
                                 <StackPanel Margin="8,5"
                                             HorizontalAlignment="Stretch">
+                                    <TextBlock Text="{Binding DisplayName}"
+                                               TextWrapping="NoWrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource AppTextBrush}"/>
                                     <TextBlock Text="{Binding UserID}"
                                                TextWrapping="NoWrap"
                                                FontFamily="Consolas"
-                                               Foreground="{StaticResource AppTextBrush}"/>
+                                               Margin="0,2,0,0"
+                                               Foreground="{StaticResource AppMutedTextBrush}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="{x:Type TextBlock}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="Text" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                     <TextBlock Text="{Binding Note}"
                                                TextWrapping="Wrap"
                                                Margin="0,2,0,0"

@@ -33,7 +33,7 @@ public sealed class CharacterProfilesControlTests
                 System.Windows.Window ownerWindow = new();
                 try
                 {
-                    control.Initialize(store, ownerWindow, () => { }, () => { });
+                    control.Initialize(store, ownerWindow, () => { }, () => { }, () => { });
                     control.RefreshCharacterList();
 
                     DataGrid characterGrid = Assert.IsType<DataGrid>(control.FindName("Character_DataGrid"));
@@ -92,9 +92,10 @@ public sealed class CharacterProfilesControlTests
 
                 CharacterProfilesControl control = new();
                 Window ownerWindow = new();
+                int recentFilesRefreshCount = 0;
                 try
                 {
-                    control.Initialize(store, ownerWindow, () => { }, () => { });
+                    control.Initialize(store, ownerWindow, () => { }, () => { }, () => recentFilesRefreshCount++);
                     LoadCharacterProfileIntoDetail(control, profile);
 
                     TextBox characterNameTextBox = Assert.IsType<TextBox>(control.FindName("CharacterName_TextBox"));
@@ -106,6 +107,7 @@ public sealed class CharacterProfilesControlTests
 
                     Assert.Equal("0011223344556677", savedUserID);
                     Assert.Equal("草稿角色", profile.CharacterName);
+                    Assert.Equal(1, recentFilesRefreshCount);
                 }
                 finally
                 {
@@ -147,7 +149,7 @@ public sealed class CharacterProfilesControlTests
                 Window ownerWindow = new();
                 try
                 {
-                    control.Initialize(store, ownerWindow, () => { }, () => { });
+                    control.Initialize(store, ownerWindow, () => { }, () => { }, () => { });
                     control.RefreshCharacterList();
                     LoadCharacterProfileIntoDetail(control, profile);
 
@@ -215,7 +217,7 @@ public sealed class CharacterProfilesControlTests
                 Window ownerWindow = new();
                 try
                 {
-                    control.Initialize(store, ownerWindow, () => { }, () => { });
+                    control.Initialize(store, ownerWindow, () => { }, () => { }, () => { });
                     control.RefreshCharacterList();
                     LoadCharacterProfileIntoDetail(control, firstProfile);
 

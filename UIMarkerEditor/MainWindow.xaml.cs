@@ -132,7 +132,8 @@ namespace UIMarkerEditor
                 appDataStore,
                 this,
                 RefreshBackupList,
-                RefreshLocalCharacterSelectionAvailability);
+                RefreshLocalCharacterSelectionAvailability,
+                RefreshRecentFileMenu);
             BackupRestore_Control.Initialize(
                 appDataStore,
                 this,

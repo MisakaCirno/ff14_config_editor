@@ -2,6 +2,7 @@
 
 public sealed record RecentWayMarkFileItem(
     string FilePath,
+    string DisplayName,
     string UserID,
     string Note,
     string ToolTip,

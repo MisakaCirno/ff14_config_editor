@@ -14,6 +14,7 @@ public partial class CharacterProfilesControl : UserControl
     private Window? ownerWindow;
     private Action refreshBackupList = () => { };
     private Action refreshLocalCharacterSelectionAvailability = () => { };
+    private Action refreshRecentFiles = () => { };
     private CharacterProfile? loadedCharacterProfile;
     private string selectedCharacterDataCenter = string.Empty;
     private string selectedCharacterWorld = string.Empty;
@@ -39,12 +40,14 @@ public partial class CharacterProfilesControl : UserControl
         AppDataStore appDataStore,
         Window ownerWindow,
         Action refreshBackupList,
-        Action refreshLocalCharacterSelectionAvailability)
+        Action refreshLocalCharacterSelectionAvailability,
+        Action refreshRecentFiles)
     {
         this.appDataStore = appDataStore;
         this.ownerWindow = ownerWindow;
         this.refreshBackupList = refreshBackupList;
         this.refreshLocalCharacterSelectionAvailability = refreshLocalCharacterSelectionAvailability;
+        this.refreshRecentFiles = refreshRecentFiles;
         RefreshServerPicker();
     }
 
@@ -625,6 +628,7 @@ public partial class CharacterProfilesControl : UserControl
         }
 
         isCharacterDetailDirty = false;
+        refreshRecentFiles();
         ToastService.ShowSuccess("角色备注已创建。");
         return true;
     }
@@ -754,6 +758,7 @@ public partial class CharacterProfilesControl : UserControl
 
         isCharacterDetailDirty = false;
         loadedCharacterProfile = CloneCharacterProfile(profile);
+        refreshRecentFiles();
 
         if (showSuccessMessage)
         {
@@ -904,6 +909,7 @@ public partial class CharacterProfilesControl : UserControl
         ClearCharacterDetailFields();
         ReloadCharacterList(null);
         refreshBackupList();
+        refreshRecentFiles();
     }
 
     private void ShowCharacterBusyOverlay(string title, string message)

@@ -10,12 +10,14 @@ namespace UIMarkerEditor
         {
             CharacterProfiles_Control.RefreshCharacterList();
             RefreshLocalCharacterSelectionAvailability();
+            RefreshRecentFileMenu();
         }
 
         private void RefreshCharacterListFromExternalChange()
         {
             CharacterProfiles_Control.TryRefreshCharacterListFromExternalChange();
             RefreshLocalCharacterSelectionAvailability();
+            RefreshRecentFileMenu();
         }
 
         private async Task<ServerListLoadResult?> SyncServerListIfNeededAsync(bool showFailureMessage = false)
