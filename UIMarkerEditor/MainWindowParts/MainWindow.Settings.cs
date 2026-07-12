@@ -297,6 +297,23 @@ namespace UIMarkerEditor
 
         private async Task OpenUserMapDataEditorAsync()
         {
+            try
+            {
+                appDataStore.EnsureUserMapDataFileExists();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException
+                or ArgumentException or InvalidOperationException or AppDataStoreException)
+            {
+                AppLogger.Warning(AppLogCategory.IO, "准备用户地图数据文件失败", ex);
+                AppMessageBox.Show(
+                    this,
+                    $"准备用户地图数据文件失败：{ex.Message}",
+                    "无法打开用户地图数据编辑器",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             UserMapDataEditorDialog dialog = new(appDataStore.UserMapDataFilePath)
             {
                 Owner = this

@@ -75,14 +75,7 @@ public sealed partial class AppDataStore
         {
             if (!File.Exists(UserMapDataFilePath))
             {
-                ExecuteDataDirectoryManagedWrite(() =>
-                {
-                    Directory.CreateDirectory(CacheDirectory);
-                    SafeFileWriter.WriteAllText(
-                        UserMapDataFilePath,
-                        DefaultUserMapDataCsv,
-                        MapDataCsvEncoding);
-                });
+                EnsureUserMapDataFileExists();
             }
 
             FileInfo userMapDataFileInfo = new(UserMapDataFilePath);
@@ -203,6 +196,30 @@ public sealed partial class AppDataStore
                 currentStage,
                 FormatDataSyncFailureReason(ex));
         }
+    }
+
+    internal void EnsureUserMapDataFileExists()
+    {
+        if (File.Exists(UserMapDataFilePath))
+        {
+            return;
+        }
+
+        ExecuteDataDirectoryManagedWrite(EnsureUserMapDataFileExistsCore);
+    }
+
+    private void EnsureUserMapDataFileExistsCore()
+    {
+        if (File.Exists(UserMapDataFilePath))
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(CacheDirectory);
+        SafeFileWriter.WriteAllText(
+            UserMapDataFilePath,
+            DefaultUserMapDataCsv,
+            MapDataCsvEncoding);
     }
 
     private MapDataLoadResult LoadUserMapDataRepairFallback(string failureStage, string failureReason)

@@ -46,6 +46,7 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.True(Directory.Exists(store.LogDirectory));
         Assert.True(File.Exists(store.SettingsFilePath));
         Assert.True(File.Exists(store.CharactersFilePath));
+        Assert.True(File.Exists(store.UserMapDataFilePath));
         Assert.True(Directory.Exists(store.BackupsDirectory));
         Assert.Equal(Path.Combine(testDirectory, "Data", "configs", "config.json"), store.SettingsFilePath);
         Assert.Equal(Path.Combine(testDirectory, "Data", "cache", "servers.json"), store.ServersFilePath);
@@ -66,6 +67,24 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.False(store.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(string.Empty, store.Settings.GameInstallDirectory);
         Assert.Equal(string.Empty, store.Settings.WayMarkCustomDirectory);
+        Dictionary<ushort, string> userMapNames = ReadUserMapDataCsv(store);
+        Assert.Equal(10, userMapNames.Count);
+        Assert.Equal("监狱废墟托托·拉克千狱", userMapNames[1]);
+        Assert.Equal("神灵圣域放浪神古神殿", userMapNames[10]);
+    }
+
+    [Fact]
+    public void Initialize_WhenUserMapDataExists_DoesNotOverwriteIt()
+    {
+        const string existingCsv = "654,用户副本\r\n";
+        string userMapDataPath = Path.Combine(testDirectory, "Data", "cache", "mapdata_user.csv");
+        Directory.CreateDirectory(Path.GetDirectoryName(userMapDataPath)!);
+        File.WriteAllText(userMapDataPath, existingCsv);
+        AppDataStore store = CreateStore();
+
+        store.Initialize();
+
+        Assert.Equal(existingCsv, File.ReadAllText(store.UserMapDataFilePath));
     }
 
     [Fact]
@@ -2354,6 +2373,7 @@ public sealed class AppDataStoreTests : IDisposable
         AppDataStore store = CreateStore(networkClient);
         store.Initialize();
         EnableMapDataManualTable(store);
+        File.Delete(store.UserMapDataFilePath);
 
         MapDataLoadResult result = await store.EnsureMapDataAvailableAsync();
 

@@ -404,6 +404,7 @@ public sealed partial class AppDataStore
             Directory.CreateDirectory(BackupsDirectory);
             Directory.CreateDirectory(CacheDirectory);
             Directory.CreateDirectory(LogDirectory);
+            EnsureUserMapDataFileExistsCore();
             if (!File.Exists(SettingsFilePath))
             {
                 WriteJson(SettingsFilePath, Settings);
