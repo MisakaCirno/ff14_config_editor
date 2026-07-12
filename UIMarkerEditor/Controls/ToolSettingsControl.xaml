@@ -267,6 +267,23 @@
                                         Click="OpenGameInstallDirectory_Button_Click"/>
                             </StackPanel>
 
+                            <Border x:Name="GameInstallDirectoryCapabilityWarning_Border"
+                                    Margin="0,8,0,8"
+                                    Padding="10,8"
+                                    Background="{DynamicResource AppWarningButtonBrush}"
+                                    CornerRadius="4"
+                                    Visibility="Collapsed">
+                                <TextBlock x:Name="GameInstallDirectoryCapabilityWarning_TextBlock"
+                                           Foreground="{DynamicResource AppWarningButtonForegroundBrush}"
+                                           TextWrapping="Wrap"/>
+                            </Border>
+
+                            <CheckBox x:Name="ShowGameInstallDirectoryDetectionWarning_CheckBox"
+                                      Content="启动时未能自动获取游戏安装目录时提示"
+                                      Margin="0,0,0,10"
+                                      Checked="ShowGameInstallDirectoryDetectionWarning_CheckBox_Changed"
+                                      Unchecked="ShowGameInstallDirectoryDetectionWarning_CheckBox_Changed"/>
+
                             <TextBlock Text="打开位置"
                                        Style="{StaticResource SettingsSubsectionTitleStyle}"/>
                             <TextBlock Text="选择文件时，文件选择窗口默认打开的目录。"
@@ -419,6 +436,13 @@
                                 <LineBreak/>
                                 <Run Text="清理策略只影响工具创建的备份文件，不会删除游戏原始文件。"/>
                             </TextBlock>
+                            <TextBlock x:Name="AutoBackupUnavailable_TextBlock"
+                                       Text="当前未找到可验证的游戏角色目录，自动备份暂不会执行。"
+                                       Style="{StaticResource SettingsMutedTextStyle}"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap"
+                                       Margin="0,-4,0,10"
+                                       Visibility="Collapsed"/>
 
                             <TextBlock Text="备份时机"
                                        Style="{StaticResource SettingsSubsectionTitleStyle}"/>

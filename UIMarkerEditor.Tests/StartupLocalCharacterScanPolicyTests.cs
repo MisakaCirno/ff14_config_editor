@@ -14,7 +14,7 @@ public sealed class StartupLocalCharacterScanPolicyTests
         };
 
         Assert.True(StartupLocalCharacterScanPolicy.ShouldRun(settings));
-        Assert.False(StartupLocalCharacterScanPolicy.ShouldMarkCompleted(settings));
+        Assert.False(StartupLocalCharacterScanPolicy.ShouldMarkCompleted(settings, scanCompleted: true));
     }
 
     [Fact]
@@ -26,11 +26,12 @@ public sealed class StartupLocalCharacterScanPolicyTests
         };
 
         Assert.True(StartupLocalCharacterScanPolicy.ShouldRun(settings));
-        Assert.True(StartupLocalCharacterScanPolicy.ShouldMarkCompleted(settings));
+        Assert.False(StartupLocalCharacterScanPolicy.ShouldMarkCompleted(settings, scanCompleted: false));
+        Assert.True(StartupLocalCharacterScanPolicy.ShouldMarkCompleted(settings, scanCompleted: true));
 
         settings.StartupLocalCharacterScanCompleted = true;
 
         Assert.False(StartupLocalCharacterScanPolicy.ShouldRun(settings));
-        Assert.False(StartupLocalCharacterScanPolicy.ShouldMarkCompleted(settings));
+        Assert.False(StartupLocalCharacterScanPolicy.ShouldMarkCompleted(settings, scanCompleted: true));
     }
 }

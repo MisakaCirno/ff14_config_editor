@@ -542,6 +542,7 @@ public sealed partial class AppDataStore
             StartupWayMarkAction = settings.StartupWayMarkAction,
             StartupLocalCharacterScanMode = settings.StartupLocalCharacterScanMode,
             StartupLocalCharacterScanCompleted = settings.StartupLocalCharacterScanCompleted,
+            ShowGameInstallDirectoryDetectionWarning = settings.ShowGameInstallDirectoryDetectionWarning,
             WayMarkFavoriteSaveMode = settings.WayMarkFavoriteSaveMode,
             MapDataTableMode = settings.MapDataTableMode,
             MapDataTableModeInitialized = settings.MapDataTableModeInitialized,

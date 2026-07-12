@@ -213,6 +213,7 @@ public sealed class AppSettings
     public StartupWayMarkAction StartupWayMarkAction { get; set; } = StartupWayMarkAction.None;
     public StartupLocalCharacterScanMode StartupLocalCharacterScanMode { get; set; } = StartupLocalCharacterScanMode.EveryStartup;
     public bool StartupLocalCharacterScanCompleted { get; set; }
+    public bool ShowGameInstallDirectoryDetectionWarning { get; set; } = true;
     public WayMarkFavoriteSaveMode WayMarkFavoriteSaveMode { get; set; } = WayMarkFavoriteSaveMode.Manual;
     public MapDataTableMode MapDataTableMode { get; set; } = MapDataTableMode.Automatic;
     public bool MapDataTableModeInitialized { get; set; }

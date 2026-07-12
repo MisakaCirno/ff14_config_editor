@@ -63,6 +63,7 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.True(store.Settings.ShowAllowUnknownMapIdPolicyWarning);
         Assert.Equal(StartupLocalCharacterScanMode.EveryStartup, store.Settings.StartupLocalCharacterScanMode);
         Assert.False(store.Settings.StartupLocalCharacterScanCompleted);
+        Assert.True(store.Settings.ShowGameInstallDirectoryDetectionWarning);
         Assert.Equal(WayMarkOpenDirectoryMode.Default, store.Settings.WayMarkOpenDirectoryMode);
         Assert.False(store.Settings.WayMarkOpenDirectoryModeInitialized);
         Assert.Equal(string.Empty, store.Settings.GameInstallDirectory);
@@ -709,6 +710,7 @@ public sealed class AppDataStoreTests : IDisposable
             StartupWayMarkAction = StartupWayMarkAction.LoadMostRecentFile,
             StartupLocalCharacterScanMode = StartupLocalCharacterScanMode.FirstInitializationOnly,
             StartupLocalCharacterScanCompleted = true,
+            ShowGameInstallDirectoryDetectionWarning = false,
             WayMarkFavoriteSaveMode = WayMarkFavoriteSaveMode.Auto,
             MapDataTableMode = MapDataTableMode.Automatic,
             MapDataTableModeInitialized = true,
@@ -746,6 +748,7 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal(StartupWayMarkAction.LoadMostRecentFile, reloadedStore.Settings.StartupWayMarkAction);
         Assert.Equal(StartupLocalCharacterScanMode.FirstInitializationOnly, reloadedStore.Settings.StartupLocalCharacterScanMode);
         Assert.True(reloadedStore.Settings.StartupLocalCharacterScanCompleted);
+        Assert.False(reloadedStore.Settings.ShowGameInstallDirectoryDetectionWarning);
         Assert.Equal(WayMarkFavoriteSaveMode.Auto, reloadedStore.Settings.WayMarkFavoriteSaveMode);
         Assert.Equal(MapDataTableMode.Automatic, reloadedStore.Settings.MapDataTableMode);
         Assert.True(reloadedStore.Settings.MapDataTableModeInitialized);

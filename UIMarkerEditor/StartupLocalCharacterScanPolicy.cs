@@ -12,11 +12,12 @@ internal static class StartupLocalCharacterScanPolicy
             !settings.StartupLocalCharacterScanCompleted;
     }
 
-    public static bool ShouldMarkCompleted(AppSettings settings)
+    public static bool ShouldMarkCompleted(AppSettings settings, bool scanCompleted)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
-        return settings.StartupLocalCharacterScanMode == StartupLocalCharacterScanMode.FirstInitializationOnly &&
+        return scanCompleted &&
+            settings.StartupLocalCharacterScanMode == StartupLocalCharacterScanMode.FirstInitializationOnly &&
             !settings.StartupLocalCharacterScanCompleted;
     }
 }

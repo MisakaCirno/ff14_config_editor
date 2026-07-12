@@ -118,6 +118,7 @@ public partial class ToolSettingsControl : UserControl
             LimitBackupDays_CheckBox.IsChecked = appDataStore.Settings.LimitBackupDays;
             ApplyStartupWayMarkActionToUi(appDataStore.Settings.StartupWayMarkAction);
             ApplyStartupLocalCharacterScanModeToUi(appDataStore.Settings.StartupLocalCharacterScanMode);
+            ShowGameInstallDirectoryDetectionWarning_CheckBox.IsChecked = appDataStore.Settings.ShowGameInstallDirectoryDetectionWarning;
             GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
             WayMarkCustomDirectory_TextBox.Text = appDataStore.Settings.WayMarkCustomDirectory;
             ApplyWayMarkOpenDirectoryModeToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
@@ -199,6 +200,14 @@ public partial class ToolSettingsControl : UserControl
             GameInstallDirectory_TextBox.Text = appDataStore.Settings.GameInstallDirectory;
             ApplyWayMarkOpenDirectoryModeToUi(appDataStore.Settings.WayMarkOpenDirectoryMode);
         });
+    }
+
+    public void FocusGameInstallDirectoryInput()
+    {
+        GameInstallDirectory_TextBox.BringIntoView();
+        GameInstallDirectory_TextBox.Focus();
+        Keyboard.Focus(GameInstallDirectory_TextBox);
+        GameInstallDirectory_TextBox.SelectAll();
     }
 
     private void SettingsNavigation_ListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -386,6 +395,19 @@ public partial class ToolSettingsControl : UserControl
                 settings.ShowAllowUnknownMapIdPolicyWarning = !ShowAllowUnknownMapIdPolicyWarning_SegmentedSwitch.IsLeftSelected;
             },
             "保存未知地图 ID 提示设置");
+    }
+
+    private void ShowGameInstallDirectoryDetectionWarning_CheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (isLoadingSettingsIntoUi) return;
+
+        SaveSettingsMutation(
+            settings =>
+            {
+                settings.ShowGameInstallDirectoryDetectionWarning =
+                    ShowGameInstallDirectoryDetectionWarning_CheckBox.IsChecked == true;
+            },
+            "保存游戏安装目录检测提示设置");
     }
 
     private void OpenDirectoryMode_RadioButton_Checked(object sender, RoutedEventArgs e)
@@ -1977,6 +1999,9 @@ public partial class ToolSettingsControl : UserControl
     {
         string gameInstallDirectory = GameInstallDirectory_TextBox.Text.Trim();
         bool hasGameInstallDirectory = !string.IsNullOrWhiteSpace(gameInstallDirectory);
+        bool hasValidGameInstallDirectory = WayMarkOpenDirectoryResolver.TryNormalizeGameInstallDirectory(
+            gameInstallDirectory,
+            out _);
         string? gameCharacterDirectory = null;
         bool canUseGameCharacterDirectory = false;
         if (hasGameInstallDirectory &&
@@ -1995,6 +2020,16 @@ public partial class ToolSettingsControl : UserControl
             : hasGameInstallDirectory
                 ? "未找到。请确认游戏安装目录是否正确；若是首次使用，建议先启动一次游戏后再尝试使用本工具。"
                 : "请先填写游戏安装目录。";
+
+        AutoBackupUnavailable_TextBlock.Visibility = canUseGameCharacterDirectory
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        GameInstallDirectoryCapabilityWarning_Border.Visibility = canUseGameCharacterDirectory
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        GameInstallDirectoryCapabilityWarning_TextBlock.Text = hasValidGameInstallDirectory
+            ? "已获取游戏安装目录，但尚未找到本地角色目录。请先启动游戏并进入角色；本地角色扫描和批量识别角色名、直接选择角色、角色活跃时间和自动备份将在角色目录可用后恢复。"
+            : "当前未获取有效游戏安装目录。启动本地角色扫描和批量识别角色名、直接选择角色、角色活跃时间和基于游戏目录的自动备份暂不可用；手动打开、编辑和保存标点文件不受影响。";
 
         if (canUseGameCharacterDirectory || OpenDirectoryGameCharacter_RadioButton.IsChecked != true)
         {

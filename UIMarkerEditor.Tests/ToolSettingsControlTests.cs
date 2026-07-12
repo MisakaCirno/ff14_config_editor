@@ -8,6 +8,80 @@ namespace UIMarkerEditor.Tests;
 public sealed class ToolSettingsControlTests
 {
     [Fact]
+    public void LoadSettings_WhenGameDirectoryMissing_ShowsFeatureWarnings()
+    {
+        string testDirectory = CreateTestDirectory();
+        try
+        {
+            Exception? exception = WpfTestHost.Run(() =>
+            {
+                WpfTestHost.EnsureApplicationResources();
+                AppDataStore store = CreateInitializedStore(testDirectory);
+
+                using ToolSettingsControlHost host = CreateHost(store, () => { });
+                Border warningBorder = Assert.IsType<Border>(
+                    host.Control.FindName("GameInstallDirectoryCapabilityWarning_Border"));
+                TextBlock autoBackupWarning = Assert.IsType<TextBlock>(
+                    host.Control.FindName("AutoBackupUnavailable_TextBlock"));
+                CheckBox startupWarningCheckBox = Assert.IsType<CheckBox>(
+                    host.Control.FindName("ShowGameInstallDirectoryDetectionWarning_CheckBox"));
+
+                Assert.Equal(Visibility.Visible, warningBorder.Visibility);
+                Assert.Equal(Visibility.Visible, autoBackupWarning.Visibility);
+                Assert.True(startupWarningCheckBox.IsChecked);
+
+                startupWarningCheckBox.IsChecked = false;
+
+                Assert.False(store.Settings.ShowGameInstallDirectoryDetectionWarning);
+            });
+
+            Assert.Null(exception);
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void LoadSettings_WhenGameCharacterDirectoryExists_HidesFeatureWarnings()
+    {
+        string testDirectory = CreateTestDirectory();
+        try
+        {
+            Exception? exception = WpfTestHost.Run(() =>
+            {
+                WpfTestHost.EnsureApplicationResources();
+                AppDataStore store = CreateInitializedStore(testDirectory);
+                string gameInstallDirectory = CreateGameInstallDirectory(testDirectory, "AvailableGame");
+                Directory.CreateDirectory(Path.Combine(
+                    gameInstallDirectory,
+                    "game",
+                    "My Games",
+                    "FINAL FANTASY XIV - A Realm Reborn"));
+                AppSettings settings = store.CreateSettingsSnapshot();
+                settings.GameInstallDirectory = gameInstallDirectory;
+                store.SaveSettings(settings);
+
+                using ToolSettingsControlHost host = CreateHost(store, () => { });
+                Border warningBorder = Assert.IsType<Border>(
+                    host.Control.FindName("GameInstallDirectoryCapabilityWarning_Border"));
+                TextBlock autoBackupWarning = Assert.IsType<TextBlock>(
+                    host.Control.FindName("AutoBackupUnavailable_TextBlock"));
+
+                Assert.Equal(Visibility.Collapsed, warningBorder.Visibility);
+                Assert.Equal(Visibility.Collapsed, autoBackupWarning.Visibility);
+            });
+
+            Assert.Null(exception);
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void CommitPendingSettingsEdits_WhenScanDisabled_SavesGameInstallDirectoryWithoutScanning()
     {
         string testDirectory = CreateTestDirectory();

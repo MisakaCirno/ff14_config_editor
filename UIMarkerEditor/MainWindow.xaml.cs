@@ -216,9 +216,16 @@ namespace UIMarkerEditor
                 return;
             }
 
+            bool scanCompleted = false;
             try
             {
                 GameInstallDirectoryUpdateResult result = await appDataStore.AutoDetectGameInstallDirectoryAsync();
+                if (result == GameInstallDirectoryUpdateResult.NotFound)
+                {
+                    PromptForMissingGameInstallDirectory();
+                    return;
+                }
+
                 if (result is GameInstallDirectoryUpdateResult.Updated or GameInstallDirectoryUpdateResult.Relocated)
                 {
                     ToolSettings_Control.RefreshGameInstallDirectoryFromSettings();
@@ -234,7 +241,7 @@ namespace UIMarkerEditor
                         MessageBoxImage.Information);
                 }
 
-                await ScanLocalCharactersAsync();
+                scanCompleted = await ScanLocalCharactersAsync();
             }
             catch (Exception ex)
             {
@@ -242,13 +249,50 @@ namespace UIMarkerEditor
             }
             finally
             {
-                MarkStartupLocalCharacterScanCompletedIfNeeded();
+                MarkStartupLocalCharacterScanCompletedIfNeeded(scanCompleted);
             }
         }
 
-        private void MarkStartupLocalCharacterScanCompletedIfNeeded()
+        private void PromptForMissingGameInstallDirectory()
         {
-            if (!StartupLocalCharacterScanPolicy.ShouldMarkCompleted(appDataStore.Settings))
+            if (!appDataStore.Settings.ShowGameInstallDirectoryDetectionWarning)
+            {
+                return;
+            }
+
+            AppMessageBoxCheckBoxResult prompt = AppMessageBox.ShowWithCheckBox(
+                this,
+                "未能自动获取最终幻想 XIV 游戏安装目录。手动打开、编辑和保存标点文件不受影响；启动本地角色扫描和批量识别角色名、直接选择角色、角色活跃时间和基于游戏目录的自动备份暂不可用。\n\n打开真实角色目录中的 UISAVE.DAT 后，工具会再次尝试获取路径；也可以前往工具设置手动选择。是否现在前往工具设置？",
+                "未获取游戏安装目录",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                "不再在启动时提示");
+
+            if (prompt.IsChecked)
+            {
+                AppSettings settings = appDataStore.CreateSettingsSnapshot();
+                settings.ShowGameInstallDirectoryDetectionWarning = false;
+                try
+                {
+                    appDataStore.SaveSettings(settings);
+                    ToolSettings_Control.LoadSettingsIntoUi();
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException or IOException or UnauthorizedAccessException)
+                {
+                    AppLogger.Warning(AppLogCategory.IO, "保存游戏安装目录检测提示设置失败", ex);
+                }
+            }
+
+            if (prompt.Result == MessageBoxResult.Yes)
+            {
+                MainTab_Control.SelectedItem = ToolSettings_TabItem;
+                Dispatcher.BeginInvoke(ToolSettings_Control.FocusGameInstallDirectoryInput);
+            }
+        }
+
+        private void MarkStartupLocalCharacterScanCompletedIfNeeded(bool scanCompleted)
+        {
+            if (!StartupLocalCharacterScanPolicy.ShouldMarkCompleted(appDataStore.Settings, scanCompleted))
             {
                 return;
             }

@@ -6,11 +6,16 @@ namespace UIMarkerEditor
 {
     public partial class MainWindow
     {
-        private async Task ScanLocalCharactersAsync()
+        private async Task<bool> ScanLocalCharactersAsync()
         {
             try
             {
                 LocalGameCharacterScanPreparation preparation = await Task.Run(appDataStore.PrepareLocalGameCharacterScan);
+                if (string.IsNullOrWhiteSpace(preparation.GameCharacterRootDirectory))
+                {
+                    return false;
+                }
+
                 LocalGameCharacterScanResult result = appDataStore.ApplyLocalGameCharacterScan(preparation);
                 foreach (ClientLogCharacterNameScanError error in result.Errors)
                 {
@@ -20,7 +25,7 @@ namespace UIMarkerEditor
                 if (result.SkippedBecauseGameInstallDirectoryChanged ||
                     result.SkippedBecauseCharactersChanged)
                 {
-                    return;
+                    return false;
                 }
 
                 if (result.Changed)
@@ -28,10 +33,13 @@ namespace UIMarkerEditor
                     RefreshCharacterListFromExternalChange();
                     RefreshBackupList();
                 }
+
+                return true;
             }
             catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException)
             {
                 AppLogger.Warning(AppLogCategory.IO, "启动本地角色扫描失败", ex);
+                return false;
             }
             finally
             {

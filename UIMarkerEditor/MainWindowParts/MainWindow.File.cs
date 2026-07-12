@@ -495,7 +495,7 @@ namespace UIMarkerEditor
                     return;
                 }
 
-                ToastService.ShowSuccess("已根据当前文件记录游戏安装目录。");
+                ToastService.ShowSuccess("已从当前 UISAVE.DAT 获取游戏安装目录，本地角色扫描、角色名识别、直接选择角色和自动备份等功能已恢复。");
             }
             catch (Exception ex) when (ex is InvalidOperationException or AppDataStoreException or IOException or UnauthorizedAccessException)
             {
