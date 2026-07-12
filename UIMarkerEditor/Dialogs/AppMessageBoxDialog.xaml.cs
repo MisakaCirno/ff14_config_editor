@@ -1,11 +1,15 @@
-﻿using System.Windows;
+﻿using System.Runtime.InteropServices;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
+using FF14ConfigEditor;
 
 namespace UIMarkerEditor;
 
 public partial class AppMessageBoxDialog : Window
 {
+    private const string ClipboardSeparator = "---------------------------";
     private MessageBoxResult result;
 
     public MessageBoxResult Result => result;
@@ -25,6 +29,7 @@ public partial class AppMessageBoxDialog : Window
         result = GetDefaultResult(button);
         ConfigureIcon(icon);
         ConfigureButtons(button);
+        ConfigureCopyCommand();
     }
 
     public bool IsOptionChecked => Option_CheckBox.IsChecked == true;
@@ -82,6 +87,58 @@ public partial class AppMessageBoxDialog : Window
                 AddButton("取消", MessageBoxResult.Cancel, null, isDefault: false, isCancel: true);
                 break;
         }
+    }
+
+    private void ConfigureCopyCommand()
+    {
+        CommandBindings.Add(new CommandBinding(ApplicationCommands.Copy, CopyCommand_Executed));
+        InputBindings.Add(new KeyBinding(
+            ApplicationCommands.Copy,
+            new KeyGesture(Key.C, ModifierKeys.Control)));
+        InputBindings.Add(new KeyBinding(
+            ApplicationCommands.Copy,
+            new KeyGesture(Key.Insert, ModifierKeys.Control)));
+    }
+
+    private void CopyCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        try
+        {
+            Clipboard.SetText(BuildClipboardText());
+        }
+        catch (ExternalException ex)
+        {
+            AppLogger.Warning(AppLogCategory.UI, "复制信息框内容失败", ex);
+        }
+
+        e.Handled = true;
+    }
+
+    internal string BuildClipboardText()
+    {
+        List<string> sections = [Title, Message_TextBlock.Text];
+        if (Option_CheckBox.Visibility == Visibility.Visible)
+        {
+            string checkState = Option_CheckBox.IsChecked == true ? "x" : " ";
+            sections.Add($"[{checkState}] {Option_CheckBox.Content}");
+        }
+
+        string buttonText = string.Join(
+            "   ",
+            Buttons_Panel.Children
+                .OfType<Button>()
+                .Select(button => button.Content?.ToString())
+                .Where(text => !string.IsNullOrWhiteSpace(text)));
+        if (!string.IsNullOrWhiteSpace(buttonText))
+        {
+            sections.Add(buttonText);
+        }
+
+        return ClipboardSeparator + Environment.NewLine +
+            string.Join(
+                Environment.NewLine + ClipboardSeparator + Environment.NewLine,
+                sections) +
+            Environment.NewLine + ClipboardSeparator;
     }
 
     private void AddButton(string text, MessageBoxResult buttonResult, string? styleKey, bool isDefault, bool isCancel)
