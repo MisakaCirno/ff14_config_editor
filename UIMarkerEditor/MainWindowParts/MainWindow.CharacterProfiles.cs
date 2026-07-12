@@ -50,6 +50,7 @@ namespace UIMarkerEditor
 
             if (CharacterProfiles_TabItem.IsSelected)
             {
+                await CharacterProfiles_Control.RefreshCharacterActivityAsync();
                 await SyncServerListIfNeededAsync();
             }
         }

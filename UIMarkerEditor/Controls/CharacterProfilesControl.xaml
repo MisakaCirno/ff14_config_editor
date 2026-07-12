@@ -15,11 +15,35 @@
                   Padding="5">
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="LastActivityRefreshStatus_TextBlock"
+                               Text="最后刷新：尚未扫描"
+                               Foreground="{StaticResource AppMutedTextBrush}"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Center"
+                               TextAlignment="Left"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="最后活跃时间根据角色目录中 DAT 和 LOG 文件的最后修改时间推测。"/>
+                    <Button x:Name="RefreshCharacterActivity_Button"
+                            Grid.Column="1"
+                            Content="刷新活跃时间"
+                            MinWidth="112"
+                            Height="30"
+                            Margin="8,0,0,0"
+                            Click="RefreshCharacterActivity_Button_Click"/>
+                </Grid>
+
                 <DataGrid x:Name="Character_DataGrid"
+                           Grid.Row="1"
                           AutoGenerateColumns="False"
                           CanUserAddRows="False"
                           CanUserDeleteRows="False"
@@ -63,6 +87,15 @@
                                             SortMemberPath="World"
                                             Width="SizeToCells"
                                             MinWidth="70"/>
+                        <DataGridTextColumn Binding="{Binding LastActiveTimeDisplay}"
+                                            SortMemberPath="LastActiveAtUtc"
+                                            Width="125"
+                                            MinWidth="110">
+                            <DataGridTextColumn.Header>
+                                <TextBlock Text="最后活跃"
+                                           ToolTip="根据角色目录中 DAT 和 LOG 文件的最后修改时间推测，并非准确登录时间。"/>
+                            </DataGridTextColumn.Header>
+                        </DataGridTextColumn>
                         <DataGridTextColumn Header="User ID"
                                             Binding="{Binding UserID}"
                                             SortMemberPath="UserID"
@@ -71,7 +104,7 @@
                     </DataGrid.Columns>
                 </DataGrid>
 
-                <StackPanel Grid.Row="1"
+                <StackPanel Grid.Row="2"
                             Orientation="Horizontal"
                             HorizontalAlignment="Right"
                             Margin="0,8,0,0">

@@ -287,6 +287,12 @@ public sealed class CharacterProfile
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
     [JsonIgnore]
+    public DateTime? LastActiveAtUtc { get; set; }
+
+    [JsonIgnore]
+    public string LastActiveTimeDisplay { get; set; } = "尚未扫描";
+
+    [JsonIgnore]
     public string DisplayName
     {
         get

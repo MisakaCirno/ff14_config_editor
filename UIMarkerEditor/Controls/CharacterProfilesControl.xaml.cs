@@ -24,6 +24,7 @@ public partial class CharacterProfilesControl : UserControl
     private bool suppressCharacterSelectionChanged;
     private bool suppressCharacterChangeTracking;
     private Task<ServerListLoadResult?>? serverListSyncTask;
+    private Task? characterActivityScanTask;
 
     public bool IsOperationBusy => isCharacterOperationBusy || CharacterBusyOverlay_Control.IsBusy;
 
@@ -70,6 +71,106 @@ public partial class CharacterProfilesControl : UserControl
 
         ReloadCharacterList(GetPreferredRefreshUserID());
         return true;
+    }
+
+    public async Task RefreshCharacterActivityAsync(bool showFailureMessage = false)
+    {
+        if (appDataStore == null)
+        {
+            return;
+        }
+
+        Task scanTask = characterActivityScanTask ??= RefreshCharacterActivityCoreAsync(showFailureMessage);
+        try
+        {
+            await scanTask;
+        }
+        finally
+        {
+            if (ReferenceEquals(characterActivityScanTask, scanTask))
+            {
+                characterActivityScanTask = null;
+            }
+        }
+    }
+
+    private async Task RefreshCharacterActivityCoreAsync(bool showFailureMessage)
+    {
+        if (appDataStore == null)
+        {
+            return;
+        }
+
+        CharacterActivityScanPreparation preparation = appDataStore.PrepareCharacterActivityScan();
+        int totalCount = preparation.Items.Count;
+        ShowCharacterProgressOverlay(
+            "正在刷新最后活跃时间...",
+            totalCount == 0 ? "当前没有角色备注需要扫描。" : "正在准备角色目录扫描。",
+            0,
+            $"0 / {totalCount}");
+
+        CharacterActivityScanResult? result = null;
+        Exception? scanFailure = null;
+        try
+        {
+            Progress<CharacterActivityScanProgress> progress = new(UpdateCharacterActivityProgress);
+            result = await Task.Run(() => AppDataStore.ScanCharacterActivity(preparation, progress));
+        }
+        catch (Exception ex)
+        {
+            scanFailure = ex;
+            AppLogger.Warning(AppLogCategory.IO, "扫描角色最后活跃时间失败", ex);
+        }
+        finally
+        {
+            HideCharacterBusyOverlay();
+        }
+
+        if (scanFailure != null || result == null)
+        {
+            LastActivityRefreshStatus_TextBlock.Text = "最后刷新：失败，显示上次结果";
+            if (showFailureMessage)
+            {
+                AppMessageBox.Show(
+                    ownerWindow,
+                    $"刷新最后活跃时间失败：{scanFailure?.Message ?? "未知错误"}",
+                    "刷新活跃时间失败",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+
+            return;
+        }
+
+        if (!appDataStore.TryApplyCharacterActivityScan(result))
+        {
+            LastActivityRefreshStatus_TextBlock.Text = "最后刷新：结果已丢弃，游戏目录已变化";
+            return;
+        }
+
+        foreach (CharacterActivityScanEntry entry in result.Entries.Where(static entry =>
+            entry.State == CharacterActivityScanState.ReadFailed))
+        {
+            AppLogger.Warning(
+                AppLogCategory.IO,
+                $"角色活跃时间扫描失败：{entry.UserID}；{entry.ErrorMessage}");
+        }
+
+        Character_DataGrid.Items.Refresh();
+        string completedAt = result.CompletedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
+        LastActivityRefreshStatus_TextBlock.Text = result.ReadFailureCount > 0
+            ? $"最后刷新：{completedAt}（{result.ReadFailureCount} 个角色读取失败）"
+            : string.IsNullOrWhiteSpace(result.GameCharacterRootDirectory)
+                ? $"最后刷新：{completedAt}（未找到本地角色目录）"
+                : $"最后刷新：{completedAt}";
+    }
+
+    private void UpdateCharacterActivityProgress(CharacterActivityScanProgress progress)
+    {
+        CharacterBusyOverlay_Control.UpdateProgress(
+            $"正在扫描：{progress.DisplayName}",
+            progress.Percent,
+            $"{progress.CompletedCount} / {progress.TotalCount}（{progress.Percent:0}%）");
     }
 
     public void ApplyLayoutSettings(WindowLayoutSettings layout)
@@ -440,6 +541,7 @@ public partial class CharacterProfilesControl : UserControl
         }
 
         ReloadCharacterList(null);
+        await RefreshCharacterActivityAsync(showFailureMessage: false);
         refreshBackupList();
         refreshLocalCharacterSelectionAvailability();
         if (result.LocalCharacterCount == 0)
@@ -472,6 +574,11 @@ public partial class CharacterProfilesControl : UserControl
         }
 
         ToastService.ShowSuccess(message);
+    }
+
+    private async void RefreshCharacterActivity_Button_Click(object sender, RoutedEventArgs e)
+    {
+        await RefreshCharacterActivityAsync(showFailureMessage: true);
     }
 
     private bool TryCreateCharacterProfile(BackupCharacterProfileDialog dialog, out string createdUserID)
@@ -763,7 +870,9 @@ public partial class CharacterProfilesControl : UserControl
             DataCenter = profile.DataCenter,
             World = profile.World,
             Note = profile.Note,
-            UpdatedAt = profile.UpdatedAt
+            UpdatedAt = profile.UpdatedAt,
+            LastActiveAtUtc = profile.LastActiveAtUtc,
+            LastActiveTimeDisplay = profile.LastActiveTimeDisplay
         };
     }
 
@@ -799,6 +908,24 @@ public partial class CharacterProfilesControl : UserControl
 
     private void ShowCharacterBusyOverlay(string title, string message)
     {
+        BeginCharacterBusyOperation();
+        CharacterBusyOverlay_Control.Show(title, message);
+        UpdateCharacterActionStates();
+    }
+
+    private void ShowCharacterProgressOverlay(
+        string title,
+        string message,
+        double progressValue,
+        string progressText)
+    {
+        BeginCharacterBusyOperation();
+        CharacterBusyOverlay_Control.ShowProgress(title, message, progressValue, progressText);
+        UpdateCharacterActionStates();
+    }
+
+    private void BeginCharacterBusyOperation()
+    {
         isCharacterOperationBusy = true;
         CharacterList_GroupBox.IsEnabled = false;
         CharacterGridSplitter.IsEnabled = false;
@@ -807,9 +934,6 @@ public partial class CharacterProfilesControl : UserControl
         {
             Character_DataGrid.ContextMenu.IsOpen = false;
         }
-
-        CharacterBusyOverlay_Control.Show(title, message);
-        UpdateCharacterActionStates();
     }
 
     private void HideCharacterBusyOverlay()

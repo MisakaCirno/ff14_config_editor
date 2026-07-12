@@ -1286,6 +1286,96 @@ public sealed class AppDataStoreTests : IDisposable
     }
 
     [Fact]
+    public void ScanCharacterActivity_UsesLatestDatOrLogRecursivelyWithoutPersistingDerivedState()
+    {
+        const string activeUserID = "0011223344556677";
+        const string missingUserID = "8899AABBCCDDEEFF";
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string gameInstallDirectory = CreateGameInstallDirectory("CharacterActivityGame");
+        store.SaveSettings(new AppSettings
+        {
+            GameInstallDirectory = gameInstallDirectory
+        });
+        CharacterProfile activeProfile = store.GetOrCreateCharacter(activeUserID);
+        activeProfile.CharacterName = "活跃角色";
+        CharacterProfile missingProfile = store.GetOrCreateCharacter(missingUserID);
+        missingProfile.CharacterName = "无目录角色";
+        store.Characters.Add(new CharacterProfile
+        {
+            UserID = "..\\outside",
+            CharacterName = "无效 ID 角色"
+        });
+
+        string characterDirectory = CreateLocalCharacterDirectory(gameInstallDirectory, activeUserID);
+        string datFilePath = Path.Combine(characterDirectory, "UISAVE.DAT");
+        string nestedLogDirectory = Path.Combine(characterDirectory, "log", "archive");
+        Directory.CreateDirectory(nestedLogDirectory);
+        string logFilePath = Path.Combine(nestedLogDirectory, "latest.LOG");
+        string ignoredFilePath = Path.Combine(characterDirectory, "newer.txt");
+        File.WriteAllText(datFilePath, "dat");
+        File.WriteAllText(logFilePath, "log");
+        File.WriteAllText(ignoredFilePath, "ignored");
+        DateTime datWriteTimeUtc = new(2026, 7, 10, 1, 2, 3, DateTimeKind.Utc);
+        DateTime logWriteTimeUtc = new(2026, 7, 11, 4, 5, 6, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(datFilePath, datWriteTimeUtc);
+        File.SetLastWriteTimeUtc(logFilePath, logWriteTimeUtc);
+        File.SetLastWriteTimeUtc(ignoredFilePath, logWriteTimeUtc.AddDays(1));
+        RecordingCharacterActivityProgress progress = new();
+
+        CharacterActivityScanPreparation preparation = store.PrepareCharacterActivityScan();
+        CharacterActivityScanResult result = AppDataStore.ScanCharacterActivity(preparation, progress);
+
+        Assert.Equal(3, result.Entries.Count);
+        CharacterActivityScanEntry activeEntry = Assert.Single(result.Entries, entry => entry.UserID == activeUserID);
+        Assert.Equal(CharacterActivityScanState.Available, activeEntry.State);
+        Assert.Equal(logWriteTimeUtc, activeEntry.LastActiveAtUtc);
+        Assert.Equal(CharacterActivityScanState.NoLocalRecord, Assert.Single(
+            result.Entries,
+            entry => entry.UserID == missingUserID).State);
+        Assert.Equal(CharacterActivityScanState.NoLocalRecord, Assert.Single(
+            result.Entries,
+            entry => entry.UserID == "..\\outside").State);
+        Assert.Equal(3, progress.Events.Count);
+        Assert.Equal(100, progress.Events[^1].Percent);
+
+        Assert.True(store.TryApplyCharacterActivityScan(result));
+        Assert.Equal(logWriteTimeUtc, activeProfile.LastActiveAtUtc);
+        Assert.Equal(logWriteTimeUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"), activeProfile.LastActiveTimeDisplay);
+        Assert.Equal("无本地记录", missingProfile.LastActiveTimeDisplay);
+
+        store.SaveCharacters();
+        string charactersJson = File.ReadAllText(store.CharactersFilePath);
+        Assert.DoesNotContain("LastActiveAtUtc", charactersJson);
+        Assert.DoesNotContain("LastActiveTimeDisplay", charactersJson);
+    }
+
+    [Fact]
+    public void TryApplyCharacterActivityScan_WhenGameDirectoryChanged_RejectsStaleResult()
+    {
+        AppDataStore store = CreateStore();
+        store.Initialize();
+        string firstGameInstallDirectory = CreateGameInstallDirectory("FirstCharacterActivityGame");
+        string secondGameInstallDirectory = CreateGameInstallDirectory("SecondCharacterActivityGame");
+        store.SaveSettings(new AppSettings
+        {
+            GameInstallDirectory = firstGameInstallDirectory
+        });
+        CharacterProfile profile = store.GetOrCreateCharacter("0011223344556677");
+        CharacterActivityScanPreparation preparation = store.PrepareCharacterActivityScan();
+        store.SaveSettings(new AppSettings
+        {
+            GameInstallDirectory = secondGameInstallDirectory
+        });
+
+        CharacterActivityScanResult result = AppDataStore.ScanCharacterActivity(preparation);
+
+        Assert.False(store.TryApplyCharacterActivityScan(result));
+        Assert.Null(profile.LastActiveAtUtc);
+        Assert.Equal("尚未扫描", profile.LastActiveTimeDisplay);
+    }
+
+    [Fact]
     public void AddRecentFile_DeduplicatesLimitsAndPersistsRecentFiles()
     {
         AppDataStore store = CreateStore();
@@ -3054,6 +3144,16 @@ public sealed class AppDataStoreTests : IDisposable
         public List<DataDirectoryMigrationProgress> Events { get; } = [];
 
         public void Report(DataDirectoryMigrationProgress value)
+        {
+            Events.Add(value);
+        }
+    }
+
+    private sealed class RecordingCharacterActivityProgress : IProgress<CharacterActivityScanProgress>
+    {
+        public List<CharacterActivityScanProgress> Events { get; } = [];
+
+        public void Report(CharacterActivityScanProgress value)
         {
             Events.Add(value);
         }

@@ -33,8 +33,18 @@
                            TextAlignment="Center"
                            TextWrapping="Wrap"
                            Margin="0,8,0,14"/>
-                <ProgressBar Height="6"
+                <ProgressBar x:Name="Operation_ProgressBar"
+                             Height="6"
+                             Minimum="0"
+                             Maximum="100"
                              IsIndeterminate="True"/>
+                <TextBlock x:Name="ProgressText_TextBlock"
+                           Foreground="{StaticResource AppMutedTextBrush}"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           Margin="0,8,0,0"
+                           Padding="0"
+                           Visibility="Collapsed"/>
             </StackPanel>
         </Border>
     </Grid>

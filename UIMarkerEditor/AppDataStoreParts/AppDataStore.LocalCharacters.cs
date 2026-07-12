@@ -4,6 +4,72 @@ namespace UIMarkerEditor;
 
 public sealed partial class AppDataStore
 {
+    internal CharacterActivityScanPreparation PrepareCharacterActivityScan()
+    {
+        string gameCharacterRootDirectory = WayMarkOpenDirectoryResolver.TryResolveGameCharacterRootDirectory(
+            Settings.GameInstallDirectory,
+            out string? resolvedDirectory)
+            ? resolvedDirectory
+            : string.Empty;
+        return new CharacterActivityScanPreparation(
+            gameCharacterRootDirectory,
+            [.. Characters.Select(static character => new CharacterActivityScanItem(
+                character.UserID,
+                character.DisplayName))]);
+    }
+
+    internal static CharacterActivityScanResult ScanCharacterActivity(
+        CharacterActivityScanPreparation preparation,
+        IProgress<CharacterActivityScanProgress>? progress = null)
+    {
+        ArgumentNullException.ThrowIfNull(preparation);
+
+        List<CharacterActivityScanEntry> entries = [];
+        int totalCount = preparation.Items.Count;
+        for (int index = 0; index < totalCount; index++)
+        {
+            CharacterActivityScanItem item = preparation.Items[index];
+            entries.Add(ScanCharacterActivityItem(preparation.GameCharacterRootDirectory, item));
+            progress?.Report(new CharacterActivityScanProgress(index + 1, totalCount, item.DisplayName));
+        }
+
+        return new CharacterActivityScanResult(
+            preparation.GameCharacterRootDirectory,
+            entries,
+            DateTime.UtcNow);
+    }
+
+    internal bool TryApplyCharacterActivityScan(CharacterActivityScanResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        if (!IsCurrentCharacterActivityScanRoot(result.GameCharacterRootDirectory))
+        {
+            return false;
+        }
+
+        Dictionary<string, CharacterActivityScanEntry> entriesByUserID = result.Entries
+            .GroupBy(static entry => entry.UserID, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(static group => group.Key, static group => group.First(), StringComparer.OrdinalIgnoreCase);
+        foreach (CharacterProfile profile in Characters)
+        {
+            if (!entriesByUserID.TryGetValue(profile.UserID, out CharacterActivityScanEntry? entry))
+            {
+                continue;
+            }
+
+            profile.LastActiveAtUtc = entry.LastActiveAtUtc;
+            profile.LastActiveTimeDisplay = entry.State switch
+            {
+                CharacterActivityScanState.Available when entry.LastActiveAtUtc.HasValue =>
+                    entry.LastActiveAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
+                CharacterActivityScanState.ReadFailed => "读取失败",
+                _ => "无本地记录"
+            };
+        }
+
+        return true;
+    }
+
     internal IReadOnlyList<LocalGameCharacter> GetAvailableLocalGameCharacters()
     {
         if (!WayMarkOpenDirectoryResolver.TryResolveGameCharacterRootDirectory(
@@ -210,6 +276,101 @@ public sealed partial class AppDataStore
         }
     }
 
+    private static CharacterActivityScanEntry ScanCharacterActivityItem(
+        string gameCharacterRootDirectory,
+        CharacterActivityScanItem item)
+    {
+        if (string.IsNullOrWhiteSpace(gameCharacterRootDirectory) ||
+            string.IsNullOrWhiteSpace(item.UserID))
+        {
+            return new CharacterActivityScanEntry(
+                item.UserID,
+                null,
+                CharacterActivityScanState.NoLocalRecord);
+        }
+
+        string characterDirectory;
+        try
+        {
+            string normalizedUserID = item.UserID.Trim().ToUpperInvariant();
+            if (normalizedUserID.Length != 16 || !normalizedUserID.All(Uri.IsHexDigit))
+            {
+                return new CharacterActivityScanEntry(
+                    item.UserID,
+                    null,
+                    CharacterActivityScanState.NoLocalRecord);
+            }
+
+            characterDirectory = Path.Combine(
+                gameCharacterRootDirectory,
+                $"FFXIV_CHR{normalizedUserID}");
+
+            EnumerationOptions options = new()
+            {
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = false,
+                ReturnSpecialDirectories = false,
+                AttributesToSkip = FileAttributes.ReparsePoint
+            };
+            DateTime? latestWriteTimeUtc = null;
+            foreach (string filePath in Directory.EnumerateFiles(characterDirectory, "*", options))
+            {
+                string extension = Path.GetExtension(filePath);
+                if (!string.Equals(extension, ".dat", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(extension, ".log", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                FileInfo fileInfo = new(filePath);
+                fileInfo.Refresh();
+                if (!fileInfo.Exists)
+                {
+                    throw new FileNotFoundException("扫描期间文件已不存在。", filePath);
+                }
+
+                if (!latestWriteTimeUtc.HasValue || fileInfo.LastWriteTimeUtc > latestWriteTimeUtc.Value)
+                {
+                    latestWriteTimeUtc = fileInfo.LastWriteTimeUtc;
+                }
+            }
+
+            return new CharacterActivityScanEntry(
+                item.UserID,
+                latestWriteTimeUtc,
+                latestWriteTimeUtc.HasValue
+                    ? CharacterActivityScanState.Available
+                    : CharacterActivityScanState.NoLocalRecord);
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return new CharacterActivityScanEntry(
+                item.UserID,
+                null,
+                CharacterActivityScanState.NoLocalRecord);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return new CharacterActivityScanEntry(
+                item.UserID,
+                null,
+                CharacterActivityScanState.ReadFailed,
+                ex.Message);
+        }
+    }
+
+    private bool IsCurrentCharacterActivityScanRoot(string scannedRootDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(scannedRootDirectory))
+        {
+            return !WayMarkOpenDirectoryResolver.TryResolveGameCharacterRootDirectory(
+                Settings.GameInstallDirectory,
+                out _);
+        }
+
+        return IsCurrentLocalGameCharacterRoot(scannedRootDirectory);
+    }
+
     private static LocalGameCharacter CreateLocalGameCharacter(
         LocalGameCharacterFile characterFile,
         CharacterProfile profile)
@@ -235,7 +396,9 @@ public sealed partial class AppDataStore
             DataCenter = profile.DataCenter,
             World = profile.World,
             Note = profile.Note,
-            UpdatedAt = profile.UpdatedAt
+            UpdatedAt = profile.UpdatedAt,
+            LastActiveAtUtc = profile.LastActiveAtUtc,
+            LastActiveTimeDisplay = profile.LastActiveTimeDisplay
         })];
     }
 

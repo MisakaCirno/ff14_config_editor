@@ -35,6 +35,7 @@ public sealed class XamlResourceTests
                 AssertBackupRestoreOverlayCanShowAndHide(window);
                 AssertResponsiveSplitPaneMinimums(window);
                 AssertKeyboardFocusAndIconButtonAccessibility(window);
+                AssertCharacterActivityControls(window);
                 window.Close();
                 AssertMapDataSourceStartupDialogSupportsSmallWorkAreas();
                 AssertStartupLoadingWindowCannotClosePrematurely();
@@ -82,6 +83,25 @@ public sealed class XamlResourceTests
         CharacterProfilesControl characterProfiles = Assert.IsType<CharacterProfilesControl>(window.FindName("CharacterProfiles_Control"));
         Assert.Equal(340d, Assert.IsType<ColumnDefinition>(characterProfiles.FindName("CharacterList_Column")).MinWidth);
         Assert.Equal(280d, Assert.IsType<ColumnDefinition>(characterProfiles.FindName("CharacterDetail_Column")).MinWidth);
+    }
+
+    private static void AssertCharacterActivityControls(MainWindow window)
+    {
+        CharacterProfilesControl characterProfiles = Assert.IsType<CharacterProfilesControl>(
+            window.FindName("CharacterProfiles_Control"));
+        TextBlock refreshStatus = Assert.IsType<TextBlock>(
+            characterProfiles.FindName("LastActivityRefreshStatus_TextBlock"));
+        Button refreshButton = Assert.IsType<Button>(
+            characterProfiles.FindName("RefreshCharacterActivity_Button"));
+        DataGrid dataGrid = Assert.IsType<DataGrid>(characterProfiles.FindName("Character_DataGrid"));
+        DataGridTextColumn activityColumn = Assert.Single(
+            dataGrid.Columns.OfType<DataGridTextColumn>(),
+            column => string.Equals(column.SortMemberPath, "LastActiveAtUtc", StringComparison.Ordinal));
+
+        Assert.Equal("最后刷新：尚未扫描", refreshStatus.Text);
+        Assert.Equal("刷新活跃时间", refreshButton.Content);
+        System.Windows.Data.Binding binding = Assert.IsType<System.Windows.Data.Binding>(activityColumn.Binding);
+        Assert.Equal("LastActiveTimeDisplay", binding.Path.Path);
     }
 
     private static void AssertKeyboardFocusAndIconButtonAccessibility(MainWindow window)
@@ -273,6 +293,22 @@ public sealed class XamlResourceTests
 
             Assert.Equal(Visibility.Collapsed, control.Visibility);
             Assert.False(control.IsBusy);
+
+            control.ShowProgress("正在扫描...", "正在扫描角色。", 37.5, "3 / 8（38%）");
+            ProgressBar progressBar = Assert.IsType<ProgressBar>(control.FindName("Operation_ProgressBar"));
+            TextBlock progressText = Assert.IsType<TextBlock>(control.FindName("ProgressText_TextBlock"));
+            Assert.False(progressBar.IsIndeterminate);
+            Assert.Equal(37.5, progressBar.Value);
+            Assert.Equal("3 / 8（38%）", progressText.Text);
+            Assert.Equal(Visibility.Visible, progressText.Visibility);
+
+            control.Hide();
+            Assert.False(control.IsBusy);
+
+            control.Show("再次处理...", "验证兼容模式。");
+            Assert.True(progressBar.IsIndeterminate);
+            Assert.Equal(Visibility.Collapsed, progressText.Visibility);
+            control.Hide();
         });
 
         Assert.Null(exception);
