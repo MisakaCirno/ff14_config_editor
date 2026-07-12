@@ -31,6 +31,7 @@
         <Style x:Key="RecentFilesListBoxItemStyle" TargetType="{x:Type ListBoxItem}">
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="ToolTip" Value="{Binding ToolTip}"/>
+            <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
             <Setter Property="IsEnabled" Value="{Binding Exists}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
@@ -69,9 +70,10 @@
 
     <Grid Background="#DDF8FAFC"
           Focusable="True">
-        <Border HorizontalAlignment="Center"
+        <Border HorizontalAlignment="Stretch"
                 VerticalAlignment="Center"
-                Width="520"
+                MaxWidth="720"
+                Margin="24"
                 Padding="22"
                 Background="#F8FFFFFF"
                 BorderBrush="{StaticResource AppBorderBrush}"
@@ -127,45 +129,11 @@
                              SelectionChanged="RecentFiles_ListBox_SelectionChanged">
                         <ListBox.ItemTemplate>
                             <DataTemplate DataType="{x:Type controls:RecentWayMarkFileItem}">
-                                <StackPanel Margin="8,5"
-                                            HorizontalAlignment="Stretch">
-                                    <TextBlock Text="{Binding DisplayName}"
-                                               TextWrapping="NoWrap"
-                                               TextTrimming="CharacterEllipsis"
-                                               FontWeight="SemiBold"
-                                               Foreground="{StaticResource AppTextBrush}"/>
-                                    <TextBlock Text="{Binding UserID}"
-                                               TextWrapping="NoWrap"
-                                               FontFamily="Consolas"
-                                               Margin="0,2,0,0"
-                                               Foreground="{StaticResource AppMutedTextBrush}">
-                                        <TextBlock.Style>
-                                            <Style TargetType="{x:Type TextBlock}">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                                <Style.Triggers>
-                                                    <Trigger Property="Text" Value="">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                    </Trigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                    <TextBlock Text="{Binding Note}"
-                                               TextWrapping="Wrap"
-                                               Margin="0,2,0,0"
-                                               Foreground="{StaticResource AppMutedTextBrush}">
-                                        <TextBlock.Style>
-                                            <Style TargetType="{x:Type TextBlock}">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                                <Style.Triggers>
-                                                    <Trigger Property="Text" Value="">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                    </Trigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </StackPanel>
+                                <TextBlock Text="{Binding DisplayText}"
+                                           Margin="8,7"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{StaticResource AppTextBrush}"/>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>

@@ -117,15 +117,11 @@ namespace UIMarkerEditor
                 string userID = AppDataStore.GetUserIDFromCharacterFolder(filePath) ?? "未知 User ID";
                 CharacterProfile? profile = appDataStore.Characters.FirstOrDefault(character =>
                     string.Equals(character.UserID, userID, StringComparison.OrdinalIgnoreCase));
-                bool hasCharacterName = profile != null && !string.IsNullOrWhiteSpace(profile.CharacterName);
-                string displayName = hasCharacterName ? profile!.DisplayName : userID;
 
-                overlayItems.Add(new RecentWayMarkFileItem(
+                overlayItems.Add(RecentWayMarkFileItem.Create(
                     filePath,
-                    displayName,
-                    hasCharacterName ? userID : string.Empty,
-                    profile?.Note.Trim() ?? string.Empty,
-                    exists ? filePath : $"{filePath}\n文件不存在",
+                    userID,
+                    profile,
                     exists));
             }
 
