@@ -137,6 +137,7 @@ namespace UIMarkerEditor
                 appDataStore,
                 this,
                 () => currentFilePath,
+                GetCurrentFileBackupUserID,
                 TryLoadConfigFileWithOverlayAsync,
                 ConfirmSaveOrDiscardWayMarkChanges,
                 ConfirmSaveOrDiscardCharacterChanges,

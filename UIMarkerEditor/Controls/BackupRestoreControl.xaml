@@ -30,7 +30,22 @@
         </Grid.ColumnDefinitions>
 
         <GroupBox Grid.Column="0" Header="备份列表" Padding="5">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <CheckBox x:Name="CurrentFileBackupsOnly_CheckBox"
+                          Content="仅显示当前打开文件的备份"
+                          Margin="5,2,5,8"
+                          HorizontalAlignment="Left"
+                          IsEnabled="False"
+                          Checked="CurrentFileBackupsOnly_CheckBox_Changed"
+                          Unchecked="CurrentFileBackupsOnly_CheckBox_Changed"/>
+
             <DataGrid x:Name="Backup_DataGrid"
+                      Grid.Row="1"
                       AutoGenerateColumns="False"
                       CanUserAddRows="False"
                       CanUserDeleteRows="False"
@@ -87,6 +102,18 @@
                                         Width="*"/>
                 </DataGrid.Columns>
             </DataGrid>
+
+                <TextBlock x:Name="BackupNoMatches_TextBlock"
+                           Grid.Row="1"
+                           Text="当前打开文件暂无可用备份。"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap"
+                           Margin="16"
+                           Visibility="Collapsed"
+                           IsHitTestVisible="False"
+                           Panel.ZIndex="1"/>
+            </Grid>
         </GroupBox>
 
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>

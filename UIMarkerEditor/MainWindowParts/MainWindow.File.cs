@@ -250,6 +250,7 @@ namespace UIMarkerEditor
 
             currentFilePath = string.Empty;
             configUISave = null;
+            BackupRestore_Control.RefreshCurrentFileFilter();
             SetWayMarkDirty(false);
             ResetCurrentFileStatus();
             UpdateWindowTitle();
@@ -401,6 +402,7 @@ namespace UIMarkerEditor
                 configUISave = loadedConfig;
                 CommitCurrentFileChangeMonitor(preparedMonitor);
                 preparedMonitor = null;
+                BackupRestore_Control.RefreshCurrentFileFilter();
                 TryRegisterLoadedCharacter(loadedConfig, filePath);
                 UpdateCurrentFileStatus(filePath);
                 appDataStore.AddRecentFile(filePath);

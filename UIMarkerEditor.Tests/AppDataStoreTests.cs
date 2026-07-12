@@ -1397,6 +1397,9 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal("0123456789ABCDEF", backup.FileUserID);
         Assert.True(backup.UseFolderUserIDAsEffectiveUserID);
         Assert.Equal("AAAABBBBCCCCDDDD", backup.EffectiveUserID);
+        Assert.Equal(
+            "AAAABBBBCCCCDDDD",
+            store.ResolveEffectiveBackupUserID(sourceFilePath, backup.FileUserID));
         Assert.Contains("AAAABBBBCCCCDDDD", backup.Id);
     }
 
@@ -1427,6 +1430,9 @@ public sealed class AppDataStoreTests : IDisposable
         Assert.Equal("0123456789ABCDEF", backup.FileUserID);
         Assert.False(backup.UseFolderUserIDAsEffectiveUserID);
         Assert.Equal("0123456789ABCDEF", backup.EffectiveUserID);
+        Assert.Equal(
+            "0123456789ABCDEF",
+            store.ResolveEffectiveBackupUserID(sourceFilePath, backup.FileUserID));
         Assert.Contains("0123456789ABCDEF", backup.Id);
     }
 

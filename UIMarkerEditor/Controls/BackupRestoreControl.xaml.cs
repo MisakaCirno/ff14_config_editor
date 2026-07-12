@@ -10,16 +10,19 @@ namespace UIMarkerEditor.Controls;
 
 public partial class BackupRestoreControl : UserControl
 {
+    private readonly List<BackupMetadata> allBackupEntries = [];
     private readonly ObservableCollection<BackupMetadata> backupEntries = [];
     private AppDataStore? appDataStore;
     private Window? ownerWindow;
     private Func<string> getCurrentFilePath = () => string.Empty;
+    private Func<string> getCurrentFileUserID = () => string.Empty;
     private Func<string, Task<bool>> loadConfigFileAsync = _ => Task.FromResult(false);
     private Func<bool> confirmSaveOrDiscardWayMarkChanges = () => true;
     private Func<bool> confirmSaveOrDiscardCharacterChanges = () => true;
     private Func<Task<ServerListLoadResult?>> syncServerListForCharacterEditing = () => Task.FromResult<ServerListLoadResult?>(null);
     private Action refreshCharacterList = () => { };
     private bool isBackupOperationBusy;
+    private bool isUpdatingCurrentFileFilter;
 
     public bool IsOperationBusy => isBackupOperationBusy || BackupBusyOverlay_Control.IsBusy;
 
@@ -34,6 +37,7 @@ public partial class BackupRestoreControl : UserControl
         AppDataStore appDataStore,
         Window ownerWindow,
         Func<string> getCurrentFilePath,
+        Func<string> getCurrentFileUserID,
         Func<string, Task<bool>> loadConfigFileAsync,
         Func<bool> confirmSaveOrDiscardWayMarkChanges,
         Func<bool> confirmSaveOrDiscardCharacterChanges,
@@ -43,25 +47,117 @@ public partial class BackupRestoreControl : UserControl
         this.appDataStore = appDataStore;
         this.ownerWindow = ownerWindow;
         this.getCurrentFilePath = getCurrentFilePath;
+        this.getCurrentFileUserID = getCurrentFileUserID;
         this.loadConfigFileAsync = loadConfigFileAsync;
         this.confirmSaveOrDiscardWayMarkChanges = confirmSaveOrDiscardWayMarkChanges;
         this.confirmSaveOrDiscardCharacterChanges = confirmSaveOrDiscardCharacterChanges;
         this.syncServerListForCharacterEditing = syncServerListForCharacterEditing;
         this.refreshCharacterList = refreshCharacterList;
+        RefreshCurrentFileFilter();
     }
 
-    public void RefreshBackupList()
+    public void RefreshBackupList(bool allowDuringOperation = false)
     {
-        if (appDataStore == null || isBackupOperationBusy) return;
+        if (appDataStore == null || (isBackupOperationBusy && !allowDuringOperation)) return;
 
-        backupEntries.Clear();
+        string? selectedBackupId = (Backup_DataGrid.SelectedItem as BackupMetadata)?.Id;
+        allBackupEntries.Clear();
         foreach (BackupMetadata backup in appDataStore.LoadBackups())
         {
             FillBackupDisplayFields(backup);
+            allBackupEntries.Add(backup);
+        }
+
+        ApplyBackupFilter(selectedBackupId);
+    }
+
+    public void RefreshCurrentFileFilter()
+    {
+        string currentUserID = GetCurrentFileUserID();
+        bool hasCurrentFileUserID = !string.IsNullOrWhiteSpace(currentUserID);
+
+        isUpdatingCurrentFileFilter = true;
+        try
+        {
+            CurrentFileBackupsOnly_CheckBox.IsEnabled = hasCurrentFileUserID;
+            CurrentFileBackupsOnly_CheckBox.ToolTip = hasCurrentFileUserID
+                ? $"当前文件 User ID：{currentUserID}"
+                : "请先打开一个 UISAVE.DAT 文件。";
+            if (!hasCurrentFileUserID)
+            {
+                CurrentFileBackupsOnly_CheckBox.IsChecked = false;
+            }
+        }
+        finally
+        {
+            isUpdatingCurrentFileFilter = false;
+        }
+
+        ApplyBackupFilter();
+    }
+
+    private void CurrentFileBackupsOnly_CheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (isUpdatingCurrentFileFilter || isBackupOperationBusy)
+        {
+            return;
+        }
+
+        ApplyBackupFilter();
+    }
+
+    private void ApplyBackupFilter(string? preferredBackupId = null)
+    {
+        preferredBackupId ??= (Backup_DataGrid.SelectedItem as BackupMetadata)?.Id;
+        string currentUserID = GetCurrentFileUserID();
+        bool filterByCurrentFile = CurrentFileBackupsOnly_CheckBox.IsChecked == true &&
+            !string.IsNullOrWhiteSpace(currentUserID);
+        IEnumerable<BackupMetadata> visibleBackups = filterByCurrentFile
+            ? allBackupEntries.Where(backup => MatchesCurrentFileUserID(backup, currentUserID))
+            : allBackupEntries;
+
+        backupEntries.Clear();
+        foreach (BackupMetadata backup in visibleBackups)
+        {
             backupEntries.Add(backup);
         }
 
-        UpdateBackupDetail(null);
+        BackupMetadata? selectedBackup = string.IsNullOrWhiteSpace(preferredBackupId)
+            ? null
+            : backupEntries.FirstOrDefault(backup =>
+                string.Equals(backup.Id, preferredBackupId, StringComparison.OrdinalIgnoreCase));
+        Backup_DataGrid.SelectedItem = selectedBackup;
+        if (selectedBackup == null)
+        {
+            UpdateBackupDetail(null);
+        }
+
+        BackupNoMatches_TextBlock.Visibility = filterByCurrentFile && backupEntries.Count == 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private string GetCurrentFileUserID()
+    {
+        try
+        {
+            return getCurrentFileUserID()?.Trim() ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning(AppLogCategory.UI, "读取当前文件 User ID 以筛选备份时失败", ex);
+            return string.Empty;
+        }
+    }
+
+    internal static bool MatchesCurrentFileUserID(BackupMetadata backup, string currentUserID)
+    {
+        return !string.IsNullOrWhiteSpace(currentUserID) &&
+            !string.IsNullOrWhiteSpace(backup.EffectiveUserID) &&
+            string.Equals(
+                backup.EffectiveUserID.Trim(),
+                currentUserID.Trim(),
+                StringComparison.OrdinalIgnoreCase);
     }
 
     public void ApplyLayoutSettings(WindowLayoutSettings layout)

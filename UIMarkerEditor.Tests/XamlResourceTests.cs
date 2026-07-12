@@ -332,6 +332,13 @@ public sealed class XamlResourceTests
 
         Assert.Equal(Visibility.Collapsed, overlay.Visibility);
         Assert.False(backupRestoreControl.IsOperationBusy);
+        CheckBox currentFileFilter = Assert.IsType<CheckBox>(
+            backupRestoreControl.FindName("CurrentFileBackupsOnly_CheckBox"));
+        TextBlock noMatchesText = Assert.IsType<TextBlock>(
+            backupRestoreControl.FindName("BackupNoMatches_TextBlock"));
+        Assert.False(currentFileFilter.IsEnabled);
+        Assert.False(currentFileFilter.IsChecked);
+        Assert.Equal(Visibility.Collapsed, noMatchesText.Visibility);
 
         overlay.Show("正在测试备份操作...", "请等待测试完成。");
         overlay.Measure(new Size(420, 240));

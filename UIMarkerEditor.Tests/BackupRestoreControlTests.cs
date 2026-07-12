@@ -67,6 +67,36 @@ public sealed class BackupRestoreControlTests
         Assert.DoesNotContain("覆盖后目标文件当前状态将无法从工具备份中恢复", warning);
     }
 
+    [Fact]
+    public void MatchesCurrentFileUserID_UsesEffectiveUserIDCaseInsensitively()
+    {
+        BackupMetadata folderBasedBackup = new()
+        {
+            FolderUserID = "AAAABBBBCCCCDDDD",
+            FileUserID = "1111222233334444",
+            UseFolderUserIDAsEffectiveUserID = true
+        };
+        BackupMetadata fileBasedBackup = new()
+        {
+            FolderUserID = "AAAABBBBCCCCDDDD",
+            FileUserID = "1111222233334444",
+            UseFolderUserIDAsEffectiveUserID = false
+        };
+
+        Assert.True(BackupRestoreControl.MatchesCurrentFileUserID(
+            folderBasedBackup,
+            "aaaabbbbccccdddd"));
+        Assert.True(BackupRestoreControl.MatchesCurrentFileUserID(
+            fileBasedBackup,
+            "1111222233334444"));
+        Assert.False(BackupRestoreControl.MatchesCurrentFileUserID(
+            folderBasedBackup,
+            "1111222233334444"));
+        Assert.False(BackupRestoreControl.MatchesCurrentFileUserID(
+            folderBasedBackup,
+            string.Empty));
+    }
+
     private static BackupMetadata CreateBackupMetadata()
     {
         return new BackupMetadata

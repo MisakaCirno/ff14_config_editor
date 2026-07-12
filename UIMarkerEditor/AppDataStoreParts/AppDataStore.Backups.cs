@@ -273,6 +273,18 @@ public sealed partial class AppDataStore
             : null;
     }
 
+    internal string ResolveEffectiveBackupUserID(string filePath, string fileUserID)
+    {
+        if (IsTrustedGameCharacterSaveFile(filePath) &&
+            GetUserIDFromCharacterFolder(filePath) is string folderUserID &&
+            !string.IsNullOrWhiteSpace(folderUserID))
+        {
+            return folderUserID.Trim();
+        }
+
+        return fileUserID?.Trim() ?? string.Empty;
+    }
+
     private BackupMetadata CreateMetadata(
         string sourceFilePath,
         string backedUpFilePath,
@@ -285,7 +297,7 @@ public sealed partial class AppDataStore
         string folderUserID = GetUserIDFromCharacterFolder(sourceFilePath) ?? string.Empty;
         string fileUserID = backupConfig.UserIDHex;
         bool useFolderUserID = IsTrustedGameCharacterSaveFile(sourceFilePath);
-        string userIDForName = useFolderUserID ? folderUserID : fileUserID;
+        string userIDForName = ResolveEffectiveBackupUserID(sourceFilePath, fileUserID);
 
         return new BackupMetadata
         {
