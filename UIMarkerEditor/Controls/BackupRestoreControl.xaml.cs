@@ -14,7 +14,7 @@ public partial class BackupRestoreControl : UserControl
     private AppDataStore? appDataStore;
     private Window? ownerWindow;
     private Func<string> getCurrentFilePath = () => string.Empty;
-    private Action<string> loadConfigFile = _ => { };
+    private Func<string, Task<bool>> loadConfigFileAsync = _ => Task.FromResult(false);
     private Func<bool> confirmSaveOrDiscardWayMarkChanges = () => true;
     private Func<bool> confirmSaveOrDiscardCharacterChanges = () => true;
     private Func<Task<ServerListLoadResult?>> syncServerListForCharacterEditing = () => Task.FromResult<ServerListLoadResult?>(null);
@@ -34,7 +34,7 @@ public partial class BackupRestoreControl : UserControl
         AppDataStore appDataStore,
         Window ownerWindow,
         Func<string> getCurrentFilePath,
-        Action<string> loadConfigFile,
+        Func<string, Task<bool>> loadConfigFileAsync,
         Func<bool> confirmSaveOrDiscardWayMarkChanges,
         Func<bool> confirmSaveOrDiscardCharacterChanges,
         Func<Task<ServerListLoadResult?>> syncServerListForCharacterEditing,
@@ -43,7 +43,7 @@ public partial class BackupRestoreControl : UserControl
         this.appDataStore = appDataStore;
         this.ownerWindow = ownerWindow;
         this.getCurrentFilePath = getCurrentFilePath;
-        this.loadConfigFile = loadConfigFile;
+        this.loadConfigFileAsync = loadConfigFileAsync;
         this.confirmSaveOrDiscardWayMarkChanges = confirmSaveOrDiscardWayMarkChanges;
         this.confirmSaveOrDiscardCharacterChanges = confirmSaveOrDiscardCharacterChanges;
         this.syncServerListForCharacterEditing = syncServerListForCharacterEditing;
@@ -374,7 +374,7 @@ public partial class BackupRestoreControl : UserControl
         RefreshBackupList();
     }
 
-    private void RestoreBackup_Button_Click(object sender, RoutedEventArgs e)
+    private async void RestoreBackup_Button_Click(object sender, RoutedEventArgs e)
     {
         if (appDataStore == null || isBackupOperationBusy) return;
 
@@ -425,20 +425,18 @@ public partial class BackupRestoreControl : UserControl
 
         if (targetIsCurrentFile)
         {
-            try
+            if (!await TryReloadCurrentFileAfterRestoreAsync(currentFilePath))
             {
-                loadConfigFile(currentFilePath);
-            }
-            catch (Exception ex)
-            {
-                AppMessageBox.Show(ownerWindow, $"备份已还原到原文件路径，但重新加载当前文件失败：{ex.Message}", "还原已完成", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
         }
 
-        ToastService.ShowSuccess("备份已还原到原文件路径。");
+        ToastService.ShowSuccess(targetIsCurrentFile
+            ? "备份已还原，当前打开文件已重新加载。"
+            : "备份已还原到原文件路径。");
     }
 
-    private void RestoreBackupAs_Button_Click(object sender, RoutedEventArgs e)
+    private async void RestoreBackupAs_Button_Click(object sender, RoutedEventArgs e)
     {
         if (appDataStore == null || isBackupOperationBusy) return;
 
@@ -509,17 +507,52 @@ public partial class BackupRestoreControl : UserControl
 
         if (targetIsCurrentFile)
         {
-            try
+            if (!await TryReloadCurrentFileAfterRestoreAsync(currentFilePath))
             {
-                loadConfigFile(currentFilePath);
-            }
-            catch (Exception ex)
-            {
-                AppMessageBox.Show(ownerWindow, $"备份已还原到指定位置，但重新加载当前文件失败：{ex.Message}", "还原已完成", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
         }
 
-        ToastService.ShowSuccess("备份已还原到指定位置。");
+        ToastService.ShowSuccess(targetIsCurrentFile
+            ? "备份已还原，当前打开文件已重新加载。"
+            : "备份已还原到指定位置。");
+    }
+
+    private async Task<bool> TryReloadCurrentFileAfterRestoreAsync(string currentFilePath)
+    {
+        Exception? reloadException = null;
+        ShowBackupBusyOverlay(
+            "正在重新加载当前文件...",
+            "备份已经写入磁盘，正在更新当前界面内容。");
+        try
+        {
+            if (await loadConfigFileAsync(currentFilePath))
+            {
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            reloadException = ex;
+            AppLogger.Warning(AppLogCategory.IO, $"备份还原后重新加载当前文件失败：{currentFilePath}", ex);
+        }
+        finally
+        {
+            HideBackupBusyOverlay();
+        }
+
+        string reason = reloadException == null
+            ? string.Empty
+            : $"\n\n原因：{reloadException.Message}";
+        AppMessageBox.Show(
+            ownerWindow,
+            $"备份已经写入当前文件，但工具未能重新加载该文件。\n\n" +
+            $"磁盘上的 UISAVE.DAT 已经更新，当前界面仍保留还原前内容。为避免覆盖已还原文件，请不要直接保存；请关闭当前文件后重新打开，或再次手动重新加载。\n\n" +
+            $"文件：{currentFilePath}{reason}",
+            "备份已还原，但重载失败",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+        return false;
     }
 
     private bool ShouldCreateSafetyBackupBeforeRestore(string targetFilePath)

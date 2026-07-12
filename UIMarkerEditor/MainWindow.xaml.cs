@@ -137,7 +137,7 @@ namespace UIMarkerEditor
                 appDataStore,
                 this,
                 () => currentFilePath,
-                filePath => LoadConfigFileWithOverlay(filePath),
+                TryLoadConfigFileWithOverlayAsync,
                 ConfirmSaveOrDiscardWayMarkChanges,
                 ConfirmSaveOrDiscardCharacterChanges,
                 () => SyncServerListIfNeededAsync(showFailureMessage: false),
