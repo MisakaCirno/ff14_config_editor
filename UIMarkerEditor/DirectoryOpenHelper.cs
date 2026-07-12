@@ -76,16 +76,7 @@ internal static class DirectoryOpenHelper
                 Directory.CreateDirectory(fullDirectory);
             }
 
-            using Process? process = Process.Start(new ProcessStartInfo
-            {
-                FileName = fullDirectory,
-                UseShellExecute = true
-            });
-            if (process == null)
-            {
-                AppMessageBox.Show(owner, $"{caption}失败：系统没有返回打开目录进程。", caption, MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
-            }
+            StartDirectoryShell(fullDirectory, Process.Start);
         }
         catch (Exception ex) when (IsDirectoryOpenException(ex))
         {
@@ -94,6 +85,17 @@ internal static class DirectoryOpenHelper
         }
 
         return true;
+    }
+
+    internal static void StartDirectoryShell(
+        string fullDirectory,
+        Func<ProcessStartInfo, Process?> processStarter)
+    {
+        using Process? _ = processStarter(new ProcessStartInfo
+        {
+            FileName = fullDirectory,
+            UseShellExecute = true
+        });
     }
 
     private static bool IsDirectoryOpenException(Exception exception)
