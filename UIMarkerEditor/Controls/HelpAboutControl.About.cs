@@ -46,7 +46,7 @@ public partial class HelpAboutControl
         AddSectionTitle("软件信息");
         AddInfoRow("软件名称", "FF14 标点预设编辑工具");
         AddInfoRow("版本号", GetVersionText());
-        AddInfoRow("发布日期", "2026年6月19日");
+        AddInfoRow("发布日期", "2026年7月13日");
         AddInfoRow("Git 仓库", Repository, Repository);
         AddInfoRow("开源协议", "MIT License", License);
         AddInfoRow("Bilibili", BilibiliName, Bilibili);
